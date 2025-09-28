@@ -1,11 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { 
   Video, 
   VideoOff, 
@@ -21,9 +19,9 @@ import {
   Camera,
   Maximize,
   Minimize,
-  Phone,
   PhoneOff
 } from "lucide-react";
+import { Room, RoomEvent, createLocalTracks, RemoteParticipant, LocalParticipant } from "livekit-client";
 
 const Classroom = () => {
   const [isMuted, setIsMuted] = useState(false);
@@ -31,15 +29,150 @@ const Classroom = () => {
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [chatMessage, setChatMessage] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
+  
+  // LiveKit states
+  const [room, setRoom] = useState<Room | null>(null);
+  const [participants, setParticipants] = useState<RemoteParticipant[]>([]);
+  const [localParticipant, setLocalParticipant] = useState<LocalParticipant | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const localVideoRef = useRef<HTMLDivElement>(null);
+  const remoteVideosRef = useRef<HTMLDivElement>(null);
 
-  const participants = [
-    { id: 1, name: "John Doe", role: "instructor", isPresenting: true, isMuted: false, hasVideo: true },
-    { id: 2, name: "Alice Smith", role: "student", isPresenting: false, isMuted: true, hasVideo: true },
-    { id: 3, name: "Bob Johnson", role: "student", isPresenting: false, isMuted: false, hasVideo: false },
-    { id: 4, name: "Carol Williams", role: "student", isPresenting: false, isMuted: true, hasVideo: true },
-    { id: 5, name: "David Brown", role: "student", isPresenting: false, isMuted: false, hasVideo: true },
-    { id: 6, name: "Eva Davis", role: "student", isPresenting: false, isMuted: true, hasVideo: true },
-  ];
+  // LiveKit connection
+  useEffect(() => {
+    let currentRoom: Room | null = null;
+
+    async function joinRoom() {
+      try {
+        const userName = "User_" + Math.floor(Math.random() * 1000);
+        
+        const resp = await fetch(
+          `http://localhost:4000/getToken?room=testroom&user=${userName}`
+        );
+        const { token, url } = await resp.json();
+
+        const r = new Room();
+        await r.connect(url, token);
+        setRoom(r);
+        setLocalParticipant(r.localParticipant);
+        currentRoom = r;
+        setIsConnected(true);
+
+        // Update participants state
+        const remoteParticipants = Array.from(r.remoteParticipants.values());
+        setParticipants(remoteParticipants);
+
+        // Publish local tracks
+        const tracks = await createLocalTracks({ audio: true, video: true });
+        tracks.forEach(track => r.localParticipant.publishTrack(track));
+
+        // Render local video
+        if (localVideoRef.current) {
+          localVideoRef.current.innerHTML = '';
+          tracks.forEach(track => {
+            if (track.kind === 'video') {
+              const el = track.attach();
+              el.style.width = "100%";
+              el.style.height = "100%";
+              el.style.objectFit = "cover";
+              localVideoRef.current?.appendChild(el);
+            }
+          });
+        }
+
+        // Render existing remote participants
+        renderRemoteParticipants(r);
+
+        // Event listeners
+        r.on(RoomEvent.ParticipantConnected, (participant) => {
+          console.log("👥 New participant:", participant.identity);
+          setParticipants(prev => [...prev, participant]);
+        });
+
+        r.on(RoomEvent.ParticipantDisconnected, (participant) => {
+          console.log("🚪 Participant left:", participant.identity);
+          setParticipants(prev => prev.filter(p => p.identity !== participant.identity));
+        });
+
+        r.on(RoomEvent.TrackSubscribed, (track, pub, participant) => {
+          if (participant.isLocal) return;
+          renderRemoteParticipants(r);
+        });
+
+        r.on(RoomEvent.TrackUnsubscribed, (track, pub, participant) => {
+          if (participant.isLocal) return;
+          renderRemoteParticipants(r);
+        });
+
+      } catch (error) {
+        console.error("Failed to join room:", error);
+        setIsConnected(false);
+      }
+    }
+
+    function renderRemoteParticipants(room: Room) {
+      if (!remoteVideosRef.current) return;
+      
+      remoteVideosRef.current.innerHTML = '';
+      
+      room.remoteParticipants.forEach(participant => {
+        participant.trackPublications.forEach(pub => {
+          if (pub.track && pub.track.kind === 'video') {
+            const el = pub.track.attach();
+            el.style.width = "100%";
+            el.style.height = "100%";
+            el.style.objectFit = "cover";
+            
+            const wrapper = document.createElement("div");
+            wrapper.className = "relative aspect-video bg-muted rounded-lg overflow-hidden";
+            wrapper.appendChild(el);
+            
+            const nameLabel = document.createElement("div");
+            nameLabel.className = "absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded";
+            nameLabel.textContent = participant.identity;
+            wrapper.appendChild(nameLabel);
+            
+            remoteVideosRef.current?.appendChild(wrapper);
+          }
+        });
+      });
+    }
+
+    joinRoom();
+
+    // Cleanup
+    return () => {
+      if (currentRoom) {
+        console.log("🧹 Cleaning up room connection");
+        currentRoom.disconnect();
+        setIsConnected(false);
+      }
+    };
+  }, []);
+
+  // Toggle mute
+  const toggleMute = () => {
+    if (room?.localParticipant) {
+      room.localParticipant.setMicrophoneEnabled(isMuted);
+      setIsMuted(!isMuted);
+    }
+  };
+
+  // Toggle video
+  const toggleVideo = () => {
+    if (room?.localParticipant) {
+      room.localParticipant.setCameraEnabled(!isVideoOn);
+      setIsVideoOn(!isVideoOn);
+    }
+  };
+
+  // Leave room
+  const leaveRoom = () => {
+    if (room) {
+      room.disconnect();
+      setIsConnected(false);
+    }
+  };
 
   const chatMessages = [
     { id: 1, sender: "Alice Smith", message: "Good morning everyone!", timestamp: "10:15 AM", role: "student" },
@@ -63,18 +196,18 @@ const Classroom = () => {
           <h1 className="text-xl font-semibold">Advanced React Development</h1>
           <Badge variant="secondary" className="bg-success/10 text-success">
             <div className="w-2 h-2 bg-success rounded-full mr-2"></div>
-            Live
+            {isConnected ? 'Live' : 'Connecting...'}
           </Badge>
           <div className="flex items-center space-x-2 text-sm text-muted-foreground">
             <Users className="w-4 h-4" />
-            <span>{participants.length} participants</span>
+            <span>{participants.length + (localParticipant ? 1 : 0)} participants</span>
           </div>
         </div>
         <div className="flex items-center space-x-2">
           <Button variant="outline" size="sm">
             <Settings className="w-4 h-4" />
           </Button>
-          <Button variant="destructive" size="sm">
+          <Button variant="destructive" size="sm" onClick={leaveRoom}>
             <PhoneOff className="w-4 h-4 mr-2" />
             End Class
           </Button>
@@ -87,19 +220,26 @@ const Classroom = () => {
           {/* Video Grid */}
           <div className="flex-1 p-4">
             <div className="h-full grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {/* Main presenter video */}
+              {/* Main presenter video - Local participant */}
               <div className="lg:col-span-2">
                 <Card className="h-full relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Video className="w-8 h-8 text-primary-foreground" />
+                  <div ref={localVideoRef} className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                    {!isConnected && (
+                      <div className="text-center">
+                        <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Video className="w-8 h-8 text-primary-foreground" />
+                        </div>
+                        <h3 className="text-lg font-semibold">Connecting to room...</h3>
+                        <p className="text-sm text-muted-foreground">Please wait</p>
                       </div>
-                      <h3 className="text-lg font-semibold">John Doe (Instructor)</h3>
-                      <p className="text-sm text-muted-foreground">Presenting</p>
-                    </div>
+                    )}
+                    {isConnected && localParticipant && (
+                      <div className="absolute bottom-4 left-4 bg-black/50 text-white text-sm px-3 py-1 rounded">
+                        {localParticipant.identity} (You)
+                      </div>
+                    )}
                   </div>
-                  <div className="absolute bottom-4 left-4 flex space-x-2">
+                  <div className="absolute bottom-4 right-4 flex space-x-2">
                     <Button
                       size="sm"
                       variant={isFullscreen ? "secondary" : "outline"}
@@ -107,39 +247,31 @@ const Classroom = () => {
                     >
                       {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
                     </Button>
-                  </div>
-                  <div className="absolute bottom-4 right-4">
-                    <Badge variant="secondary">Screen Sharing</Badge>
+                    {isScreenSharing && <Badge variant="secondary">Screen Sharing</Badge>}
                   </div>
                 </Card>
               </div>
 
-              {/* Participant videos */}
+              {/* Remote participants */}
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-2">
-                  {participants.slice(1, 5).map((participant) => (
-                    <Card key={participant.id} className="relative aspect-video overflow-hidden">
-                      <div className="absolute inset-0 bg-gradient-to-br from-muted/50 to-muted flex items-center justify-center">
-                        <div className="text-center">
-                          <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center mx-auto mb-2">
-                            {participant.hasVideo ? (
-                              <Camera className="w-4 h-4" />
-                            ) : (
-                              <VideoOff className="w-4 h-4 text-muted-foreground" />
-                            )}
+                <div ref={remoteVideosRef} className="grid grid-cols-2 gap-2">
+                  {!isConnected && (
+                    // Show placeholder participants when not connected
+                    <>
+                      {[1, 2, 3, 4].map((id) => (
+                        <Card key={id} className="relative aspect-video overflow-hidden">
+                          <div className="absolute inset-0 bg-gradient-to-br from-muted/50 to-muted flex items-center justify-center">
+                            <div className="text-center">
+                              <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center mx-auto mb-2">
+                                <VideoOff className="w-4 h-4 text-muted-foreground" />
+                              </div>
+                              <p className="text-xs font-medium truncate px-2">Waiting...</p>
+                            </div>
                           </div>
-                          <p className="text-xs font-medium truncate px-2">{participant.name}</p>
-                        </div>
-                      </div>
-                      <div className="absolute bottom-1 left-1 flex space-x-1">
-                        {participant.isMuted && (
-                          <div className="w-4 h-4 bg-destructive rounded-full flex items-center justify-center">
-                            <MicOff className="w-2 h-2 text-destructive-foreground" />
-                          </div>
-                        )}
-                      </div>
-                    </Card>
-                  ))}
+                        </Card>
+                      ))}
+                    </>
+                  )}
                 </div>
                 
                 {/* Whiteboard area */}
@@ -166,7 +298,7 @@ const Classroom = () => {
               <Button
                 variant={isMuted ? "destructive" : "secondary"}
                 size="lg"
-                onClick={() => setIsMuted(!isMuted)}
+                onClick={toggleMute}
                 className="rounded-full w-12 h-12"
               >
                 {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
@@ -175,7 +307,7 @@ const Classroom = () => {
               <Button
                 variant={isVideoOn ? "secondary" : "destructive"}
                 size="lg"
-                onClick={() => setIsVideoOn(!isVideoOn)}
+                onClick={toggleVideo}
                 className="rounded-full w-12 h-12"
               >
                 {isVideoOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
