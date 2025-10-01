@@ -10,9 +10,6 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class UserEditRequest {
-     String password;
-     String firstName;
-     String lastName;
-     LocalDate dob;
-
+     String email;
+     String fullName;
 }

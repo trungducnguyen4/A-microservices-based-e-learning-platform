@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,30 +8,187 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { User, Mail, Phone, IdCard, Camera } from "lucide-react";
+import { User, Mail, Phone, IdCard, Camera, Loader2 } from "lucide-react";
 
 const Profile = () => {
+  const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState({
-    username: "nguyen.duc.trung",
-    email: "trung.nguyen@example.com",
-    fullName: "Nguyễn Đức Trung",
-    role: "Teacher",
-    phone: "0123456789",
-    department: "Khoa Công nghệ Thông tin",
-    joinDate: "15/01/2023",
+    username: "",
+    email: "",
+    fullName: "",
+    role: "",
+    phone: "",
+    department: "",
+    joinDate: "",
     avatar: "/placeholder-avatar.jpg"
   });
 
-  const handleSave = () => {
-    setIsEditing(false);
-    // TODO: Save to backend when connected
+  // Hàm decode JWT payload giống như Login
+  const decodeJWT = (token: string) => {
+    try {
+      const payload = token.split('.')[1];
+      const decodedPayload = atob(payload);
+      return JSON.parse(decodedPayload);
+    } catch (error) {
+      console.error("Error decoding JWT:", error);
+      return null;
+    }
+  };
+
+  // Load user profile from backend
+  const loadUserProfile = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const token = localStorage.getItem("token");
+      if (!token) {
+        navigate("/login");
+        return;
+      }
+
+      // Decode JWT để lấy username hoặc userId
+      const payload = decodeJWT(token);
+      if (!payload) {
+        localStorage.removeItem("token");
+        navigate("/login");
+        return;
+      }
+
+      // Gọi API để lấy thông tin us
+      const response = await axios.get(`http://localhost:8080/user/profile/${payload.username}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      const userData = response.data.result;
+      setProfile({
+        username: userData.username || payload.username || "",
+        email: userData.email || "",
+        fullName: userData.fullName || userData.name || "",
+        role: userData.role || payload.role || "",
+        phone: userData.phone || "",
+        department: userData.department || "",
+        joinDate: userData.createdAt ? new Date(userData.createdAt).toLocaleDateString('vi-VN') : "",
+        avatar: userData.avatar || "/placeholder-avatar.jpg"
+      });
+
+    } catch (err: any) {
+      console.error("Error loading profile:", err);
+      if (err.response?.status === 401) {
+        localStorage.removeItem("token");
+        navigate("/login");
+      } else {
+        setError(err.response?.data?.message || "Không thể tải thông tin người dùng");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load profile on component mount
+  useEffect(() => {
+    loadUserProfile();
+  }, []);
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+      
+      const token = localStorage.getItem("token");
+      if (!token) {
+        navigate("/login");
+        return;
+      }
+
+      const payload = decodeJWT(token);
+      if (!payload) {
+        navigate("/login");
+        return;
+      }
+
+      // Gọi API để cập nhật thông tin user
+      await axios.put(`http://localhost:8080/user/profile/${payload.username}`, {
+        email: profile.email,
+        fullName: profile.fullName,
+        phone: profile.phone,
+        department: profile.department
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      setIsEditing(false);
+      // Reload profile để đảm bảo data mới nhất
+      await loadUserProfile();
+      
+    } catch (err: any) {
+      console.error("Error saving profile:", err);
+      if (err.response?.status === 401) {
+        localStorage.removeItem("token");
+        navigate("/login");
+      } else {
+        setError(err.response?.data?.message || "Không thể lưu thông tin");
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCancel = () => {
     setIsEditing(false);
-    // TODO: Reset form data
+    // Reload profile để reset về data gốc
+    loadUserProfile();
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6 max-w-4xl">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Card className="w-96">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
+                <h3 className="text-lg font-semibold mb-2">Đang tải thông tin...</h3>
+                <p className="text-sm text-muted-foreground">Vui lòng đợi</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="container mx-auto p-6 max-w-4xl">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Card className="w-96">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mx-auto mb-4">
+                  <User className="w-8 h-8" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Lỗi tải thông tin</h3>
+                <p className="text-sm text-muted-foreground mb-4">{error}</p>
+                <Button onClick={loadUserProfile}>Thử lại</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-6 max-w-4xl">
@@ -41,7 +200,7 @@ const Profile = () => {
             <p className="text-muted-foreground">Quản lý thông tin tài khoản của bạn</p>
           </div>
           <Badge variant="outline" className="text-sm">
-            {profile.role}
+            {profile.role || "Chưa xác định"}
           </Badge>
         </div>
 
@@ -82,11 +241,18 @@ const Profile = () => {
                 <div className="space-x-2">
                   {isEditing ? (
                     <>
-                      <Button variant="outline" size="sm" onClick={handleCancel}>
+                      <Button variant="outline" size="sm" onClick={handleCancel} disabled={saving}>
                         Hủy
                       </Button>
-                      <Button size="sm" onClick={handleSave}>
-                        Lưu
+                      <Button size="sm" onClick={handleSave} disabled={saving}>
+                        {saving ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            Đang lưu...
+                          </>
+                        ) : (
+                          "Lưu"
+                        )}
                       </Button>
                     </>
                   ) : (
@@ -97,6 +263,11 @@ const Profile = () => {
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
+                {error && (
+                  <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                    <p className="text-destructive text-sm">{error}</p>
+                  </div>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="username" className="flex items-center gap-2">
@@ -153,14 +324,14 @@ const Profile = () => {
 
                   <div className="space-y-2">
                     <Label htmlFor="role">Vai trò</Label>
-                    <Select disabled={!isEditing} value={profile.role}>
+                    <Select disabled={true} value={profile.role}>
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Chưa xác định" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Student">Học viên</SelectItem>
-                        <SelectItem value="Teacher">Giảng viên</SelectItem>
-                        <SelectItem value="Admin">Quản trị viên</SelectItem>
+                        <SelectItem value="student">Học viên</SelectItem>
+                        <SelectItem value="teacher">Giảng viên</SelectItem>
+                        <SelectItem value="admin">Quản trị viên</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

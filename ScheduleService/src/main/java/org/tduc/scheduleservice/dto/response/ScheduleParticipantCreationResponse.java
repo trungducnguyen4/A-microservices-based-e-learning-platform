@@ -1,29 +1,19 @@
-package org.tduc.scheduleservice.model;
+package org.tduc.scheduleservice.dto.response;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.hibernate.annotations.GenericGenerator;
 
 import java.time.ZonedDateTime;
 import java.util.List;
 
-@Entity
-@Table(name = "schedules")
 @Getter
 @Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Schedule {
-
-    @Id
-    @GeneratedValue(generator = "uuid")
-    @GenericGenerator(name = "uuid", strategy = "org.hibernate.id.UUIDGenerator")
-    @Column(length = 36, updatable = false, nullable = false)
-    String id;
-
+public class ScheduleParticipantCreationResponse {
     @Column(nullable = false)
     String teacherId;
     List<String> collaborators;

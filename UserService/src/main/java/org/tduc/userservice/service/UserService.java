@@ -62,11 +62,13 @@ public class UserService {
                     .orElseThrow(() -> new AppException(ErrorCode.USERNAME_NOT_EXIST));
 
             JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
-                    .subject(username)
+                    .subject(user.getId())
                     .issuer("duc nguyen")
                     .expirationTime(Date.from(Instant.now().plus(1, ChronoUnit.HOURS)))
-                    .claim("cc", "do mixi")
-                    .claim("role", user.getRole()) // Add role to payload
+                    .claim("role", user.getRole())
+                    .claim("username", user.getUsername())
+                    .claim("email", user.getFullName())
+                    .claim("role", user.getRole())// Add role to payload
                     .build();
 
             JWSObject jwsObject = new JWSObject(header, new Payload(jwtClaimsSet.toJSONObject()));
@@ -93,6 +95,9 @@ public class UserService {
                     .build();
         }
     }
+    public User findByUsername(String username) {
+        return  userRepository.findByUsername(username).orElseThrow(() -> new AppException(ErrorCode.USERNAME_NOT_EXIST));
+    }
     //
     public User createRequest(@Valid UserCreationRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
@@ -110,13 +115,13 @@ public class UserService {
         return userRepository.findAll();
     }
 
-    public UserResponse getUser(Long id) {
+    public UserResponse getUser(String id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         return userMapper.toUserResponse(userRepository.save(user));
     }
 
-    public UserResponse editUser(Long userId, @Valid UserEditRequest request) {
+    public UserResponse editUser(String userId, @Valid UserEditRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         userMapper.updateUser(user, request);
@@ -124,7 +129,7 @@ public class UserService {
         return userMapper.toUserResponse(savedUser);
     }
 
-    public void deleteUser(Long id) {
+    public void deleteUser(String id) {
         if (!userRepository.existsById(id)) {
             throw new AppException(ErrorCode.USER_NOT_FOUND);
         }
@@ -139,6 +144,20 @@ public class UserService {
             User user = userRepository.findByUsername(username)
                     .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
             user.setRole(role);
+            User savedUser = userRepository.save(user);
+            return userMapper.toUserResponse(savedUser);
+        } catch (Exception e) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+    }
+
+    public UserResponse updateProfile(String token,@Valid UserEditRequest request) {
+        try {
+            SignedJWT signedJWT = SignedJWT.parse(token);
+            String username = signedJWT.getJWTClaimsSet().getSubject();
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+            userMapper.updateUser(user, request); // Update user fields
             User savedUser = userRepository.save(user);
             return userMapper.toUserResponse(savedUser);
         } catch (Exception e) {

@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,18 +26,102 @@ import {
   Upload,
   Edit,
   Trash2,
-  Eye
+  Eye,
+  Loader2
 } from "lucide-react";
 
 const TeacherDashboard = () => {
+  const navigate = useNavigate();
   const [selectedCourse, setSelectedCourse] = useState("math-101");
-  
-  // Mock data
-  const courses = [
-    { id: "math-101", name: "Mathematics 101", students: 45, status: "Active", color: "bg-blue-500" },
-    { id: "phys-201", name: "Physics 201", students: 32, status: "Active", color: "bg-green-500" },
-    { id: "chem-150", name: "Chemistry 150", students: 28, status: "Draft", color: "bg-orange-500" },
-  ];
+  const [courses, setCourses] = useState([
+    // Keep one sample data
+    { id: "math-101", name: "Mathematics 101", students: 45, status: "Active", color: "bg-blue-500", description: "Basic mathematics course" }
+  ]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [teacherId, setTeacherId] = useState<string>("");
+
+  // Decode JWT để lấy teacher ID
+  const decodeJWT = (token: string) => {
+    try {
+      const payload = token.split('.')[1];
+      const decodedPayload = atob(payload);
+      return JSON.parse(decodedPayload);
+    } catch (error) {
+      console.error("Error decoding JWT:", error);
+      return null;
+    }
+  };
+
+  // Load teacher's courses
+  const loadTeacherCourses = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const token = localStorage.getItem("token");
+      if (!token) {
+        navigate("/login");
+        return;
+      }
+
+      const payload = decodeJWT(token);
+      if (!payload) {
+        localStorage.removeItem("token");
+        navigate("/login");
+        return;
+      }
+
+      setTeacherId(payload.sub);
+
+      // Call API to get teacher's courses
+      const response = await axios.get(`http://localhost:3636/schedule/${payload.sub}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      const teacherCourses = response.data.result.map((course: any) => ({
+        id: course.id,
+        name: course.title || course.name,
+        students: course.enrolledStudents || 0,
+        status: course.status || "Active",
+        color: getRandomColor(),
+        description: course.description
+      }));
+
+      // Combine with sample data
+      setCourses([
+        { id: "math-101", name: "Mathematics 101", students: 45, status: "Active", color: "bg-blue-500", description: "Basic mathematics course" },
+        ...teacherCourses
+      ]);
+
+    } catch (err: any) {
+      console.error("Error loading courses:", err);
+      if (err.response?.status === 401) {
+        localStorage.removeItem("token");
+        navigate("/login");
+      } else {
+        setError(err.response?.data?.message || "Không thể tải danh sách khóa học");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Generate random color for course cards
+  const getRandomColor = () => {
+    const colors = [
+      "bg-green-500", "bg-purple-500", "bg-red-500", "bg-yellow-500", 
+      "bg-indigo-500", "bg-pink-500", "bg-teal-500", "bg-orange-500"
+    ];
+    return colors[Math.floor(Math.random() * colors.length)];
+  };
+
+  // Load data on mount
+  useEffect(() => {
+    loadTeacherCourses();
+  }, []);
 
   const students = [
     { id: 1, name: "Nguyễn Văn An", email: "an.nguyen@email.com", progress: 85, lastActive: "2 hours ago", avatar: "" },
@@ -187,37 +273,70 @@ const TeacherDashboard = () => {
                     New Course
                   </Button>
                 </div>
-                
-                <div className="grid gap-4">
-                  {courses.map((course) => (
-                    <Card key={course.id} className="hover:shadow-md transition-shadow">
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-4">
-                            <div className={`w-12 h-12 ${course.color} rounded-lg flex items-center justify-center`}>
-                              <BookOpen className="w-6 h-6 text-white" />
+
+                {error && (
+                  <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                    <p className="text-destructive text-sm">{error}</p>
+                    <Button variant="outline" size="sm" className="mt-2" onClick={loadTeacherCourses}>
+                      Thử lại
+                    </Button>
+                  </div>
+                )}
+
+                {loading ? (
+                  <div className="flex items-center justify-center p-8">
+                    <div className="text-center">
+                      <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
+                      <p className="text-sm text-muted-foreground">Đang tải khóa học...</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid gap-4">
+                    {courses.length === 0 ? (
+                      <Card className="p-8 text-center">
+                        <BookOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                        <h4 className="font-semibold mb-2">Chưa có khóa học nào</h4>
+                        <p className="text-muted-foreground mb-4">Bạn chưa tạo khóa học nào. Hãy tạo khóa học đầu tiên!</p>
+                        <Button onClick={() => window.location.href = "/teacher/create-course"}>
+                          <Plus className="w-4 h-4 mr-2" />
+                          Tạo khóa học mới
+                        </Button>
+                      </Card>
+                    ) : (
+                      courses.map((course) => (
+                        <Card key={course.id} className="hover:shadow-md transition-shadow">
+                          <CardContent className="p-6">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-4">
+                                <div className={`w-12 h-12 ${course.color} rounded-lg flex items-center justify-center`}>
+                                  <BookOpen className="w-6 h-6 text-white" />
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-foreground">{course.name}</h4>
+                                  <p className="text-sm text-muted-foreground">{course.students} students enrolled</p>
+                                  {course.description && (
+                                    <p className="text-xs text-muted-foreground mt-1">{course.description}</p>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Badge variant={course.status === "Active" ? "default" : "secondary"}>
+                                  {course.status}
+                                </Badge>
+                                <Button variant="ghost" size="sm" onClick={() => window.location.href = `/course/${course.id}`}>
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm">
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                              </div>
                             </div>
-                            <div>
-                              <h4 className="font-semibold text-foreground">{course.name}</h4>
-                              <p className="text-sm text-muted-foreground">{course.students} students enrolled</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Badge variant={course.status === "Active" ? "default" : "secondary"}>
-                              {course.status}
-                            </Badge>
-                            <Button variant="ghost" size="sm" onClick={() => window.location.href = `/course/${course.id}`}>
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm">
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                          </CardContent>
+                        </Card>
+                      ))
+                    )}
+                  </div>
+                )}
               </TabsContent>
 
               <TabsContent value="students" className="space-y-4">

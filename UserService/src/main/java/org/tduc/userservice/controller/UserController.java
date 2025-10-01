@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.tduc.userservice.dto.request.*;
 import org.tduc.userservice.dto.response.AuthResponse;
@@ -19,9 +20,10 @@ import java.util.Map; // <-- Add this import
 @RestController
 public class UserController {
     @Autowired
-    private UserService userService ;
+    private UserService userService;
 
     @PostMapping("/users")
+    @PreAuthorize("hasAuthority('ADMIN')") // chỉ admin mới được tạo user
     public ApiResponse<User> createUser(@RequestBody @Valid UserCreationRequest request, HttpServletResponse httpServletResponse) {
         ApiResponse<User> response = new ApiResponse<>();
         response.setCode(HttpStatus.OK.value());
@@ -29,13 +31,24 @@ public class UserController {
         return response;
     }
 
+    @GetMapping("/profile/{username}")
+    @PreAuthorize("#username == authentication.name or hasAuthority('ADMIN')")
+    public ApiResponse<User> getUser(@PathVariable String username, HttpServletResponse httpServletResponse) {
+        ApiResponse<User> response = new ApiResponse<>();
+        response.setCode(HttpStatus.OK.value());
+        response.setResult(userService.findByUsername(username));
+        return response;
+    }
+
     @GetMapping("/users")
+    @PreAuthorize("hasAuthority('ADMIN')") // chỉ admin mới xem danh sách user
     public List<User> getUsers() {
         return userService.getUsers();
     }
 
     @GetMapping("/users/{userId}")
-    public ApiResponse<UserResponse> getUser (@PathVariable("userId") Long userId) {
+    @PreAuthorize("#userId == authentication.name or hasAuthority('ADMIN')")
+    public ApiResponse<UserResponse> getUser(@PathVariable("userId") String userId) {
         ApiResponse<UserResponse> response = new ApiResponse<>();
         response.setCode(HttpStatus.OK.value());
         response.setResult(userService.getUser(userId));
@@ -43,7 +56,8 @@ public class UserController {
     }
 
     @PutMapping("/users/{userId}")
-    public ApiResponse<UserResponse> editUser(@PathVariable Long userId, @RequestBody UserEditRequest request) {
+    @PreAuthorize("#userId == authentication.name or hasAuthority('ADMIN')")
+    public ApiResponse<UserResponse> editUser(@PathVariable String userId, @RequestBody UserEditRequest request) {
         ApiResponse<UserResponse> response = new ApiResponse<>();
         response.setCode(HttpStatus.OK.value());
         response.setResult(userService.editUser(userId, request));
@@ -51,7 +65,8 @@ public class UserController {
     }
 
     @DeleteMapping("/users/{id}")
-    public void deleteUser(@PathVariable Long id) {
+    @PreAuthorize("hasAuthority('ADMIN')") // chỉ admin xóa
+    public void deleteUser(@PathVariable String id) {
         userService.deleteUser(id);
     }
 
@@ -70,10 +85,23 @@ public class UserController {
     }
 
     @PutMapping("/users/role")
+    @PreAuthorize("hasAuthority('ADMIN')") // chỉ admin mới thay đổi role
     public ApiResponse<UserResponse> updateRole(@RequestBody Map<String, String> body, @RequestHeader("Authorization") String authHeader) {
         String role = body.get("role");
         String token = authHeader.replace("Bearer ", "");
         UserResponse updatedUser = userService.updateRole(token, role);
+        ApiResponse<UserResponse> response = new ApiResponse<>();
+        response.setResult(updatedUser);
+        return response;
+    }
+
+    @PutMapping("/profile/{username}")
+    @PreAuthorize("#username == authentication.name or hasAuthority('ADMIN')")
+    public ApiResponse<UserResponse> updateProfile(@PathVariable String username,
+                                                   @RequestBody UserEditRequest request,
+                                                   @RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        UserResponse updatedUser = userService.updateProfile(token, request);
         ApiResponse<UserResponse> response = new ApiResponse<>();
         response.setResult(updatedUser);
         return response;
