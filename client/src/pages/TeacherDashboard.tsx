@@ -27,7 +27,8 @@ import {
   Edit,
   Trash2,
   Eye,
-  Loader2
+  Loader2,
+  Search
 } from "lucide-react";
 
 const TeacherDashboard = () => {
@@ -40,6 +41,7 @@ const TeacherDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [teacherId, setTeacherId] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Decode JWT để lấy teacher ID
   const decodeJWT = (token: string) => {
@@ -116,6 +118,17 @@ const TeacherDashboard = () => {
       "bg-indigo-500", "bg-pink-500", "bg-teal-500", "bg-orange-500"
     ];
     return colors[Math.floor(Math.random() * colors.length)];
+  };
+
+  // Filter courses based on search query
+  const filteredCourses = courses.filter(course =>
+    course.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (course.description && course.description.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  // Handle course click to navigate to course detail
+  const handleCourseClick = (courseId: string) => {
+    window.location.href = `http://localhost:8081/course/${courseId}`;
   };
 
   // Load data on mount
@@ -274,6 +287,17 @@ const TeacherDashboard = () => {
                   </Button>
                 </div>
 
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  <Input
+                    placeholder="Tìm kiếm khóa học theo tên..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+
                 {error && (
                   <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
                     <p className="text-destructive text-sm">{error}</p>
@@ -292,19 +316,30 @@ const TeacherDashboard = () => {
                   </div>
                 ) : (
                   <div className="grid gap-4">
-                    {courses.length === 0 ? (
-                      <Card className="p-8 text-center">
-                        <BookOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                        <h4 className="font-semibold mb-2">Chưa có khóa học nào</h4>
-                        <p className="text-muted-foreground mb-4">Bạn chưa tạo khóa học nào. Hãy tạo khóa học đầu tiên!</p>
-                        <Button onClick={() => window.location.href = "/teacher/create-course"}>
-                          <Plus className="w-4 h-4 mr-2" />
-                          Tạo khóa học mới
-                        </Button>
-                      </Card>
+                    {filteredCourses.length === 0 ? (
+                      searchQuery ? (
+                        <Card className="p-8 text-center">
+                          <Search className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                          <h4 className="font-semibold mb-2">Không tìm thấy khóa học</h4>
+                          <p className="text-muted-foreground mb-4">Không có khóa học nào phù hợp với từ khóa "{searchQuery}"</p>
+                          <Button variant="outline" onClick={() => setSearchQuery("")}>
+                            Xóa bộ lọc
+                          </Button>
+                        </Card>
+                      ) : (
+                        <Card className="p-8 text-center">
+                          <BookOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                          <h4 className="font-semibold mb-2">Chưa có khóa học nào</h4>
+                          <p className="text-muted-foreground mb-4">Bạn chưa tạo khóa học nào. Hãy tạo khóa học đầu tiên!</p>
+                          <Button onClick={() => window.location.href = "/teacher/create-course"}>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Tạo khóa học mới
+                          </Button>
+                        </Card>
+                      )
                     ) : (
-                      courses.map((course) => (
-                        <Card key={course.id} className="hover:shadow-md transition-shadow">
+                      filteredCourses.map((course) => (
+                        <Card key={course.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleCourseClick(course.id)}>
                           <CardContent className="p-6">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-4">
@@ -319,11 +354,11 @@ const TeacherDashboard = () => {
                                   )}
                                 </div>
                               </div>
-                              <div className="flex items-center space-x-2">
+                              <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
                                 <Badge variant={course.status === "Active" ? "default" : "secondary"}>
                                   {course.status}
                                 </Badge>
-                                <Button variant="ghost" size="sm" onClick={() => window.location.href = `/course/${course.id}`}>
+                                <Button variant="ghost" size="sm" onClick={() => handleCourseClick(course.id)}>
                                   <Eye className="w-4 h-4" />
                                 </Button>
                                 <Button variant="ghost" size="sm">

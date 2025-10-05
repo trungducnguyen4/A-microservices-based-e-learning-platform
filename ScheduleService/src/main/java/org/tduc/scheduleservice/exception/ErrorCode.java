@@ -9,7 +9,7 @@ public enum ErrorCode {
     USER_NOT_FOUND(444, "User Not Found"),
     USERNAME_NOT_EXIST(36, "Username not found"),
     UNAUTHENTICATED(4444, "UNAUTHENTICATED"),
-    SCHEDULE_NOT_FOUND(555, "Schedule not found");
+    SCHEDULE_NOT_FOUND(555, "Schedule not found"), COURSE_NOT_FOUND(3636,"Course not found" ), USER_ALREADY_JOINED(4444,"this user is already joined" );
 
 
     private final int code;

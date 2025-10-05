@@ -16,7 +16,7 @@ public class ScheduleParticipantController {
     @Autowired
     private ScheduleParticipantService scheduleParticipantService;
 
-    @PostMapping("/scheduleParticipants")
+    @PostMapping("/join")
     public ApiResponse<ScheduleParticipant> createScheduleParticipant(@RequestBody @Valid ScheduleParticipantCreationRequest request) {
         ApiResponse<ScheduleParticipant> response = new ApiResponse<>();
         response.setCode(HttpStatus.OK.value());

@@ -11,9 +11,9 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ScheduleParticipantCreationRequest {
-    @Column(nullable = false)
-    String scheduleId;
 
     @Column(nullable = false)
     String userId;
+    @Column(nullable = false)
+    String joinCode;
 }

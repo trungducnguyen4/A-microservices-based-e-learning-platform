@@ -1,30 +1,103 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import axios from "axios";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Users, BookOpen, Clock, Calendar, Plus, Eye, Edit, Trash2 } from "lucide-react";
+import { ArrowLeft, Users, BookOpen, Clock, Calendar, Plus, Eye, Edit, Trash2, Loader2 } from "lucide-react";
 
 export default function CourseDetail() {
   const navigate = useNavigate();
   const { courseId } = useParams();
+  const [course, setCourse] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock course data
-  const course = {
-    id: 1,
-    title: "React và TypeScript Cơ Bản",
-    description: "Khóa học về React và TypeScript dành cho người mới bắt đầu",
-    category: "Lập trình",
-    duration: "12 tuần",
-    maxStudents: 30,
-    enrolledStudents: 25,
-    progress: 65,
-    startDate: "2024-01-15",
-    status: "active"
+  // Decode JWT để lấy token
+  const decodeJWT = (token: string) => {
+    try {
+      const payload = token.split('.')[1];
+      const decodedPayload = atob(payload);
+      return JSON.parse(decodedPayload);
+    } catch (error) {
+      console.error("Error decoding JWT:", error);
+      return null;
+    }
   };
+
+  // Load course detail from API
+  const loadCourseDetail = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const token = localStorage.getItem("token");
+      if (!token) {
+        navigate("/login");
+        return;
+      }
+
+      const payload = decodeJWT(token);
+      if (!payload) {
+        localStorage.removeItem("token");
+        navigate("/login");
+        return;
+      }
+
+      // Call API to get course detail
+      console.log(`Loading course detail for ID: ${courseId}`);
+      const response = await axios.get(`http://localhost:3636/schedule/${courseId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      console.log("API Response:", response.data);
+      const courseData = response.data.result;
+      
+      // Validate required fields from API
+      if (!courseData.title && !courseData.name) {
+        throw new Error("Khóa học không có tiêu đề");
+      }
+      
+      setCourse({
+        id: courseData.id || courseId,
+        title: courseData.title || courseData.name,
+        description: courseData.description || "Chưa có mô tả cho khóa học này",
+        category: courseData.category || "Chưa phân loại",
+        duration: courseData.duration || "Chưa xác định",
+        maxStudents: courseData.maxStudents || 0,
+        enrolledStudents: courseData.enrolledStudents || 0,
+        progress: courseData.progress || 0,
+        startDate: courseData.startDate || courseData.createdAt || "Chưa xác định",
+        status: courseData.status || "active"
+      });
+
+    } catch (err: any) {
+      console.error("Error loading course detail:", err);
+      if (err.response?.status === 401) {
+        localStorage.removeItem("token");
+        navigate("/login");
+      } else if (err.response?.status === 404) {
+        setError("Không tìm thấy khóa học này");
+      } else if (err.message) {
+        setError(err.message);
+      } else {
+        setError(err.response?.data?.message || "Không thể tải thông tin khóa học từ server");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (courseId) {
+      loadCourseDetail();
+    }
+  }, [courseId]);
 
   const students = [
     { id: 1, name: "Nguyễn Văn A", email: "nguyenvana@email.com", progress: 75, lastActive: "2024-01-20" },
@@ -46,6 +119,52 @@ export default function CourseDetail() {
     { id: 3, title: "Props và State", duration: "75 phút", completed: false },
     { id: 4, title: "Event Handling", duration: "50 phút", completed: false },
   ];
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6 max-w-6xl">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Card className="w-96">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
+                <h3 className="text-lg font-semibold mb-2">Đang tải khóa học...</h3>
+                <p className="text-sm text-muted-foreground">Vui lòng đợi</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error || !course) {
+    return (
+      <div className="container mx-auto p-6 max-w-6xl">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Card className="w-96">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mx-auto mb-4">
+                  <BookOpen className="w-8 h-8" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Lỗi tải khóa học</h3>
+                <p className="text-sm text-muted-foreground mb-4">{error || "Không tìm thấy khóa học"}</p>
+                <div className="flex gap-2 justify-center">
+                  <Button variant="outline" onClick={() => navigate("/teacher")}>
+                    Quay lại
+                  </Button>
+                  <Button onClick={loadCourseDetail}>Thử lại</Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-6 max-w-6xl">

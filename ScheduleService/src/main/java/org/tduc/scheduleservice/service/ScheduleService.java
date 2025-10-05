@@ -57,4 +57,8 @@ public class ScheduleService {
     public List<Schedule> getSchedulesById(String teacherId) {
         return scheduleRepository.findByTeacherId(teacherId);
     }
+    public Schedule getScheduleById(String scheduleId) {
+        return scheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
+    }
 }

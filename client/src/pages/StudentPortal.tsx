@@ -6,6 +6,9 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Calendar } from "@/components/ui/calendar";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import axios from "axios";
 import { 
   BookOpen, 
@@ -20,6 +23,8 @@ import {
   Target,
   CheckCircle,
   Video,
+  Plus,
+  Users,
 } from "lucide-react";
 
 const StudentPortal = () => {
@@ -30,6 +35,9 @@ const StudentPortal = () => {
     id?: number;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [joinCourseCode, setJoinCourseCode] = useState("");
+  const [joinDialogOpen, setJoinDialogOpen] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
 
   useEffect(() => {
     const fetchUserInfo = async () => {
@@ -57,6 +65,53 @@ const StudentPortal = () => {
 
     fetchUserInfo();
   }, []);
+
+  const handleJoinCourse = async () => {
+    if (!joinCourseCode.trim()) return;
+    
+    setIsJoining(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert("Vui lòng đăng nhập lại");
+        return;
+      }
+
+      if (!userInfo?.id) {
+        alert("Không thể lấy thông tin người dùng");
+        return;
+      }
+
+      // Call API to join course
+      const response = await axios.post(
+        "http://localhost:3636/schedule/join",
+        { 
+          userId: userInfo.id.toString(),
+          joinCode: joinCourseCode.trim() 
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.data.code === 200 && response.data.result) {
+        alert("Tham gia khóa học thành công!");
+        setJoinCourseCode("");
+        setJoinDialogOpen(false);
+        // Reload page or update course list
+        window.location.reload();
+      } else {
+        alert(response.data.message || "Không thể tham gia khóa học");
+      }
+    } catch (error: any) {
+      console.error("Error joining course:", error);
+      alert(error.response?.data?.message || "Mã khóa học không hợp lệ");
+    } finally {
+      setIsJoining(false);
+    }
+  };
 
   const enrolledCourses = [
     {
@@ -249,11 +304,63 @@ const StudentPortal = () => {
           {/* Enrolled Courses */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <BookOpen className="w-5 h-5 mr-2 text-blue-500" />
-                My Courses
-              </CardTitle>
-              <CardDescription>Continue your learning journey</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center">
+                    <BookOpen className="w-5 h-5 mr-2 text-blue-500" />
+                    My Courses
+                  </CardTitle>
+                  <CardDescription>Continue your learning journey</CardDescription>
+                </div>
+                <Dialog open={joinDialogOpen} onOpenChange={setJoinDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Join Course
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center">
+                        <Users className="w-5 h-5 mr-2" />
+                        Join Course
+                      </DialogTitle>
+                      <DialogDescription>
+                        Enter the course code provided by your instructor to join a new course.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="courseCode">Course Code</Label>
+                        <Input
+                          id="courseCode"
+                          placeholder="Enter course code (e.g., CS101-2024)"
+                          value={joinCourseCode}
+                          onChange={(e) => setJoinCourseCode(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && handleJoinCourse()}
+                        />
+                      </div>
+                      <div className="flex justify-end space-x-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setJoinDialogOpen(false);
+                            setJoinCourseCode("");
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleJoinCourse}
+                          disabled={!joinCourseCode.trim() || isJoining}
+                        >
+                          {isJoining ? "Joining..." : "Join Course"}
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               {enrolledCourses.map((course) => (

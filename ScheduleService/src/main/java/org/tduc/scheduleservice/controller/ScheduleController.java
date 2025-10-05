@@ -33,8 +33,15 @@ public class ScheduleController {
         response.setResult(scheduleService.getSchedules());
         return response;
     }
+    @GetMapping("/{scheduleId}")
+    public ApiResponse<Schedule> getSchedule(@PathVariable String scheduleId) {
+        ApiResponse<Schedule> response = new ApiResponse<>();
+        response.setCode(HttpStatus.OK.value());
+        response.setResult(scheduleService.getScheduleById(scheduleId));
+        return response;
+    }
 
-    @PutMapping("/schedules/{scheduleId}")
+    @PutMapping("/{scheduleId}")
     public ApiResponse<Schedule> updateSchedule(@PathVariable String scheduleId, @RequestBody @Valid ScheduleEditRequest request) {
         ApiResponse<Schedule> response = new ApiResponse<>();
         response.setCode(HttpStatus.OK.value());
@@ -42,12 +49,5 @@ public class ScheduleController {
         return response;
     }
 
-    @GetMapping("/{teacherId}")
-    public ApiResponse<List<Schedule>> getSchedulesById(@PathVariable String teacherId) {
-        ApiResponse<List<Schedule>> response = new ApiResponse<>();
-        response.setCode(HttpStatus.OK.value());
-        response.setResult(scheduleService.getSchedulesById(teacherId));
-        return response;
-    }
 
 }

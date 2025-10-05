@@ -1,368 +1,400 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Search, UserPlus, X, Calendar, Clock, Users, Repeat } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, Users, BookOpen, Clock, Calendar, Plus, Eye, Edit, Trash2, Copy, MessageSquare, FileText, AlertCircle, CheckCircle } from "lucide-react";
 
-export default function CreateSchedule() {
+export default function CourseDetail() {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    teacherId: "",
-    title: "",
-    startTime: "",
-    endTime: "",
-    recurrenceRule: "",
-    collaborators: [] as string[]
-  });
-  const [selectedCollaborators, setSelectedCollaborators] = useState<any[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [recurrenceType, setRecurrenceType] = useState("none");
-  const [weekDays, setWeekDays] = useState<string[]>([]);
+  const { courseId } = useParams();
 
-  // Mock collaborators data (teachers/assistants)
-  const availableCollaborators = [
-    { id: "teacher1", name: "Phạm Văn Minh", email: "minh.pham@edu.com", avatar: null, role: "teacher" },
-    { id: "teacher2", name: "Lê Thị Hoa", email: "hoa.le@edu.com", avatar: null, role: "teacher" },
-    { id: "assistant1", name: "Nguyễn Văn Tú", email: "tu.nguyen@edu.com", avatar: null, role: "assistant" },
-    { id: "assistant2", name: "Trần Thị Mai", email: "mai.tran@edu.com", avatar: null, role: "assistant" },
+  // Mock course data
+  const course = {
+    id: 1,
+    title: "React và TypeScript Cơ Bản",
+    description: "Khóa học về React và TypeScript dành cho người mới bắt đầu",
+    category: "Lập trình",
+    duration: "12 tuần",
+    maxStudents: 30,
+    enrolledStudents: 25,
+    progress: 65,
+    startDate: "2024-01-15",
+    status: "active"
+  };
+
+  const students = [
+    { id: 1, name: "Nguyễn Văn A", email: "nguyenvana@email.com", progress: 75, lastActive: "2024-01-20" },
+    { id: 2, name: "Trần Thị B", email: "tranthib@email.com", progress: 60, lastActive: "2024-01-19" },
+    { id: 3, name: "Lê Văn C", email: "levanc@email.com", progress: 90, lastActive: "2024-01-21" },
+    { id: 4, name: "Phạm Thị D", email: "phamthid@email.com", progress: 45, lastActive: "2024-01-18" },
+    { id: 5, name: "Hoàng Văn E", email: "hoangvane@email.com", progress: 80, lastActive: "2024-01-20" },
   ];
 
-  // Decode JWT để lấy teacherId
-  const decodeJWT = (token: string) => {
-    try {
-      const payload = token.split('.')[1];
-      const decodedPayload = atob(payload);
-      return JSON.parse(decodedPayload);
-    } catch (error) {
-      console.error("Error decoding JWT:", error);
-      return null;
+  const assignments = [
+    { id: 1, title: "Bài tập 1: Component cơ bản", dueDate: "2024-01-25", submitted: 20, total: 25, status: "active" },
+    { id: 2, title: "Bài tập 2: Props và State", dueDate: "2024-02-01", submitted: 15, total: 25, status: "active" },
+    { id: 3, title: "Bài tập 3: Hooks", dueDate: "2024-02-08", submitted: 0, total: 25, status: "draft" },
+  ];
+
+  const announcements = [
+    { 
+      id: 1, 
+      author: "Giáo viên Nguyễn Văn A",
+      content: "Thông báo nội dung nào đó cho lớp học của bạn",
+      date: "2024-01-20",
+      avatar: "GV"
+    },
+    { 
+      id: 2, 
+      author: "Giáo viên Nguyễn Văn A",
+      content: "Chào mừng các bạn đến với khóa học React và TypeScript! Hãy chuẩn bị sẵn sàng cho một hành trình học tập thú vị.",
+      date: "2024-01-15",
+      avatar: "GV"
     }
-  };
+  ];
 
-  // Load teacher ID from token
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      const payload = decodeJWT(token);
-      if (payload) {
-        setFormData(prev => ({ ...prev, teacherId: payload.sub }));
-      }
-    }
-  }, []);
+  const [newAnnouncement, setNewAnnouncement] = useState("");
 
-  const filteredCollaborators = availableCollaborators.filter(
-    collab => 
-      collab.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      collab.email.toLowerCase().includes(searchQuery.toLowerCase())
-  ).filter(collab => !selectedCollaborators.find(s => s.id === collab.id));
-
-  const addCollaborator = (collaborator: any) => {
-    setSelectedCollaborators([...selectedCollaborators, collaborator]);
-    setFormData({
-      ...formData, 
-      collaborators: [...formData.collaborators, collaborator.id]
-    });
-  };
-
-  const removeCollaborator = (collaboratorId: string) => {
-    setSelectedCollaborators(selectedCollaborators.filter(s => s.id !== collaboratorId));
-    setFormData({
-      ...formData,
-      collaborators: formData.collaborators.filter(id => id !== collaboratorId)
-    });
-  };
-
-  // Generate recurrence rule based on selected options
-  const generateRecurrenceRule = () => {
-    if (recurrenceType === "none") return "";
-    
-    let rule = "FREQ=";
-    switch (recurrenceType) {
-      case "daily":
-        rule += "DAILY";
-        break;
-      case "weekly":
-        rule += "WEEKLY";
-        if (weekDays.length > 0) {
-          rule += `;BYDAY=${weekDays.join(",")}`;
-        }
-        break;
-      case "monthly":
-        rule += "MONTHLY";
-        break;
-      default:
-        return "";
-    }
-    return rule;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        navigate("/login");
-        return;
-      }
-
-      const recurrenceRule = generateRecurrenceRule();
-      
-      const scheduleData = {
-        ...formData,
-        recurrenceRule,
-        startTime: new Date(formData.startTime).toISOString(),
-        endTime: new Date(formData.endTime).toISOString()
-      };
-
-      await axios.post("http://localhost:3636/schedule/create", scheduleData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      navigate("/teacher");
-    } catch (err: any) {
-      console.error("Error creating schedule:", err);
-      setError(err.response?.data?.message || "Không thể tạo lịch học");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleWeekDayChange = (day: string, checked: boolean) => {
-    if (checked) {
-      setWeekDays([...weekDays, day]);
-    } else {
-      setWeekDays(weekDays.filter(d => d !== day));
-    }
-  };
+  const upcomingDeadlines = assignments.filter(a => a.status === "active").slice(0, 3);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
-          <Button variant="outline" size="sm" onClick={() => navigate("/teacher")}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Quay lại
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">Tạo Lịch Học Mới</h1>
-            <p className="text-gray-600">Thiết lập lịch học cho lớp của bạn</p>
+    <div className="min-h-screen bg-background">
+      {/* Hero Banner */}
+      <div className="relative h-48 bg-gradient-to-r from-primary via-primary/80 to-accent overflow-hidden">
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute right-0 top-0 w-1/2 h-full">
+            <div className="w-full h-full flex items-center justify-center">
+              <BookOpen className="h-32 w-32 text-white/30" />
+            </div>
           </div>
         </div>
+        <div className="container mx-auto px-6 py-6 relative">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/teacher")} className="text-white hover:bg-white/20">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="absolute bottom-4 left-6 right-6">
+          <h1 className="text-4xl font-bold text-white mb-1">{course.title}</h1>
+          <p className="text-white/90">{course.category}</p>
+        </div>
+        <Button 
+          variant="outline" 
+          className="absolute bottom-4 right-6 bg-white text-primary hover:bg-white/90"
+          onClick={() => {}}
+        >
+          <Edit className="h-4 w-4 mr-2" />
+          Tùy chỉnh
+        </Button>
+      </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Schedule Information */}
-            <div className="lg:col-span-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Calendar className="w-5 h-5" />
-                    Thông Tin Lịch Học
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {error && (
-                    <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                      <p className="text-destructive text-sm">{error}</p>
-                    </div>
-                  )}
+      {/* Navigation Tabs */}
+      <div className="border-b bg-card">
+        <div className="container mx-auto px-6">
+          <Tabs defaultValue="stream" className="w-full">
+            <TabsList className="w-full justify-start h-auto p-0 bg-transparent border-0 rounded-none">
+              <TabsTrigger 
+                value="stream" 
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-4"
+              >
+                Bảng tin
+              </TabsTrigger>
+              <TabsTrigger 
+                value="classwork"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-4"
+              >
+                Bài tập trên lớp
+              </TabsTrigger>
+              <TabsTrigger 
+                value="people"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-4"
+              >
+                Mọi người
+              </TabsTrigger>
+              <TabsTrigger 
+                value="grades"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-4"
+              >
+                Điểm
+              </TabsTrigger>
+            </TabsList>
 
-                  <div>
-                    <Label htmlFor="title">Tiêu Đề Lịch Học *</Label>
-                    <Input
-                      id="title"
-                      placeholder="Ví dụ: Lớp Toán Lớp 10A - Chương 1"
-                      value={formData.title}
-                      onChange={(e) => setFormData({...formData, title: e.target.value})}
-                      required
-                    />
-                  </div>
+            {/* Bảng tin Tab */}
+            <TabsContent value="stream" className="mt-0 pt-6 pb-12">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Main Content */}
+                <div className="lg:col-span-2 space-y-6">
+                  {/* Create Announcement */}
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex gap-4">
+                        <Avatar>
+                          <AvatarFallback>GV</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <Textarea
+                            placeholder="Thông báo nội dung nào đó cho lớp học của bạn"
+                            value={newAnnouncement}
+                            onChange={(e) => setNewAnnouncement(e.target.value)}
+                            className="min-h-[60px] resize-none"
+                          />
+                          <div className="flex justify-end gap-2 mt-4">
+                            <Button variant="ghost" size="sm">Hủy</Button>
+                            <Button size="sm">Đăng</Button>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="startTime">Thời Gian Bắt Đầu *</Label>
-                      <Input
-                        id="startTime"
-                        type="datetime-local"
-                        value={formData.startTime}
-                        onChange={(e) => setFormData({...formData, startTime: e.target.value})}
-                        required
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="endTime">Thời Gian Kết Thúc *</Label>
-                      <Input
-                        id="endTime"
-                        type="datetime-local"
-                        value={formData.endTime}
-                        onChange={(e) => setFormData({...formData, endTime: e.target.value})}
-                        required
-                      />
-                    </div>
-                  </div>
+                  {/* Announcements Feed */}
+                  {announcements.map((announcement) => (
+                    <Card key={announcement.id}>
+                      <CardContent className="p-6">
+                        <div className="flex gap-4">
+                          <Avatar>
+                            <AvatarFallback>{announcement.avatar}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <p className="font-medium">{announcement.author}</p>
+                                <p className="text-sm text-muted-foreground">{announcement.date}</p>
+                              </div>
+                              <Button variant="ghost" size="icon">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            <p className="mt-3 text-foreground">{announcement.content}</p>
+                            <div className="flex gap-4 mt-4 pt-4 border-t">
+                              <Button variant="ghost" size="sm" className="gap-2">
+                                <MessageSquare className="h-4 w-4" />
+                                Bình luận
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
 
-                  {/* Recurrence Settings */}
-                  <div className="space-y-4 p-4 border rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Repeat className="w-4 h-4" />
-                      <Label>Quy Tắc Lặp Lại</Label>
-                    </div>
-                    
-                    <Select value={recurrenceType} onValueChange={setRecurrenceType}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Chọn tần suất lặp lại" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Không lặp lại</SelectItem>
-                        <SelectItem value="daily">Hàng ngày</SelectItem>
-                        <SelectItem value="weekly">Hàng tuần</SelectItem>
-                        <SelectItem value="monthly">Hàng tháng</SelectItem>
-                      </SelectContent>
-                    </Select>
+                {/* Sidebar */}
+                <div className="space-y-6">
+                  {/* Class Code */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Mã lớp</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                        <code className="text-2xl font-bold text-primary tracking-wider">bzyvamc</code>
+                        <Button size="icon" variant="ghost">
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
 
-                    {recurrenceType === "weekly" && (
-                      <div className="space-y-2">
-                        <Label>Chọn các ngày trong tuần:</Label>
-                        <div className="grid grid-cols-2 gap-2">
-                          {[
-                            { value: "MO", label: "Thứ 2" },
-                            { value: "TU", label: "Thứ 3" },
-                            { value: "WE", label: "Thứ 4" },
-                            { value: "TH", label: "Thứ 5" },
-                            { value: "FR", label: "Thứ 6" },
-                            { value: "SA", label: "Thứ 7" },
-                            { value: "SU", label: "Chủ nhật" }
-                          ].map((day) => (
-                            <div key={day.value} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={day.value}
-                                checked={weekDays.includes(day.value)}
-                                onCheckedChange={(checked) => handleWeekDayChange(day.value, checked as boolean)}
-                              />
-                              <Label htmlFor={day.value} className="text-sm">{day.label}</Label>
+                  {/* Upcoming Deadlines */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Sắp đến hạn</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {upcomingDeadlines.length > 0 ? (
+                        <div className="space-y-3">
+                          {upcomingDeadlines.map((assignment) => (
+                            <div key={assignment.id} className="flex items-start gap-3 p-3 hover:bg-muted rounded-lg cursor-pointer transition-colors">
+                              <FileText className="h-5 w-5 text-primary mt-0.5" />
+                              <div className="flex-1">
+                                <p className="font-medium text-sm">{assignment.title}</p>
+                                <p className="text-xs text-muted-foreground">Hạn: {assignment.dueDate}</p>
+                              </div>
                             </div>
                           ))}
                         </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">Không có hạn chót nào sắp tới</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </TabsContent>
 
-            {/* Collaborators Selection */}
-            <div>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="w-5 h-5" />
-                    Cộng Tác Viên
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input
-                      placeholder="Tìm kiếm giảng viên..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-
-                  <div className="max-h-64 overflow-y-auto space-y-2">
-                    {filteredCollaborators.map((collaborator) => (
-                      <div key={collaborator.id} className="flex items-center justify-between p-2 border rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <Avatar className="w-8 h-8">
-                            <AvatarImage src={collaborator.avatar} />
-                            <AvatarFallback>
-                              {collaborator.name.split(' ').map(n => n[0]).join('')}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="text-sm font-medium">{collaborator.name}</p>
-                            <p className="text-xs text-gray-500">{collaborator.email}</p>
-                            <Badge variant="outline" className="text-xs">
-                              {collaborator.role === 'teacher' ? 'Giảng viên' : 'Trợ giảng'}
-                            </Badge>
-                          </div>
-                        </div>
-                        <Button size="sm" variant="outline" onClick={() => addCollaborator(collaborator)}>
-                          <UserPlus className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-
-                  {selectedCollaborators.length > 0 && (
-                    <div className="border-t pt-4">
-                      <Label>Cộng Tác Viên Đã Chọn ({selectedCollaborators.length})</Label>
-                      <div className="mt-2 space-y-1">
-                        {selectedCollaborators.map((collaborator) => (
-                          <div key={collaborator.id} className="flex items-center justify-between p-2 bg-blue-50 rounded-lg">
-                            <div>
-                              <span className="text-sm font-medium">{collaborator.name}</span>
-                              <Badge variant="outline" className="text-xs ml-2">
-                                {collaborator.role === 'teacher' ? 'Giảng viên' : 'Trợ giảng'}
-                              </Badge>
+            {/* Bài tập trên lớp Tab */}
+            <TabsContent value="classwork" className="mt-0 pt-6 pb-12">
+              <div className="max-w-4xl">
+                <div className="flex justify-end mb-6">
+                  <Button onClick={() => navigate("/teacher/create-assignment")}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Tạo bài tập
+                  </Button>
+                </div>
+                
+                <div className="space-y-4">
+                  {assignments.map((assignment) => (
+                    <Card key={assignment.id} className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-6">
+                        <div className="flex items-start justify-between">
+                          <div className="flex gap-4 flex-1">
+                            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                              <FileText className="h-6 w-6 text-primary" />
                             </div>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => removeCollaborator(collaborator.id)}
-                            >
-                              <X className="w-3 h-3" />
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-lg">{assignment.title}</h3>
+                              <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="h-4 w-4" />
+                                  Hạn nộp: {assignment.dueDate}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  {assignment.submitted === assignment.total ? (
+                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                  ) : (
+                                    <AlertCircle className="h-4 w-4 text-yellow-600" />
+                                  )}
+                                  {assignment.submitted}/{assignment.total} đã nộp
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={assignment.status === "active" ? "default" : "secondary"}>
+                              {assignment.status === "active" ? "Hoạt động" : "Nháp"}
+                            </Badge>
+                            <Button size="icon" variant="ghost">
+                              <Edit className="h-4 w-4" />
                             </Button>
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-          {/* Submit Button */}
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex justify-end gap-4">
-                <Button type="button" variant="outline" onClick={() => navigate("/teacher")}>
-                  Hủy
-                </Button>
-                <Button type="submit" disabled={loading}>
-                  {loading ? (
-                    <>
-                      <Clock className="w-4 h-4 mr-2 animate-spin" />
-                      Đang tạo...
-                    </>
-                  ) : (
-                    "Tạo Lịch Học"
-                  )}
-                </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        </form>
+            </TabsContent>
+
+            {/* Mọi người Tab */}
+            <TabsContent value="people" className="mt-0 pt-6 pb-12">
+              <div className="max-w-4xl space-y-8">
+                {/* Teachers Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-2xl font-bold text-primary">Giáo viên</h2>
+                  </div>
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center gap-4">
+                        <Avatar className="h-12 w-12">
+                          <AvatarFallback>GV</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">Nguyễn Văn A</p>
+                          <p className="text-sm text-muted-foreground">giangvien@email.com</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Students Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-2xl font-bold text-primary">Học sinh</h2>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">{students.length} học sinh</span>
+                      <Button size="sm" onClick={() => navigate(`/course/${courseId}/add-students`)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Thêm
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {students.map((student) => (
+                      <Card key={student.id}>
+                        <CardContent className="p-6">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <Avatar>
+                                <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium">{student.name}</p>
+                                <p className="text-sm text-muted-foreground">{student.email}</p>
+                              </div>
+                            </div>
+                            <Button size="icon" variant="ghost">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Điểm Tab */}
+            <TabsContent value="grades" className="mt-0 pt-6 pb-12">
+              <div className="max-w-6xl">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Bảng điểm</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left p-4 font-semibold">Học sinh</th>
+                            {assignments.slice(0, 3).map((assignment) => (
+                              <th key={assignment.id} className="text-center p-4 font-semibold min-w-[150px]">
+                                {assignment.title}
+                              </th>
+                            ))}
+                            <th className="text-center p-4 font-semibold">Tiến độ</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {students.map((student) => (
+                            <tr key={student.id} className="border-b hover:bg-muted/50">
+                              <td className="p-4">
+                                <div className="flex items-center gap-3">
+                                  <Avatar>
+                                    <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
+                                  </Avatar>
+                                  <span className="font-medium">{student.name}</span>
+                                </div>
+                              </td>
+                              {assignments.slice(0, 3).map((assignment) => (
+                                <td key={assignment.id} className="text-center p-4">
+                                  <span className="text-muted-foreground">-</span>
+                                </td>
+                              ))}
+                              <td className="text-center p-4">
+                                <div className="flex items-center justify-center gap-2">
+                                  <Progress value={student.progress} className="w-20" />
+                                  <span className="text-sm font-medium">{student.progress}%</span>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     </div>
   );
