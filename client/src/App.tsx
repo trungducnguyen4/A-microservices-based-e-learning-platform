@@ -11,6 +11,9 @@ import StudentPortal from "./pages/StudentPortal";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import CreateCourse from "./pages/CreateCourse";
 import CreateAssignment from "./pages/CreateAssignment";
+import AssignmentSubmission from "./pages/AssignmentSubmission";
+import StudentAssignments from "./pages/StudentAssignments";
+import TeacherGrading from "./pages/TeacherGrading";
 import CourseDetail from "./pages/CourseDetail";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
@@ -36,6 +39,9 @@ const App = () => (
             <Route path="/teacher" element={<TeacherDashboard />} />
             <Route path="/teacher/create-course" element={<CreateCourse />} />
             <Route path="/teacher/create-assignment" element={<CreateAssignment />} />
+            <Route path="/teacher/grading" element={<TeacherGrading />} />
+            <Route path="/student/assignments" element={<StudentAssignments />} />
+            <Route path="/student/assignment/:homeworkId" element={<AssignmentSubmission />} />
             <Route path="/course/:courseId" element={<CourseDetail />} />
             <Route path="*" element={<NotFound />} />
             <Route path="/auth" element={<Auth />} />

@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FileService Test Interface</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+        }
+        .section h3 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        input, select, button {
+            padding: 8px 12px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            border: none;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            border-color: #28a745;
+            background-color: #d4edda;
+        }
+        .error {
+            border-color: #dc3545;
+            background-color: #f8d7da;
+        }
+        .file-info {
+            display: inline-block;
+            margin: 5px;
+            padding: 5px 10px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>FileService Test Interface</h1>
+        <p>Test the FileService API endpoints with this simple interface.</p>
+        
+        <!-- Health Check -->
+        <div class="section">
+            <h3>Health Check</h3>
+            <button onclick="checkHealth()">Check Health</button>
+            <div id="healthResult" class="result" style="display:none;"></div>
+        </div>
+
+        <!-- Single File Upload -->
+        <div class="section">
+            <h3>Upload Single File</h3>
+            <input type="file" id="singleFile" />
+            <select id="singleFileType">
+                <option value="documents">Documents</option>
+                <option value="assignments">Assignments</option>
+                <option value="course-materials">Course Materials</option>
+                <option value="profile-images">Profile Images</option>
+                <option value="videos">Videos</option>
+            </select>
+            <button onclick="uploadSingleFile()">Upload</button>
+            <div id="singleUploadResult" class="result" style="display:none;"></div>
+        </div>
+
+        <!-- Multiple Files Upload -->
+        <div class="section">
+            <h3>Upload Multiple Files</h3>
+            <input type="file" id="multipleFiles" multiple />
+            <select id="multipleFileType">
+                <option value="documents">Documents</option>
+                <option value="assignments">Assignments</option>
+                <option value="course-materials">Course Materials</option>
+                <option value="profile-images">Profile Images</option>
+                <option value="videos">Videos</option>
+            </select>
+            <button onclick="uploadMultipleFiles()">Upload</button>
+            <div id="multipleUploadResult" class="result" style="display:none;"></div>
+        </div>
+
+        <!-- File Management -->
+        <div class="section">
+            <h3>File Management</h3>
+            <input type="text" id="filename" placeholder="Enter filename" />
+            <button onclick="getFileInfo()">Get Info</button>
+            <button onclick="deleteFile()">Delete</button>
+            <div id="fileManagementResult" class="result" style="display:none;"></div>
+        </div>
+
+        <!-- List Files -->
+        <div class="section">
+            <h3>List Files</h3>
+            <select id="listFileType">
+                <option value="documents">Documents</option>
+                <option value="assignments">Assignments</option>
+                <option value="course-materials">Course Materials</option>
+                <option value="profile-images">Profile Images</option>
+                <option value="videos">Videos</option>
+            </select>
+            <input type="number" id="page" placeholder="Page" value="1" min="1" />
+            <input type="number" id="limit" placeholder="Limit" value="10" min="1" max="50" />
+            <button onclick="listFiles()">List Files</button>
+            <div id="listResult" class="result" style="display:none;"></div>
+        </div>
+
+        <!-- Upload Progress -->
+        <div class="section">
+            <h3>Upload History</h3>
+            <div id="uploadHistory"></div>
+            <button onclick="clearHistory()">Clear History</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000';
+        let uploadHistory = [];
+
+        // Health Check
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                showResult('healthResult', data, response.ok);
+            } catch (error) {
+                showResult('healthResult', { error: error.message }, false);
+            }
+        }
+
+        // Upload Single File
+        async function uploadSingleFile() {
+            const fileInput = document.getElementById('singleFile');
+            const fileType = document.getElementById('singleFileType').value;
+            
+            if (!fileInput.files[0]) {
+                alert('Please select a file');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('fileType', fileType);
+
+            try {
+                const response = await fetch(`${API_BASE}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                showResult('singleUploadResult', data, response.ok);
+                
+                if (response.ok) {
+                    addToHistory(data.result);
+                }
+            } catch (error) {
+                showResult('singleUploadResult', { error: error.message }, false);
+            }
+        }
+
+        // Upload Multiple Files
+        async function uploadMultipleFiles() {
+            const fileInput = document.getElementById('multipleFiles');
+            const fileType = document.getElementById('multipleFileType').value;
+            
+            if (!fileInput.files.length) {
+                alert('Please select files');
+                return;
+            }
+
+            const formData = new FormData();
+            for (let file of fileInput.files) {
+                formData.append('files', file);
+            }
+            formData.append('fileType', fileType);
+
+            try {
+                const response = await fetch(`${API_BASE}/upload-multiple`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                showResult('multipleUploadResult', data, response.ok);
+                
+                if (response.ok && Array.isArray(data.result)) {
+                    data.result.forEach(file => addToHistory(file));
+                }
+            } catch (error) {
+                showResult('multipleUploadResult', { error: error.message }, false);
+            }
+        }
+
+        // Get File Info
+        async function getFileInfo() {
+            const filename = document.getElementById('filename').value;
+            if (!filename) {
+                alert('Please enter filename');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/info/${filename}`);
+                const data = await response.json();
+                showResult('fileManagementResult', data, response.ok);
+            } catch (error) {
+                showResult('fileManagementResult', { error: error.message }, false);
+            }
+        }
+
+        // Delete File
+        async function deleteFile() {
+            const filename = document.getElementById('filename').value;
+            if (!filename) {
+                alert('Please enter filename');
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to delete ${filename}?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/delete/${filename}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+                showResult('fileManagementResult', data, response.ok);
+            } catch (error) {
+                showResult('fileManagementResult', { error: error.message }, false);
+            }
+        }
+
+        // List Files
+        async function listFiles() {
+            const fileType = document.getElementById('listFileType').value;
+            const page = document.getElementById('page').value;
+            const limit = document.getElementById('limit').value;
+
+            try {
+                const response = await fetch(`${API_BASE}/list/${fileType}?page=${page}&limit=${limit}`);
+                const data = await response.json();
+                showResult('listResult', data, response.ok);
+            } catch (error) {
+                showResult('listResult', { error: error.message }, false);
+            }
+        }
+
+        // Helper Functions
+        function showResult(elementId, data, isSuccess) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = `result ${isSuccess ? 'success' : 'error'}`;
+            element.textContent = JSON.stringify(data, null, 2);
+        }
+
+        function addToHistory(fileInfo) {
+            uploadHistory.unshift(fileInfo);
+            updateHistoryDisplay();
+        }
+
+        function updateHistoryDisplay() {
+            const historyDiv = document.getElementById('uploadHistory');
+            historyDiv.innerHTML = uploadHistory.map(file => `
+                <div class="file-info">
+                    <strong>${file.originalName}</strong><br>
+                    <small>
+                        Size: ${formatBytes(file.size)} | 
+                        Type: ${file.fileType} | 
+                        <a href="${API_BASE}${file.url}" target="_blank">View</a> |
+                        <a href="${API_BASE}${file.downloadUrl}" target="_blank">Download</a>
+                    </small>
+                </div>
+            `).join('');
+        }
+
+        function clearHistory() {
+            uploadHistory = [];
+            updateHistoryDisplay();
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(1024));
+            return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        // Initialize
+        checkHealth();
+    </script>
+</body>
+</html>

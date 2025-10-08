@@ -24,8 +24,6 @@ public interface HomeworkMapper {
     @Mapping(source = "allowedFileTypes", target = "allowedFileTypes", qualifiedByName = "listToJson")
     @Mapping(source = "tags", target = "tags", qualifiedByName = "listToJson")
     @Mapping(source = "latePenaltyConfig", target = "latePenalty")
-    @Mapping(source = "peerReviewConfig", target = "peerReviewConfig")
-    @Mapping(source = "gradingRubric", target = "gradingRubric")
     Homework toHomework(HomeworkCreationRequest request);
     
     @Mapping(source = "assignedTo", target = "assignedStudentIds", qualifiedByName = "jsonToList")
@@ -33,6 +31,7 @@ public interface HomeworkMapper {
     @Mapping(source = "allowedFileTypes", target = "allowedFileTypes", qualifiedByName = "jsonToList")
     @Mapping(source = "tags", target = "tags", qualifiedByName = "jsonToList")
     @Mapping(source = "latePenalty", target = "latePenaltyConfig")
+    @Mapping(target = "assignedGroupId", ignore = true)
     @Mapping(target = "totalSubmissions", ignore = true)
     @Mapping(target = "gradedSubmissions", ignore = true)
     @Mapping(target = "pendingSubmissions", ignore = true)
@@ -48,6 +47,12 @@ public interface HomeworkMapper {
     @Mapping(target = "createdBy", ignore = true)
     @Mapping(target = "submissions", ignore = true)
     @Mapping(target = "homeworkAttachments", ignore = true)
+    @Mapping(target = "assignedTo", ignore = true)
+    @Mapping(target = "latePenalty", ignore = true)
+    @Mapping(target = "attachments", ignore = true)
+    @Mapping(source = "allowedFileTypes", target = "allowedFileTypes", qualifiedByName = "listToJson")
+    @Mapping(source = "groupIds", target = "groupIds", qualifiedByName = "listToJson")
+    @Mapping(source = "tags", target = "tags", qualifiedByName = "listToJson")
     void updateHomeworkFromRequest(HomeworkCreationRequest request, @MappingTarget Homework homework);
     
     @org.mapstruct.Named("listToJson")

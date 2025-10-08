@@ -18,7 +18,10 @@ import {
   Settings, 
   LogOut,
   Menu,
-  X
+  X,
+  FileText,
+  GraduationCap,
+  PlusCircle
 } from "lucide-react";
 
 const Navigation = () => {
@@ -31,6 +34,15 @@ const Navigation = () => {
     { path: "/teacher", label: "Teacher", icon: Users },
     { path: "/admin", label: "Admin", icon: Settings },
     { path: "/student", label: "Student Portal", icon: BookOpen },
+  ];
+
+  const teacherItems = [
+    { path: "/teacher/create-assignment", label: "Create Assignment", icon: PlusCircle },
+    { path: "/teacher/grading", label: "Grade Assignments", icon: GraduationCap },
+  ];
+
+  const studentItems = [
+    { path: "/student/assignments", label: "My Assignments", icon: FileText },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -52,7 +64,7 @@ const Navigation = () => {
           </div>
 
           {/* Desktop navigation */}
-          <div className="hidden md:flex items-center space-x-4">
+          <div className="hidden md:flex items-center space-x-2">
             {navItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -67,6 +79,47 @@ const Navigation = () => {
                 >
                   <Icon className="w-4 h-4" />
                   <span>{item.label}</span>
+                </Link>
+              );
+            })}
+            
+            {/* Quick access items */}
+            <div className="h-6 border-l border-border mx-2"></div>
+            
+            {teacherItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`flex items-center space-x-1 px-2 py-1 rounded-md text-xs font-medium transition-colors ${
+                    isActive(item.path)
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
+                  title={item.label}
+                >
+                  <Icon className="w-3 h-3" />
+                  <span className="hidden lg:inline">{item.label}</span>
+                </Link>
+              );
+            })}
+            
+            {studentItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`flex items-center space-x-1 px-2 py-1 rounded-md text-xs font-medium transition-colors ${
+                    isActive(item.path)
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
+                  title={item.label}
+                >
+                  <Icon className="w-3 h-3" />
+                  <span className="hidden lg:inline">{item.label}</span>
                 </Link>
               );
             })}

@@ -10,44 +10,158 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ArrowLeft, Calendar as CalendarIcon, Clock, FileText, Settings, Upload, Plus, X } from "lucide-react";
+import { ArrowLeft, Calendar as CalendarIcon, Clock, FileText, Settings, Upload, Plus, X, Save, Send } from "lucide-react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
+import { homeworkService, fileService, type HomeworkCreationRequest } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 export default function CreateAssignment() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [dueDate, setDueDate] = useState<Date>();
+  const [isLoading, setIsLoading] = useState(false);
+  const [attachments, setAttachments] = useState<any[]>([]);
+  
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     instructions: "",
     courseId: "",
-    maxPoints: "",
-    timeLimit: "",
-    allowLateSubmission: false,
-    allowMultipleAttempts: false,
-    showCorrectAnswers: false
+    classId: "",
+    maxScore: "",
+    estimatedDurationMinutes: "",
+    submissionType: "BOTH" as "TEXT" | "FILE" | "BOTH",
+    allowLateSubmissions: false,
+    resubmissionAllowed: false,
+    maxAttempts: "3",
+    maxFileSizeMB: "10",
+    allowedFileTypes: [] as string[],
+    tags: [] as string[],
   });
-  const [questions, setQuestions] = useState<any[]>([]);
-  const [attachments, setAttachments] = useState<any[]>([]);
 
-  // Mock courses data
+  // Mock courses data - replace with real API call
   const courses = [
     { id: "1", name: "React và TypeScript Cơ Bản" },
     { id: "2", name: "JavaScript ES6+" },
     { id: "3", name: "Node.js Backend" },
   ];
 
-  const addQuestion = () => {
-    const newQuestion = {
-      id: Date.now(),
-      type: "multiple-choice",
-      question: "",
-      options: ["", "", "", ""],
-      correctAnswer: 0,
-      points: 1
-    };
-    setQuestions([...questions, newQuestion]);
+  const fileTypes = [
+    { value: "application/pdf", label: "PDF" },
+    { value: "image/jpeg", label: "JPEG" },
+    { value: "image/png", label: "PNG" },
+    { value: "text/plain", label: "Text" },
+    { value: "application/msword", label: "Word" },
+    { value: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", label: "Word (DOCX)" },
+  ];
+
+  const handleFileUpload = async (files: FileList | null) => {
+    if (!files) return;
+
+    setIsLoading(true);
+    try {
+      const uploadedFiles = await Promise.all(
+        Array.from(files).map(file => fileService.uploadFile(file, { type: 'homework-attachment' }))
+      );
+      
+      setAttachments(prev => [...prev, ...uploadedFiles]);
+      toast({
+        title: "Files uploaded successfully",
+        description: `${uploadedFiles.length} file(s) uploaded`,
+      });
+    } catch (error) {
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload files. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const removeAttachment = (fileId: string) => {
+    setAttachments(prev => prev.filter(file => file.id !== fileId));
+  };
+
+  const addTag = (tag: string) => {
+    if (tag && !formData.tags.includes(tag)) {
+      setFormData(prev => ({
+        ...prev,
+        tags: [...prev.tags, tag]
+      }));
+    }
+  };
+
+  const removeTag = (tag: string) => {
+    setFormData(prev => ({
+      ...prev,
+      tags: prev.tags.filter(t => t !== tag)
+    }));
+  };
+
+  const toggleFileType = (fileType: string) => {
+    setFormData(prev => ({
+      ...prev,
+      allowedFileTypes: prev.allowedFileTypes.includes(fileType)
+        ? prev.allowedFileTypes.filter(type => type !== fileType)
+        : [...prev.allowedFileTypes, fileType]
+    }));
+  };
+
+  const handleSubmit = async (asDraft = false) => {
+    if (!formData.title || !formData.courseId || !dueDate) {
+      toast({
+        title: "Missing required fields",
+        description: "Please fill in title, course, and due date.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const homeworkData: HomeworkCreationRequest = {
+        title: formData.title,
+        description: formData.description,
+        courseId: formData.courseId,
+        classId: formData.classId || undefined,
+        dueDate: dueDate.toISOString(),
+        maxScore: parseFloat(formData.maxScore) || 100,
+        submissionType: formData.submissionType,
+        instructions: formData.instructions,
+        allowLateSubmissions: formData.allowLateSubmissions,
+        resubmissionAllowed: formData.resubmissionAllowed,
+        maxAttempts: parseInt(formData.maxAttempts) || 3,
+        estimatedDurationMinutes: parseInt(formData.estimatedDurationMinutes) || undefined,
+        allowedFileTypes: formData.allowedFileTypes.length > 0 ? formData.allowedFileTypes : undefined,
+        maxFileSizeMB: parseInt(formData.maxFileSizeMB) || 10,
+        tags: formData.tags.length > 0 ? formData.tags : undefined,
+      };
+
+      const result = await homeworkService.createHomework(homeworkData);
+      
+      // If not saving as draft, publish immediately
+      if (!asDraft) {
+        await homeworkService.publishHomework(result.result.id);
+      }
+
+      toast({
+        title: asDraft ? "Homework saved as draft" : "Homework published successfully",
+        description: `Assignment "${formData.title}" has been ${asDraft ? 'saved' : 'published'}.`,
+      });
+
+      navigate('/teacher');
+    } catch (error: any) {
+      toast({
+        title: "Failed to create homework",
+        description: error.response?.data?.message || "An error occurred while creating the assignment.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const removeQuestion = (questionId: number) => {
@@ -68,53 +182,42 @@ export default function CreateAssignment() {
     ));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("Assignment created:", { 
-      ...formData, 
-      dueDate, 
-      questions, 
-      attachments 
-    });
-    navigate("/teacher");
-  };
-
   return (
     <div className="container mx-auto p-6 max-w-4xl">
       <div className="flex items-center gap-4 mb-6">
         <Button variant="ghost" size="icon" onClick={() => navigate("/teacher")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h1 className="text-3xl font-bold text-primary">Tạo Bài Tập Mới</h1>
+        <h1 className="text-3xl font-bold text-primary">Create New Assignment</h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="space-y-6">
         {/* Basic Information */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Thông Tin Cơ Bản
+              Basic Information
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="title">Tiêu Đề Bài Tập</Label>
+                <Label htmlFor="title">Assignment Title *</Label>
                 <Input
                   id="title"
                   value={formData.title}
                   onChange={(e) => setFormData({...formData, title: e.target.value})}
-                  placeholder="Nhập tiêu đề bài tập"
+                  placeholder="Enter assignment title"
                   required
                 />
               </div>
               
               <div>
-                <Label htmlFor="course">Khóa Học</Label>
+                <Label htmlFor="course">Course *</Label>
                 <Select value={formData.courseId} onValueChange={(value) => setFormData({...formData, courseId: value})}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Chọn khóa học" />
+                    <SelectValue placeholder="Select course" />
                   </SelectTrigger>
                   <SelectContent>
                     {courses.map((course) => (
@@ -128,26 +231,24 @@ export default function CreateAssignment() {
             </div>
 
             <div>
-              <Label htmlFor="description">Mô Tả</Label>
+              <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({...formData, description: e.target.value})}
-                placeholder="Mô tả ngắn gọn về bài tập"
+                placeholder="Brief description of the assignment"
                 rows={3}
-                required
               />
             </div>
 
             <div>
-              <Label htmlFor="instructions">Hướng Dẫn Chi Tiết</Label>
+              <Label htmlFor="instructions">Detailed Instructions</Label>
               <Textarea
                 id="instructions"
                 value={formData.instructions}
                 onChange={(e) => setFormData({...formData, instructions: e.target.value})}
-                placeholder="Hướng dẫn chi tiết cách làm bài tập"
+                placeholder="Detailed instructions for completing the assignment"
                 rows={4}
-                required
               />
             </div>
           </CardContent>
@@ -158,41 +259,41 @@ export default function CreateAssignment() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />
-              Cài Đặt Bài Tập
+              Assignment Settings
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <Label htmlFor="maxPoints">Điểm Tối Đa</Label>
+                <Label htmlFor="maxScore">Max Score *</Label>
                 <Input
-                  id="maxPoints"
+                  id="maxScore"
                   type="number"
-                  value={formData.maxPoints}
-                  onChange={(e) => setFormData({...formData, maxPoints: e.target.value})}
+                  value={formData.maxScore}
+                  onChange={(e) => setFormData({...formData, maxScore: e.target.value})}
                   placeholder="100"
                   required
                 />
               </div>
 
               <div>
-                <Label htmlFor="timeLimit">Thời Gian Làm Bài (phút)</Label>
+                <Label htmlFor="estimatedDuration">Estimated Duration (minutes)</Label>
                 <Input
-                  id="timeLimit"
+                  id="estimatedDuration"
                   type="number"
-                  value={formData.timeLimit}
-                  onChange={(e) => setFormData({...formData, timeLimit: e.target.value})}
+                  value={formData.estimatedDurationMinutes}
+                  onChange={(e) => setFormData({...formData, estimatedDurationMinutes: e.target.value})}
                   placeholder="60"
                 />
               </div>
 
               <div>
-                <Label>Hạn Nộp</Label>
+                <Label>Due Date *</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" className="w-full justify-start text-left font-normal">
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dueDate ? format(dueDate, "PPP", { locale: vi }) : "Chọn ngày"}
+                      {dueDate ? format(dueDate, "PPP") : "Select date"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
@@ -207,173 +308,191 @@ export default function CreateAssignment() {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="submissionType">Submission Type</Label>
+                <Select value={formData.submissionType} onValueChange={(value: "TEXT" | "FILE" | "BOTH") => setFormData({...formData, submissionType: value})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="TEXT">Text Only</SelectItem>
+                    <SelectItem value="FILE">File Only</SelectItem>
+                    <SelectItem value="BOTH">Text & File</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="maxAttempts">Max Attempts</Label>
+                <Input
+                  id="maxAttempts"
+                  type="number"
+                  value={formData.maxAttempts}
+                  onChange={(e) => setFormData({...formData, maxAttempts: e.target.value})}
+                  placeholder="3"
+                />
+              </div>
+            </div>
+
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label htmlFor="allowLate">Cho Phép Nộp Trễ</Label>
-                  <p className="text-sm text-muted-foreground">Học sinh có thể nộp bài sau hạn</p>
+                  <Label htmlFor="allowLate">Allow Late Submissions</Label>
+                  <p className="text-sm text-muted-foreground">Students can submit after due date</p>
                 </div>
                 <Switch
                   id="allowLate"
-                  checked={formData.allowLateSubmission}
-                  onCheckedChange={(checked) => setFormData({...formData, allowLateSubmission: checked})}
+                  checked={formData.allowLateSubmissions}
+                  onCheckedChange={(checked) => setFormData({...formData, allowLateSubmissions: checked})}
                 />
               </div>
 
               <div className="flex items-center justify-between">
                 <div>
-                  <Label htmlFor="allowMultiple">Cho Phép Làm Lại</Label>
-                  <p className="text-sm text-muted-foreground">Học sinh có thể làm bài nhiều lần</p>
+                  <Label htmlFor="allowResubmission">Allow Resubmission</Label>
+                  <p className="text-sm text-muted-foreground">Students can resubmit their work</p>
                 </div>
                 <Switch
-                  id="allowMultiple"
-                  checked={formData.allowMultipleAttempts}
-                  onCheckedChange={(checked) => setFormData({...formData, allowMultipleAttempts: checked})}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="showAnswers">Hiển Thị Đáp Án</Label>
-                  <p className="text-sm text-muted-foreground">Hiển thị đáp án đúng sau khi nộp bài</p>
-                </div>
-                <Switch
-                  id="showAnswers"
-                  checked={formData.showCorrectAnswers}
-                  onCheckedChange={(checked) => setFormData({...formData, showCorrectAnswers: checked})}
+                  id="allowResubmission"
+                  checked={formData.resubmissionAllowed}
+                  onCheckedChange={(checked) => setFormData({...formData, resubmissionAllowed: checked})}
                 />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Questions */}
+        {/* File Configuration */}
+        {(formData.submissionType === 'FILE' || formData.submissionType === 'BOTH') && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Upload className="h-5 w-5" />
+                File Upload Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="maxFileSize">Max File Size (MB)</Label>
+                  <Input
+                    id="maxFileSize"
+                    type="number"
+                    value={formData.maxFileSizeMB}
+                    onChange={(e) => setFormData({...formData, maxFileSizeMB: e.target.value})}
+                    placeholder="10"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label>Allowed File Types</Label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
+                  {fileTypes.map((type) => (
+                    <div key={type.value} className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id={type.value}
+                        checked={formData.allowedFileTypes.includes(type.value)}
+                        onChange={() => toggleFileType(type.value)}
+                      />
+                      <Label htmlFor={type.value} className="text-sm">{type.label}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Tags */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Câu Hỏi ({questions.length})</CardTitle>
-            <Button type="button" onClick={addQuestion}>
-              <Plus className="h-4 w-4 mr-2" />
-              Thêm Câu Hỏi
-            </Button>
+          <CardHeader>
+            <CardTitle>Tags</CardTitle>
           </CardHeader>
           <CardContent>
-            {questions.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Chưa có câu hỏi nào. Nhấn "Thêm Câu Hỏi" để bắt đầu.</p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {questions.map((question, index) => (
-                  <Card key={question.id}>
-                    <CardHeader className="flex flex-row items-center justify-between">
-                      <CardTitle className="text-lg">Câu {index + 1}</CardTitle>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeQuestion(question.id)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label>Loại Câu Hỏi</Label>
-                          <Select
-                            value={question.type}
-                            onValueChange={(value) => updateQuestion(question.id, "type", value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="multiple-choice">Trắc nghiệm</SelectItem>
-                              <SelectItem value="true-false">Đúng/Sai</SelectItem>
-                              <SelectItem value="short-answer">Tự luận ngắn</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div>
-                          <Label>Điểm</Label>
-                          <Input
-                            type="number"
-                            value={question.points}
-                            onChange={(e) => updateQuestion(question.id, "points", parseInt(e.target.value))}
-                            placeholder="1"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <Label>Câu Hỏi</Label>
-                        <Textarea
-                          value={question.question}
-                          onChange={(e) => updateQuestion(question.id, "question", e.target.value)}
-                          placeholder="Nhập câu hỏi..."
-                          rows={2}
-                        />
-                      </div>
-
-                      {question.type === "multiple-choice" && (
-                        <div>
-                          <Label>Các Lựa Chọn</Label>
-                          <div className="space-y-2">
-                            {question.options.map((option: string, optionIndex: number) => (
-                              <div key={optionIndex} className="flex items-center gap-2">
-                                <input
-                                  type="radio"
-                                  name={`correct-${question.id}`}
-                                  checked={question.correctAnswer === optionIndex}
-                                  onChange={() => updateQuestion(question.id, "correctAnswer", optionIndex)}
-                                />
-                                <Input
-                                  value={option}
-                                  onChange={(e) => updateQuestionOption(question.id, optionIndex, e.target.value)}
-                                  placeholder={`Lựa chọn ${optionIndex + 1}`}
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
+            <div className="flex flex-wrap gap-2 mb-4">
+              {formData.tags.map((tag) => (
+                <Badge key={tag} variant="secondary" className="flex items-center gap-1">
+                  {tag}
+                  <X className="h-3 w-3 cursor-pointer" onClick={() => removeTag(tag)} />
+                </Badge>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Add a tag..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addTag(e.currentTarget.value);
+                    e.currentTarget.value = '';
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={(e) => {
+                  const input = (e.target as HTMLElement).parentElement?.querySelector('input');
+                  if (input?.value) {
+                    addTag(input.value);
+                    input.value = '';
+                  }
+                }}
+              >
+                Add
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
-        {/* File Attachments */}
+        {/* Teacher File Attachments */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Upload className="h-5 w-5" />
-              Tệp Đính Kèm
+              Assignment Materials
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
               <Upload className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground mb-2">Kéo thả tệp vào đây hoặc</p>
-              <Button type="button" variant="outline">
-                Chọn Tệp
+              <p className="text-muted-foreground mb-2">Drop files here or</p>
+              <Button 
+                type="button" 
+                variant="outline"
+                onClick={() => document.getElementById('file-upload')?.click()}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Uploading...' : 'Choose Files'}
               </Button>
+              <input
+                id="file-upload"
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => handleFileUpload(e.target.files)}
+              />
             </div>
             
             {attachments.length > 0 && (
               <div className="mt-4 space-y-2">
-                {attachments.map((file, index) => (
-                  <div key={index} className="flex items-center justify-between p-2 border rounded">
-                    <span className="text-sm">{file.name}</span>
+                {attachments.map((file) => (
+                  <div key={file.id} className="flex items-center justify-between p-2 border rounded">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      <span className="text-sm">{file.originalName}</span>
+                      <span className="text-xs text-muted-foreground">
+                        ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                      </span>
+                    </div>
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
-                      onClick={() => setAttachments(attachments.filter((_, i) => i !== index))}
+                      onClick={() => removeAttachment(file.id)}
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -386,17 +505,35 @@ export default function CreateAssignment() {
 
         {/* Action Buttons */}
         <div className="flex gap-4 justify-end">
-          <Button type="button" variant="outline" onClick={() => navigate("/teacher")}>
-            Hủy
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={() => navigate("/teacher")}
+            disabled={isLoading}
+          >
+            Cancel
           </Button>
-          <Button type="button" variant="secondary">
-            Lưu Nháp
+          <Button 
+            type="button" 
+            variant="secondary"
+            onClick={() => handleSubmit(true)}
+            disabled={isLoading}
+            className="flex items-center gap-2"
+          >
+            <Save className="h-4 w-4" />
+            Save as Draft
           </Button>
-          <Button type="submit" className="min-w-32">
-            Tạo Bài Tập
+          <Button 
+            type="button" 
+            onClick={() => handleSubmit(false)}
+            disabled={isLoading}
+            className="min-w-32 flex items-center gap-2"
+          >
+            <Send className="h-4 w-4" />
+            {isLoading ? 'Publishing...' : 'Publish Assignment'}
           </Button>
         </div>
-      </form>
+      </div>
     </div>
   );
 }
