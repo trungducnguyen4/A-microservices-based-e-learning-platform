@@ -1,0 +1,418 @@
+name: Code Quality & Security
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 3 * * 1'  # Weekly on Monday at 3 AM UTC
+  workflow_dispatch:
+
+env:
+  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+jobs:
+  # Static Code Analysis
+  static-analysis:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        component:
+          - { name: "Frontend", path: "client", type: "typescript" }
+          - { name: "UserService", path: "UserService", type: "java" }
+          - { name: "HomeworkService", path: "HomeworkService/HomeworkService", type: "java" }
+          - { name: "ScheduleService", path: "ScheduleService", type: "java" }
+          - { name: "ClassroomService", path: "ClassroomService", type: "javascript" }
+          - { name: "FileService", path: "FileService", type: "javascript" }
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Needed for SonarCloud analysis
+        
+    - name: Setup Node.js (for TypeScript/JavaScript)
+      if: matrix.component.type == 'typescript' || matrix.component.type == 'javascript'
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: ${{ matrix.component.path }}/package-lock.json
+        
+    - name: Setup Java (for Java components)
+      if: matrix.component.type == 'java'
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
+        
+    - name: Run ESLint (TypeScript/JavaScript)
+      if: matrix.component.type == 'typescript' || matrix.component.type == 'javascript'
+      run: |
+        cd ${{ matrix.component.path }}
+        npm ci
+        npm run lint -- --format json --output-file eslint-results.json || true
+        npm run lint || true
+      continue-on-error: true
+      
+    - name: Run TypeScript compiler check
+      if: matrix.component.type == 'typescript'
+      run: |
+        cd ${{ matrix.component.path }}
+        npm run type-check || npx tsc --noEmit
+      continue-on-error: true
+      
+    - name: Run SpotBugs (Java)
+      if: matrix.component.type == 'java'
+      run: |
+        cd ${{ matrix.component.path }}
+        ./mvnw clean compile spotbugs:spotbugs
+      continue-on-error: true
+      
+    - name: Run PMD (Java)
+      if: matrix.component.type == 'java'
+      run: |
+        cd ${{ matrix.component.path }}
+        ./mvnw pmd:pmd pmd:cpd
+      continue-on-error: true
+      
+    - name: Upload static analysis results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: static-analysis-${{ matrix.component.name }}
+        path: |
+          ${{ matrix.component.path }}/eslint-results.json
+          ${{ matrix.component.path }}/target/spotbugsXml.xml
+          ${{ matrix.component.path }}/target/pmd.xml
+          ${{ matrix.component.path }}/target/cpd.xml
+        retention-days: 7
+
+  # Security Vulnerability Scan
+  security-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Run npm audit (Node.js projects)
+      run: |
+        projects=("client" "ClassroomService" "FileService")
+        for project in "${projects[@]}"; do
+          echo "Running npm audit for $project..."
+          cd "$project"
+          npm audit --json > "../npm-audit-$project.json" || true
+          npm audit || echo "Vulnerabilities found in $project"
+          cd - > /dev/null
+        done
+      continue-on-error: true
+      
+    - name: Run OWASP Dependency Check (Java projects)
+      run: |
+        projects=("UserService" "HomeworkService/HomeworkService" "ScheduleService")
+        for project in "${projects[@]}"; do
+          echo "Running OWASP dependency check for $project..."
+          cd "$project"
+          ./mvnw org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=7
+          cd - > /dev/null
+        done
+      continue-on-error: true
+      
+    - name: Run Trivy filesystem scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-fs-results.sarif'
+        
+    - name: Run CodeQL Analysis
+      uses: github/codeql-action/init@v3
+      with:
+        languages: java, javascript
+        queries: security-and-quality
+        
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v3
+      
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-fs-results.sarif'
+        
+    - name: Upload security scan results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: security-scan-results
+        path: |
+          npm-audit-*.json
+          **/target/dependency-check-report.html
+          trivy-fs-results.sarif
+        retention-days: 30
+
+  # Code Coverage Analysis
+  code-coverage:
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: testpassword
+          MYSQL_DATABASE: coverage_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
+        
+    - name: Generate frontend coverage
+      run: |
+        cd client
+        npm ci
+        npm run test -- --coverage --watchAll=false --coverageReporters=lcov --coverageReporters=json
+      continue-on-error: true
+      
+    - name: Generate Java coverage
+      run: |
+        projects=("UserService" "HomeworkService/HomeworkService" "ScheduleService")
+        for project in "${projects[@]}"; do
+          echo "Generating coverage for $project..."
+          cd "$project"
+          ./mvnw clean test jacoco:report -Dspring.profiles.active=test
+          cd - > /dev/null
+        done
+      env:
+        SPRING_DATASOURCE_URL: jdbc:mysql://localhost:3306/coverage_test
+        SPRING_DATASOURCE_USERNAME: root
+        SPRING_DATASOURCE_PASSWORD: testpassword
+      continue-on-error: true
+      
+    - name: Generate Node.js coverage
+      run: |
+        projects=("ClassroomService" "FileService")
+        for project in "${projects[@]}"; do
+          echo "Generating coverage for $project..."
+          cd "$project"
+          npm ci
+          npm run test:coverage || npm test -- --coverage || echo "No coverage configured for $project"
+          cd - > /dev/null
+        done
+      continue-on-error: true
+      
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        files: |
+          client/coverage/lcov.info
+          UserService/target/site/jacoco/jacoco.xml
+          HomeworkService/HomeworkService/target/site/jacoco/jacoco.xml
+          ScheduleService/target/site/jacoco/jacoco.xml
+          ClassroomService/coverage/lcov.info
+          FileService/coverage/lcov.info
+        fail_ci_if_error: false
+        verbose: true
+        
+    - name: Upload coverage artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: coverage-reports
+        path: |
+          client/coverage/
+          **/target/site/jacoco/
+          **/coverage/
+        retention-days: 14
+
+  # SonarCloud Analysis
+  sonarcloud:
+    runs-on: ubuntu-latest
+    if: env.SONAR_TOKEN != null
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
+        
+    - name: Cache SonarCloud packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.sonar/cache
+        key: ${{ runner.os }}-sonar
+        restore-keys: ${{ runner.os }}-sonar
+        
+    - name: Run tests and generate reports
+      run: |
+        # Frontend
+        cd client
+        npm ci
+        npm run test -- --coverage --watchAll=false
+        cd ..
+        
+        # Java services
+        projects=("UserService" "HomeworkService/HomeworkService" "ScheduleService")
+        for project in "${projects[@]}"; do
+          cd "$project"
+          ./mvnw clean verify sonar:sonar -Dsonar.projectKey=e-learning-platform-$project
+          cd - > /dev/null
+        done
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      continue-on-error: true
+
+  # Code Quality Gates
+  quality-gate:
+    runs-on: ubuntu-latest
+    needs: [static-analysis, security-scan, code-coverage]
+    if: always()
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      
+    - name: Evaluate quality gates
+      run: |
+        echo "## 🎯 Code Quality Report" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Static Analysis | ${{ needs.static-analysis.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Security Scan | ${{ needs.security-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Code Coverage | ${{ needs.code-coverage.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Evaluate quality gates
+        quality_passed=true
+        
+        if [[ "${{ needs.static-analysis.result }}" != "success" ]]; then
+          echo "❌ **Static analysis failed**" >> $GITHUB_STEP_SUMMARY
+          quality_passed=false
+        fi
+        
+        if [[ "${{ needs.security-scan.result }}" != "success" ]]; then
+          echo "⚠️  **Security scan issues detected**" >> $GITHUB_STEP_SUMMARY
+          quality_passed=false
+        fi
+        
+        if [[ "$quality_passed" == "true" ]]; then
+          echo "✅ **All quality gates passed!**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **Quality gates failed - review required**" >> $GITHUB_STEP_SUMMARY
+          exit 1
+        fi
+        
+    - name: Create quality report
+      run: |
+        mkdir -p quality-report
+        
+        cat > quality-report/README.md << 'EOF'
+        # Code Quality Report
+        
+        This report contains the results of automated code quality checks.
+        
+        ## Components Analyzed
+        - Frontend (React/TypeScript)
+        - UserService (Java/Spring Boot)
+        - HomeworkService (Java/Spring Boot)
+        - ScheduleService (Java/Spring Boot)
+        - ClassroomService (Node.js)
+        - FileService (Node.js)
+        
+        ## Quality Checks
+        - Static code analysis (ESLint, SpotBugs, PMD)
+        - Security vulnerability scanning (npm audit, OWASP, Trivy, CodeQL)
+        - Code coverage analysis
+        - SonarCloud analysis (if configured)
+        
+        ## Results
+        Check the individual artifact files for detailed results.
+        EOF
+        
+    - name: Upload quality report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: quality-report
+        path: quality-report/
+        retention-days: 30
+
+  # Dependency Updates Check
+  dependency-updates:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Check for outdated Node.js dependencies
+      run: |
+        projects=("client" "ClassroomService" "FileService")
+        for project in "${projects[@]}"; do
+          echo "Checking outdated dependencies for $project..."
+          cd "$project"
+          npm outdated || true
+          cd - > /dev/null
+        done
+        
+    - name: Check for Maven dependency updates
+      run: |
+        projects=("UserService" "HomeworkService/HomeworkService" "ScheduleService")
+        for project in "${projects[@]}"; do
+          echo "Checking dependency updates for $project..."
+          cd "$project"
+          ./mvnw versions:display-dependency-updates
+          cd - > /dev/null
+        done
