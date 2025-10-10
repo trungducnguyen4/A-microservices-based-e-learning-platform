@@ -22,6 +22,7 @@ export default function CreateAssignment() {
   const [dueDate, setDueDate] = useState<Date>();
   const [isLoading, setIsLoading] = useState(false);
   const [attachments, setAttachments] = useState<any[]>([]);
+  const [questions, setQuestions] = useState<any[]>([]);
   
   const [formData, setFormData] = useState({
     title: "",

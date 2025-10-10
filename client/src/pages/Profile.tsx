@@ -60,7 +60,7 @@ const Profile = () => {
       }
 
       // Gọi API để lấy thông tin us
-      const response = await axios.get(`http://localhost:8080/user/profile/${payload.username}`, {
+      const response = await axios.get(`http://localhost:8888/api/users/profile/${payload.username}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -114,7 +114,7 @@ const Profile = () => {
       }
 
       // Gọi API để cập nhật thông tin user
-      await axios.put(`http://localhost:8080/user/profile/${payload.username}`, {
+      await axios.put(`http://localhost:8888/api/users/profile/${payload.username}`, {
         email: profile.email,
         fullName: profile.fullName,
         phone: profile.phone,

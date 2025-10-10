@@ -3,6 +3,14 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./contexts/AuthContext";
+import ProtectedRoute, { 
+  AdminRoute, 
+  TeacherRoute, 
+  StudentRoute, 
+  TeacherOrAdminRoute,
+  PublicRoute
+} from "./components/ProtectedRoute";
 import Navigation from "./components/Navigation";
 import Dashboard from "./pages/Dashboard";
 import Classroom from "./pages/Classroom";
@@ -29,28 +37,107 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <div className="min-h-screen bg-background">
-          <Navigation />
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/classroom" element={<Classroom />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/student" element={<StudentPortal />} />
-            <Route path="/teacher" element={<TeacherDashboard />} />
-            <Route path="/teacher/create-course" element={<CreateCourse />} />
-            <Route path="/teacher/create-assignment" element={<CreateAssignment />} />
-            <Route path="/teacher/grading" element={<TeacherGrading />} />
-            <Route path="/student/assignments" element={<StudentAssignments />} />
-            <Route path="/student/assignment/:homeworkId" element={<AssignmentSubmission />} />
-            <Route path="/course/:courseId" element={<CourseDetail />} />
-            <Route path="*" element={<NotFound />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/choose-role" element={<ChooseRole />} />
-            <Route path="/profile" element={<Profile />} />
-          </Routes>
-        </div>
+        <AuthProvider>
+          <div className="min-h-screen bg-background">
+            <Navigation />
+            <Routes>
+              {/* Public routes */}
+              <Route path="/" element={
+                <PublicRoute>
+                  <Dashboard />
+                </PublicRoute>
+              } />
+              <Route path="/auth" element={
+                <PublicRoute>
+                  <Auth />
+                </PublicRoute>
+              } />
+              <Route path="/login" element={
+                <PublicRoute>
+                  <Login />
+                </PublicRoute>
+              } />
+              <Route path="/register" element={
+                <PublicRoute>
+                  <Register />
+                </PublicRoute>
+              } />
+              <Route path="/choose-role" element={
+                <PublicRoute>
+                  <ChooseRole />
+                </PublicRoute>
+              } />
+
+              {/* Protected routes requiring authentication */}
+              <Route path="/profile" element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              } />
+              <Route path="/classroom" element={
+                <ProtectedRoute>
+                  <Classroom />
+                </ProtectedRoute>
+              } />
+
+              {/* Admin-only routes */}
+              <Route path="/admin" element={
+                <AdminRoute>
+                  <AdminDashboard />
+                </AdminRoute>
+              } />
+
+              {/* Teacher-only routes */}
+              <Route path="/teacher" element={
+                <TeacherRoute>
+                  <TeacherDashboard />
+                </TeacherRoute>
+              } />
+              <Route path="/teacher/create-course" element={
+                <TeacherOrAdminRoute>
+                  <CreateCourse />
+                </TeacherOrAdminRoute>
+              } />
+              <Route path="/teacher/create-assignment" element={
+                <TeacherRoute>
+                  <CreateAssignment />
+                </TeacherRoute>
+              } />
+              <Route path="/teacher/grading" element={
+                <TeacherRoute>
+                  <TeacherGrading />
+                </TeacherRoute>
+              } />
+
+              {/* Student-only routes */}
+              <Route path="/student" element={
+                <StudentRoute>
+                  <StudentPortal />
+                </StudentRoute>
+              } />
+              <Route path="/student/assignments" element={
+                <StudentRoute>
+                  <StudentAssignments />
+                </StudentRoute>
+              } />
+              <Route path="/student/assignment/:homeworkId" element={
+                <StudentRoute>
+                  <AssignmentSubmission />
+                </StudentRoute>
+              } />
+
+              {/* Course details - accessible by teachers and students */}
+              <Route path="/course/:courseId" element={
+                <ProtectedRoute requiredRole={['teacher', 'student']}>
+                  <CourseDetail />
+                </ProtectedRoute>
+              } />
+
+              {/* 404 page */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </div>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

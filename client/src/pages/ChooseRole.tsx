@@ -23,7 +23,7 @@ const ChooseRole = () => {
     try {
       const token = localStorage.getItem("token");
       await axios.put(
-        "http://localhost:8080/user/users/role", // Đổi endpoint cho phù hợp BE
+        "http://localhost:8888/api/users/role", // API Gateway endpoint
         { role: selectedRole },
         {
           headers: {

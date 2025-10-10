@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   DropdownMenu, 
@@ -21,30 +22,74 @@ import {
   X,
   FileText,
   GraduationCap,
-  PlusCircle
+  PlusCircle,
+  User,
+  Shield
 } from "lucide-react";
+import { useAuth, getRoleDisplayName, getRoleColor } from "@/contexts/AuthContext";
 
 const Navigation = () => {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user, isAuthenticated, logout } = useAuth();
   
-  const navItems = [
-    { path: "/", label: "Dashboard", icon: BarChart3 },
-    { path: "/classroom", label: "Classroom", icon: Video },
-    { path: "/teacher", label: "Teacher", icon: Users },
-    { path: "/admin", label: "Admin", icon: Settings },
-    { path: "/student", label: "Student Portal", icon: BookOpen },
-  ];
+  // Define navigation items based on roles
+  const getNavItems = () => {
+    if (!isAuthenticated) {
+      return [
+        { path: "/", label: "Home", icon: BookOpen },
+        { path: "/login", label: "Login", icon: User },
+      ];
+    }
 
-  const teacherItems = [
-    { path: "/teacher/create-assignment", label: "Create Assignment", icon: PlusCircle },
-    { path: "/teacher/grading", label: "Grade Assignments", icon: GraduationCap },
-  ];
+    const baseItems = [
+      { path: "/", label: "Dashboard", icon: BarChart3 },
+    ];
 
-  const studentItems = [
-    { path: "/student/assignments", label: "My Assignments", icon: FileText },
-  ];
+    switch (user?.role) {
+      case 'admin':
+        return [
+          ...baseItems,
+          { path: "/admin", label: "Admin Panel", icon: Shield },
+          { path: "/classroom", label: "Classroom", icon: Video },
+        ];
+      case 'teacher':
+        return [
+          ...baseItems,
+          { path: "/teacher", label: "Teacher Dashboard", icon: Users },
+          { path: "/classroom", label: "Classroom", icon: Video },
+        ];
+      case 'student':
+        return [
+          ...baseItems,
+          { path: "/student", label: "Student Portal", icon: BookOpen },
+          { path: "/classroom", label: "Classroom", icon: Video },
+        ];
+      default:
+        return baseItems;
+    }
+  };
 
+  const getQuickActions = () => {
+    if (!isAuthenticated) return [];
+
+    switch (user?.role) {
+      case 'teacher':
+        return [
+          { path: "/teacher/create-assignment", label: "Create Assignment", icon: PlusCircle },
+          { path: "/teacher/grading", label: "Grade Assignments", icon: GraduationCap },
+        ];
+      case 'student':
+        return [
+          { path: "/student/assignments", label: "My Assignments", icon: FileText },
+        ];
+      default:
+        return [];
+    }
+  };
+
+  const navItems = getNavItems();
+  const quickActions = getQuickActions();
   const isActive = (path: string) => location.pathname === path;
 
   return (
@@ -83,77 +128,91 @@ const Navigation = () => {
               );
             })}
             
-            {/* Quick access items */}
-            <div className="h-6 border-l border-border mx-2"></div>
-            
-            {teacherItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`flex items-center space-x-1 px-2 py-1 rounded-md text-xs font-medium transition-colors ${
-                    isActive(item.path)
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  }`}
-                  title={item.label}
-                >
-                  <Icon className="w-3 h-3" />
-                  <span className="hidden lg:inline">{item.label}</span>
-                </Link>
-              );
-            })}
-            
-            {studentItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`flex items-center space-x-1 px-2 py-1 rounded-md text-xs font-medium transition-colors ${
-                    isActive(item.path)
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  }`}
-                  title={item.label}
-                >
-                  <Icon className="w-3 h-3" />
-                  <span className="hidden lg:inline">{item.label}</span>
-                </Link>
-              );
-            })}
+            {/* Quick access items - only show for authenticated users */}
+            {quickActions.length > 0 && (
+              <>
+                <div className="h-6 border-l border-border mx-2"></div>
+                {quickActions.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={`flex items-center space-x-1 px-2 py-1 rounded-md text-xs font-medium transition-colors ${
+                        isActive(item.path)
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      }`}
+                      title={item.label}
+                    >
+                      <Icon className="w-3 h-3" />
+                      <span className="hidden lg:inline">{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </>
+            )}
           </div>
 
           {/* User menu */}
           <div className="flex items-center space-x-4">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src="/placeholder-avatar.jpg" alt="User" />
-                    <AvatarFallback>AD</AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56 bg-popover" align="end">
-                <DropdownMenuItem asChild>
-                  <Link to="/profile" className="flex items-center">
+            {isAuthenticated ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user?.avatar} alt={user?.name || "User"} />
+                      <AvatarFallback>
+                        {user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56 bg-popover" align="end">
+                  <div className="px-4 py-2">
+                    <p className="text-sm font-medium">{user?.name}</p>
+                    <p className="text-xs text-muted-foreground">{user?.email}</p>
+                    {user?.role && (
+                      <Badge 
+                        variant="secondary" 
+                        className={`mt-1 capitalize text-xs ${getRoleColor(user.role)}`}
+                      >
+                        {getRoleDisplayName(user.role)}
+                      </Badge>
+                    )}
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/profile" className="flex items-center">
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Profile</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Calendar className="mr-2 h-4 w-4" />
+                    <span>Schedule</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
                     <Settings className="mr-2 h-4 w-4" />
-                    <span>Thông tin cá nhân</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Calendar className="mr-2 h-4 w-4" />
-                  <span>Lịch trình</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Đăng xuất</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    <span>Settings</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={logout} className="text-red-600">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Logout</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <Button variant="ghost" asChild>
+                  <Link to="/login">Login</Link>
+                </Button>
+                <Button asChild>
+                  <Link to="/register">Sign Up</Link>
+                </Button>
+              </div>
+            )}
 
             {/* Mobile menu button */}
             <div className="md:hidden">
@@ -190,6 +249,31 @@ const Navigation = () => {
                   </Link>
                 );
               })}
+              
+              {/* Quick actions for mobile */}
+              {quickActions.length > 0 && (
+                <>
+                  <div className="border-t border-border my-2"></div>
+                  {quickActions.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                          isActive(item.path)
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                        }`}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        <Icon className="w-4 h-4" />
+                        <span>{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </>
+              )}
             </div>
           </div>
         )}

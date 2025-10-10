@@ -46,7 +46,7 @@ const StudentPortal = () => {
         if (!token) return;
 
         const response = await axios.post(
-          "http://localhost:8080/user/introspect",
+          "http://localhost:8888/api/users/introspect",
           { token },
           {
             headers: {
@@ -84,7 +84,7 @@ const StudentPortal = () => {
 
       // Call API to join course
       const response = await axios.post(
-        "http://localhost:3636/schedule/join",
+        "http://localhost:8888/api/schedules/join",
         { 
           userId: userInfo.id.toString(),
           joinCode: joinCourseCode.trim() 

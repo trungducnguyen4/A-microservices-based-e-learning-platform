@@ -1,8 +1,9 @@
 import axios from 'axios';
 
-// API Base URLs
-const HOMEWORK_API_BASE = 'http://localhost:8082/api';
-const FILE_API_BASE = 'http://localhost:5000/api';
+// API Base URLs - All requests go through API Gateway
+const API_GATEWAY_BASE = 'http://localhost:8888/api';
+const HOMEWORK_API_BASE = API_GATEWAY_BASE;
+const FILE_API_BASE = API_GATEWAY_BASE;
 
 // Create axios instances
 export const homeworkApi = axios.create({

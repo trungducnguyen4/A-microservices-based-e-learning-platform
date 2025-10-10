@@ -22,6 +22,7 @@ import {
 import { format } from "date-fns";
 import { homeworkService, submissionService, fileService, type SubmissionCreationRequest } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface HomeworkData {
   id: string;
@@ -65,8 +66,9 @@ export default function AssignmentSubmission() {
   const [submissionText, setSubmissionText] = useState("");
   const [submissionFiles, setSubmissionFiles] = useState<any[]>([]);
   
-  // Mock student ID - replace with actual authentication
-  const studentId = "student-123";
+  // Get student ID from authentication
+  const { user } = useAuth();
+  const studentId = user?.id || "student-123";
 
   useEffect(() => {
     loadHomeworkData();

@@ -77,7 +77,7 @@ const TeacherDashboard = () => {
       setTeacherId(payload.sub);
 
       // Call API to get teacher's courses
-      const response = await axios.get(`http://localhost:3636/schedule/${payload.sub}`, {
+      const response = await axios.get(`http://localhost:8888/api/schedules/${payload.sub}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -128,7 +128,7 @@ const TeacherDashboard = () => {
 
   // Handle course click to navigate to course detail
   const handleCourseClick = (courseId: string) => {
-    window.location.href = `http://localhost:8081/course/${courseId}`;
+    window.location.href = `/course/${courseId}`;
   };
 
   // Load data on mount

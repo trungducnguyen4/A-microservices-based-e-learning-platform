@@ -49,7 +49,7 @@ export default function CourseDetail() {
 
       // Call API to get course detail
       console.log(`Loading course detail for ID: ${courseId}`);
-      const response = await axios.get(`http://localhost:3636/schedule/${courseId}`, {
+      const response = await axios.get(`http://localhost:8888/api/schedules/${courseId}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }

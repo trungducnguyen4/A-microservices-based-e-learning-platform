@@ -3,7 +3,8 @@ FROM eclipse-temurin:17-jdk-alpine AS builder
 
 WORKDIR /app
 
-# Copy Maven wrapper and pom.xml
+# Copy Maven wrapper files
+COPY .mvn .mvn
 COPY mvnw* ./
 COPY pom.xml ./
 

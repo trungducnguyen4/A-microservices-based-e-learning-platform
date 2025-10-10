@@ -12,11 +12,157 @@ import {
   Play,
   MessageSquare,
   FileText,
-  Award
+  Award,
+  ArrowRight,
+  GraduationCap,
+  Settings
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Dashboard = () => {
+  const { user, isAuthenticated } = useAuth();
+
+  // Show different content based on authentication status
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-accent/5 to-secondary/5">
+        <div className="container mx-auto px-4 py-16">
+          {/* Hero Section */}
+          <div className="text-center mb-16">
+            <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-6">
+              Welcome to EduPlatform
+            </h1>
+            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+              A comprehensive e-learning platform for students, teachers, and administrators. 
+              Manage courses, assignments, and track progress all in one place.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button asChild size="lg" className="text-lg px-8 py-6">
+                <Link to="/login">
+                  Get Started
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="lg" className="text-lg px-8 py-6">
+                <Link to="/register">Sign Up</Link>
+              </Button>
+            </div>
+          </div>
+
+          {/* Features Grid */}
+          <div className="grid md:grid-cols-3 gap-8 mb-16">
+            <Card className="text-center">
+              <CardHeader>
+                <GraduationCap className="h-12 w-12 mx-auto mb-4 text-primary" />
+                <CardTitle>For Students</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Access assignments, submit homework, track grades, and engage with course materials.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="text-center">
+              <CardHeader>
+                <Users className="h-12 w-12 mx-auto mb-4 text-primary" />
+                <CardTitle>For Teachers</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Create assignments, grade submissions, manage courses, and track student progress.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="text-center">
+              <CardHeader>
+                <Settings className="h-12 w-12 mx-auto mb-4 text-primary" />
+                <CardTitle>For Administrators</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Oversee the platform, manage users, monitor system performance, and generate reports.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* CTA Section */}
+          <div className="text-center">
+            <h2 className="text-3xl font-bold mb-4">Ready to get started?</h2>
+            <p className="text-lg text-muted-foreground mb-8">
+              Join thousands of educators and students already using EduPlatform
+            </p>
+            <Button asChild size="lg">
+              <Link to="/login">Start Learning Today</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Authenticated user dashboard - redirect to appropriate role dashboard
+  if (user?.role === 'student') {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-primary mb-2">Welcome back, {user.name}!</h1>
+          <p className="text-muted-foreground">Here's what's happening in your courses today.</p>
+        </div>
+        <div className="text-center py-12">
+          <BookOpen className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+          <h2 className="text-xl font-semibold mb-2">Go to Student Portal</h2>
+          <p className="text-muted-foreground mb-4">Access your assignments, grades, and course materials.</p>
+          <Button asChild>
+            <Link to="/student">Open Student Portal</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (user?.role === 'teacher') {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-primary mb-2">Welcome back, {user.name}!</h1>
+          <p className="text-muted-foreground">Manage your courses and track student progress.</p>
+        </div>
+        <div className="text-center py-12">
+          <Users className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+          <h2 className="text-xl font-semibold mb-2">Go to Teacher Dashboard</h2>
+          <p className="text-muted-foreground mb-4">Create assignments, grade work, and manage your classes.</p>
+          <Button asChild>
+            <Link to="/teacher">Open Teacher Dashboard</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (user?.role === 'admin') {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-primary mb-2">Welcome back, {user.name}!</h1>
+          <p className="text-muted-foreground">Monitor and manage the entire platform.</p>
+        </div>
+        <div className="text-center py-12">
+          <Settings className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+          <h2 className="text-xl font-semibold mb-2">Go to Admin Panel</h2>
+          <p className="text-muted-foreground mb-4">Oversee users, system performance, and platform settings.</p>
+          <Button asChild>
+            <Link to="/admin">Open Admin Panel</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback for authenticated users without specific roles
   const stats = [
     { 
       title: "Active Courses", 

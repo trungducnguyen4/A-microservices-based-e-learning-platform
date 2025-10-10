@@ -25,6 +25,7 @@ import {
 import { format } from "date-fns";
 import { homeworkService, submissionService, fileService } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface HomeworkData {
   id: string;
@@ -71,8 +72,9 @@ export default function TeacherGrading() {
   const [score, setScore] = useState<number>(0);
   const [feedback, setFeedback] = useState("");
   
-  // Mock teacher ID - replace with actual authentication
-  const teacherId = "teacher-123";
+  // Get teacher ID from authentication
+  const { user } = useAuth();
+  const teacherId = user?.id || "teacher-123";
 
   useEffect(() => {
     loadAssignments();
@@ -138,6 +140,7 @@ export default function TeacherGrading() {
       const gradingData = {
         score,
         feedback,
+        gradedBy: teacherId,
       };
       
       await submissionService.gradeSubmission(selectedSubmission.id, gradingData);

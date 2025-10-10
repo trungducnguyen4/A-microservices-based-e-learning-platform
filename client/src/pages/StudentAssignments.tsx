@@ -19,6 +19,7 @@ import {
 import { format, isAfter, isBefore, addDays } from "date-fns";
 import { homeworkService, submissionService } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface HomeworkData {
   id: string;
@@ -61,8 +62,9 @@ export default function StudentAssignments() {
   const [sortBy, setSortBy] = useState<SortBy>("dueDate");
   const [showFilters, setShowFilters] = useState(false);
   
-  // Mock student ID - replace with actual authentication
-  const studentId = "student-123";
+  // Get student ID from authentication
+  const { user } = useAuth();
+  const studentId = user?.id || "student-123";
 
   useEffect(() => {
     loadAssignments();
