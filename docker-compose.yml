@@ -1,25 +1,25 @@
 services:
   # Database Services
-  mysql:
-    image: mysql:8.0
-    container_name: e-learning-mysql
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
-      MYSQL_DATABASE: ${DB_NAME:-e_learning}
-      MYSQL_USER: ${DB_USER:-elearning}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-password}
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-      - ./docker/mysql/init:/docker-entrypoint-initdb.d
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      timeout: 20s
-      retries: 10
-    networks:
-      - e-learning-network
+  # MySQL service commented out - using XAMPP MySQL instead
+  # mysql:
+  #   image: mysql:8.0
+  #   container_name: e-learning-mysql
+  #   restart: unless-stopped
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-}
+  #     MYSQL_USER: ${DB_USER:-root}
+  #     MYSQL_PASSWORD: ${DB_PASSWORD:-}
+  #   ports:
+  #     - "3306:3306"
+  #   volumes:
+  #     - mysql_data:/var/lib/mysql
+  #     - ./docker/mysql/init:/docker-entrypoint-initdb.d
+  #   healthcheck:
+  #     test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+  #     timeout: 20s
+  #     retries: 10
+  #   networks:
+  #     - e-learning-network
 
   redis:
     image: redis:7-alpine
@@ -74,9 +74,9 @@ services:
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${DB_NAME:-e_learning}
-      SPRING_DATASOURCE_USERNAME: ${DB_USER:-elearning}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-password}
+      SPRING_DATASOURCE_URL: jdbc:mysql://host.docker.internal:3306/user_db
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-root}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-}
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET:-your-very-secure-jwt-secret-key-here}
@@ -84,8 +84,6 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      mysql:
-        condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
@@ -99,15 +97,15 @@ services:
 
   homework-service:
     build:
-      context: ./HomeworkService/HomeworkService
+      context: ./HomeworkService
       dockerfile: Dockerfile
     container_name: e-learning-homework-service
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${DB_NAME:-e_learning}
-      SPRING_DATASOURCE_USERNAME: ${DB_USER:-elearning}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-password}
+      SPRING_DATASOURCE_URL: jdbc:mysql://host.docker.internal:3306/homework_db
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-root}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-}
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET:-your-very-secure-jwt-secret-key-here}
@@ -117,8 +115,6 @@ services:
     ports:
       - "8081:8081"
     depends_on:
-      mysql:
-        condition: service_healthy
       redis:
         condition: service_healthy
       user-service:
@@ -140,9 +136,9 @@ services:
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${DB_NAME:-e_learning}
-      SPRING_DATASOURCE_USERNAME: ${DB_USER:-elearning}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-password}
+      SPRING_DATASOURCE_URL: jdbc:mysql://host.docker.internal:3306/schedule_db
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-root}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-}
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET:-your-very-secure-jwt-secret-key-here}
@@ -151,8 +147,6 @@ services:
     ports:
       - "8082:8082"
     depends_on:
-      mysql:
-        condition: service_healthy
       redis:
         condition: service_healthy
       user-service:
@@ -188,8 +182,6 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      mysql:
-        condition: service_healthy
       redis:
         condition: service_healthy
       user-service:
@@ -225,8 +217,6 @@ services:
     ports:
       - "3001:3001"
     depends_on:
-      mysql:
-        condition: service_healthy
       redis:
         condition: service_healthy
     volumes:

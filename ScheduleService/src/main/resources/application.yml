@@ -11,9 +11,9 @@ spring:
     activate:
       on-profile: development
   datasource:
-    url: jdbc:mysql://localhost:3306/e_learning
-    username: elearning
-    password: password
+    url: jdbc:mysql://localhost:3306/schedule_db
+    username: root
+    password:
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -56,9 +56,9 @@ spring:
     activate:
       on-profile: docker
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/e_learning}
-    username: ${SPRING_DATASOURCE_USERNAME:elearning}
-    password: ${SPRING_DATASOURCE_PASSWORD:password}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://host.docker.internal:3306/schedule_db}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
