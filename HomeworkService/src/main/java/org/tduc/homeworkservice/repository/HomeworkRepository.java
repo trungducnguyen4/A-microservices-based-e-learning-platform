@@ -45,7 +45,7 @@ public interface HomeworkRepository extends JpaRepository<Homework, String> {
     List<Homework> findOverdueHomework(@Param("status") HomeworkStatus status, @Param("currentTime") LocalDateTime currentTime);
     
     // Find homework assigned to student
-    @Query("SELECT h FROM Homework h WHERE h.courseId = :courseId AND (h.assignedTo IS NULL OR JSON_CONTAINS(h.assignedTo, JSON_QUOTE(:studentId)))")
+    @Query("SELECT h FROM Homework h WHERE h.courseId = :courseId AND (h.assignedTo IS NULL OR h.assignedTo LIKE CONCAT('%', :studentId, '%'))")
     List<Homework> findHomeworkAssignedToStudent(@Param("courseId") String courseId, @Param("studentId") String studentId);
     
     // Count homework by status and course
@@ -64,4 +64,21 @@ public interface HomeworkRepository extends JpaRepository<Homework, String> {
     // Find published homework
     @Query("SELECT h FROM Homework h WHERE h.status = 'PUBLISHED' AND h.courseId = :courseId ORDER BY h.dueDate ASC")
     List<Homework> findPublishedHomeworkByCourse(@Param("courseId") String courseId);
+    
+    // Additional methods needed for compilation errors
+    
+    // Find by title or description containing (for search)
+    @Query("SELECT h FROM Homework h WHERE LOWER(h.title) LIKE LOWER(CONCAT('%', :title, '%')) OR LOWER(h.description) LIKE LOWER(CONCAT('%', :description, '%'))")
+    Page<Homework> findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(@Param("title") String title, @Param("description") String description, Pageable pageable);
+    
+    // Find active homeworks for student
+    @Query("SELECT h FROM Homework h WHERE h.courseId = :courseId AND h.status = 'PUBLISHED' AND h.dueDate > :currentTime")
+    List<Homework> findActiveHomeworksForStudent(@Param("courseId") String courseId, @Param("currentTime") LocalDateTime currentTime);
+    
+    // Find overdue homeworks
+    @Query("SELECT h FROM Homework h WHERE h.courseId = :courseId AND h.status = 'PUBLISHED' AND h.dueDate < :currentTime")
+    List<Homework> findOverdueHomeworks(@Param("courseId") String courseId, @Param("currentTime") LocalDateTime currentTime);
+    
+    // Count by course ID
+    Long countByCourseId(String courseId);
 }

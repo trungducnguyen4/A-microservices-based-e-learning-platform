@@ -16,4 +16,7 @@ public interface SubmissionCommentRepository extends JpaRepository<SubmissionCom
     Long countBySubmissionId(String submissionId);
     
     List<SubmissionComment> findBySubmissionIdAndIsPrivateOrderByCreatedAtDesc(String submissionId, Boolean isPrivate);
+    
+    // Additional method needed for compilation errors
+    void deleteBySubmissionId(String submissionId);
 }

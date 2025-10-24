@@ -33,6 +33,17 @@ public class HomeworkService {
     private final HomeworkMapper homeworkMapper;
 
     /**
+     * Get all homeworks
+     */
+    public List<HomeworkResponse> getAllHomeworks() {
+        log.info("Getting all homeworks");
+        List<Homework> homeworks = homeworkRepository.findAll();
+        return homeworks.stream()
+            .map(homeworkMapper::toHomeworkResponse)
+            .collect(Collectors.toList());
+    }
+    
+    /**
      * Create a new homework assignment
      */
     public HomeworkResponse createHomework(HomeworkCreationRequest request) {

@@ -24,9 +24,8 @@ public class Submission {
     @GeneratedValue(strategy = GenerationType.UUID)
     String id;
     
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "homework_id", nullable = false)
-    Homework homework;
+    @Column(nullable = false)
+    String homeworkId;
     
     @Column(nullable = false)
     String studentId;
@@ -110,10 +109,44 @@ public class Submission {
     @Column(columnDefinition = "JSON")
     String peerReviewScores;
     
-    // Relationships
-    @OneToMany(mappedBy = "submission", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    List<SubmissionComment> comments;
+    // No direct relationships - application logic will handle these
     
-    @OneToMany(mappedBy = "submission", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    List<SubmissionFile> files;
+    // This method is no longer needed as we have a direct homeworkId field
+    // Keeping it for backward compatibility with existing code
+    public String getHomeworkId() {
+        return homeworkId;
+    }
+    
+    // For storing original score before any penalties are applied
+    private BigDecimal originalScore;
+    
+    public void setOriginalScore(BigDecimal originalScore) {
+        this.originalScore = originalScore;
+    }
+    
+    public BigDecimal getOriginalScore() {
+        return originalScore;
+    }
+    
+    // For storing rubric scores
+    private String rubricScores;
+    
+    public void setRubricScores(String rubricScores) {
+        this.rubricScores = rubricScores;
+    }
+    
+    public String getRubricScores() {
+        return rubricScores;
+    }
+    
+    // For storing private notes
+    private String privateNotes;
+    
+    public void setPrivateNotes(String privateNotes) {
+        this.privateNotes = privateNotes;
+    }
+    
+    public String getPrivateNotes() {
+        return privateNotes;
+    }
 }

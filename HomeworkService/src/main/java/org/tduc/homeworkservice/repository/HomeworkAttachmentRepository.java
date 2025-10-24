@@ -14,4 +14,7 @@ public interface HomeworkAttachmentRepository extends JpaRepository<HomeworkAtta
     Long countByHomeworkId(String homeworkId);
     
     List<HomeworkAttachment> findByUploadedByOrderByCreatedAtDesc(String uploadedBy);
+    
+    // Additional method needed for compilation errors
+    void deleteByHomeworkId(String homeworkId);
 }

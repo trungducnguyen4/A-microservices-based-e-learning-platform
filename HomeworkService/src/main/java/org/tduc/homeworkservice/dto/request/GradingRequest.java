@@ -31,4 +31,16 @@ public class GradingRequest {
     
     @NotBlank(message = "Graded by is required")
     String gradedBy;
+    
+    // Additional fields needed for compilation
+    String rubricScores;
+    String privateNotes;
+    
+    public String getRubricScores() {
+        return rubricScores;
+    }
+    
+    public String getPrivateNotes() {
+        return privateNotes;
+    }
 }

@@ -21,9 +21,8 @@ public class SubmissionFile {
     @GeneratedValue(strategy = GenerationType.UUID)
     String id;
     
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "submission_id", nullable = false)
-    Submission submission;
+    @Column(nullable = false)
+    String submissionId;
     
     @Column(nullable = false)
     String fileName;

@@ -22,9 +22,8 @@ public class HomeworkAttachment {
     @GeneratedValue(strategy = GenerationType.UUID)
     String id;
     
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "homework_id", nullable = false)
-    Homework homework;
+    @Column(nullable = false)
+    String homeworkId;
     
     @Column(nullable = false)
     String fileName;

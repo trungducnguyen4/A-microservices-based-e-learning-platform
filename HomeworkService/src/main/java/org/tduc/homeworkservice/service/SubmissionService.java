@@ -90,9 +90,11 @@ public class SubmissionService {
         submission.setAttemptNumber(existingSubmissions.size() + 1);
         
         // Apply late penalty if applicable
-        if (isLate && homework.getLatePenaltyConfig() != null) {
-            submission.setLatePenaltyApplied(true);
-            // You can implement penalty calculation logic here
+        if (isLate && homework.getLatePenaltyConfig().getEnabled()) {
+            submission.setLatePenaltyApplied(homework.getLatePenaltyConfig().getPercentagePerDay());
+            // Penalty calculation logic is implemented in applyLatePenalty method
+        } else {
+            submission.setLatePenaltyApplied(null);
         }
         
         Submission savedSubmission = submissionRepository.save(submission);
@@ -121,9 +123,8 @@ public class SubmissionService {
         
         // Apply late penalty if applicable
         BigDecimal finalScore = request.getScore();
-        if (submission.getIsLate() && submission.getLatePenaltyApplied()) {
-            // Implement penalty calculation - for example, 10% penalty per day late
-            // This is just an example - you should implement based on your business rules
+        if (submission.getIsLate() && submission.getLatePenaltyApplied() != null) {
+            // Apply late penalty using the stored penalty rate
             finalScore = applyLatePenalty(finalScore, submission.getSubmittedAt(), homework.getDueDate());
         }
         
@@ -291,7 +292,7 @@ public class SubmissionService {
             
             // Apply the same grading template to all submissions
             BigDecimal finalScore = gradingTemplate.getScore();
-            if (submission.getIsLate() && submission.getLatePenaltyApplied()) {
+            if (submission.getIsLate() && submission.getLatePenaltyApplied() != null) {
                 finalScore = applyLatePenalty(finalScore, submission.getSubmittedAt(), homework.getDueDate());
             }
             

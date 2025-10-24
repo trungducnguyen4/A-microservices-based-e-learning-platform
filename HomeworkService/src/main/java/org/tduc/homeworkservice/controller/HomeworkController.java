@@ -253,4 +253,20 @@ public class HomeworkController {
             .result("OK")
             .build();
     }
+    
+    /**
+     * Get all homeworks
+     */
+    @GetMapping
+    public ApiResponse<List<HomeworkResponse>> getAllHomeworks() {
+        log.info("GET /api/homework - Getting all homeworks");
+        
+        List<HomeworkResponse> homeworks = homeworkService.getAllHomeworks();
+        
+        return ApiResponse.<List<HomeworkResponse>>builder()
+            .code(HttpStatus.OK.value())
+            .message("Homeworks retrieved successfully")
+            .result(homeworks)
+            .build();
+    }
 }

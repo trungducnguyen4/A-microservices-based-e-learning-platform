@@ -29,8 +29,9 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-      - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf
-    command: redis-server /usr/local/etc/redis/redis.conf
+    # Removed custom redis.conf due to permission issues
+    # - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    # command: redis-server /usr/local/etc/redis/redis.conf
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       timeout: 10s
@@ -41,7 +42,7 @@ services:
   # API Gateway
   api-gateway:
     build:
-      context: ./ApiGateway
+      context: ApiGateway
       dockerfile: Dockerfile
     container_name: e-learning-api-gateway
     restart: unless-stopped
@@ -77,8 +78,14 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://host.docker.internal:3306/user_db
       SPRING_DATASOURCE_USERNAME: ${DB_USER:-root}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-}
+      # Covering all possible Redis property names in Spring Boot
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      # Added hostname for Lettuce Redis driver
+      LETTUCE_REDIS_HOST: redis
+      LETTUCE_REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET:-your-very-secure-jwt-secret-key-here}
       SERVER_PORT: 8080
     ports:

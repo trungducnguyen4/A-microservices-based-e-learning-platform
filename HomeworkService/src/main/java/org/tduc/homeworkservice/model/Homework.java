@@ -148,10 +148,25 @@ public class Homework {
     @Column(columnDefinition = "JSON")
     String tags;
     
-    // Relationships
-    @OneToMany(mappedBy = "homework", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    List<Submission> submissions;
+    // No relationships - handle at application logic level
     
-    @OneToMany(mappedBy = "homework", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    List<HomeworkAttachment> homeworkAttachments;
+    // Parse latePenalty JSON string to LatePenaltyConfig object
+    public LatePenaltyConfig getLatePenaltyConfig() {
+        // Return default penalty config if none is specified
+        if (latePenalty == null || latePenalty.isBlank()) {
+            return LatePenaltyConfig.builder()
+                    .enabled(false)
+                    .build();
+        }
+        
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            return objectMapper.readValue(latePenalty, LatePenaltyConfig.class);
+        } catch (Exception e) {
+            // Log error and return default
+            return LatePenaltyConfig.builder()
+                    .enabled(false)
+                    .build();
+        }
+    }
 }

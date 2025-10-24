@@ -3,6 +3,9 @@ spring:
     name: ApiGateway
   profiles:
     active: development
+  cloud:
+    compatibility-verifier:
+      enabled: false
 
 ---
 # Development Profile
@@ -117,7 +120,7 @@ management:
 
 logging:
   level:
-    com.elearning.gateway: DEBUG
+    org.tduc.apigateway: DEBUG
     org.springframework.cloud.gateway: DEBUG
 
 ---
@@ -232,5 +235,5 @@ management:
 
 logging:
   level:
-    com.elearning.gateway: INFO
+    org.tduc.apigateway: INFO
     root: INFO

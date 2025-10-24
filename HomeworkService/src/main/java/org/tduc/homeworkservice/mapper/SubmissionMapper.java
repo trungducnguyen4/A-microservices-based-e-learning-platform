@@ -14,7 +14,7 @@ import java.util.List;
 public interface SubmissionMapper {
     
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "homework", ignore = true)
+    @Mapping(target = "homeworkId", source = "homeworkId")
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "submittedAt", ignore = true)
@@ -32,20 +32,16 @@ public interface SubmissionMapper {
     @Mapping(target = "similarityScore", ignore = true)
     @Mapping(target = "peerReviewAssignments", ignore = true)
     @Mapping(target = "peerReviewScores", ignore = true)
-    @Mapping(target = "comments", ignore = true)
-    @Mapping(target = "files", ignore = true)
     @Mapping(source = "attachmentIds", target = "attachments", qualifiedByName = "listToJson")
     Submission toSubmission(SubmissionCreationRequest request);
     
-    @Mapping(source = "homework.id", target = "homeworkId")
-    @Mapping(target = "files", ignore = true)
-    @Mapping(target = "comments", ignore = true)
+    @Mapping(source = "homeworkId", target = "homeworkId")
     SubmissionResponse toSubmissionResponse(Submission submission);
     
     List<SubmissionResponse> toSubmissionResponseList(List<Submission> submissions);
     
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "homework", ignore = true)
+    @Mapping(target = "homeworkId", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "submittedAt", ignore = true)
@@ -63,8 +59,6 @@ public interface SubmissionMapper {
     @Mapping(target = "similarityScore", ignore = true)
     @Mapping(target = "peerReviewAssignments", ignore = true)
     @Mapping(target = "peerReviewScores", ignore = true)
-    @Mapping(target = "comments", ignore = true)
-    @Mapping(target = "files", ignore = true)
     void updateSubmissionFromRequest(SubmissionCreationRequest request, @MappingTarget Submission submission);
     
     @org.mapstruct.Named("listToJson")
