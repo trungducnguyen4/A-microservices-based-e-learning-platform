@@ -1,5 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
+import { api } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,15 +23,7 @@ const ChooseRole = () => {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.put(
-        "http://localhost:8888/api/users/role", // API Gateway endpoint
-        { role: selectedRole },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      await api.put(`/users/role`, { role: selectedRole });
       if (selectedRole === "student") {
         navigate("/student");
       } else if (selectedRole === "teacher") {

@@ -20,7 +20,6 @@ import java.util.List;
 @RequestMapping("/api/homework")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*")
 public class HomeworkController {
     
     private final HomeworkService homeworkService;

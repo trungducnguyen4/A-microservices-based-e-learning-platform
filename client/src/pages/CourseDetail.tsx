@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
+import { api } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -49,11 +50,7 @@ export default function CourseDetail() {
 
       // Call API to get course detail
       console.log(`Loading course detail for ID: ${courseId}`);
-      const response = await axios.get(`http://localhost:8888/api/schedules/${courseId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      const response = await api.get(`/schedules/${courseId}`);
 
       console.log("API Response:", response.data);
       const courseData = response.data.result;

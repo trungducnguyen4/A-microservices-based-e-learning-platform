@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 // API Base URLs - All requests go through API Gateway
-const API_GATEWAY_BASE = 'http://localhost:8888/api';
+// Use Vite env var when available (VITE_API_BASE), otherwise default to localhost
+const API_GATEWAY_BASE = (import.meta as any)?.env?.VITE_API_BASE ?? 'http://localhost:8888/api';
 const HOMEWORK_API_BASE = API_GATEWAY_BASE;
 const FILE_API_BASE = API_GATEWAY_BASE;
 
@@ -269,3 +270,18 @@ export default {
   submissionService,
   fileService,
 };
+
+// Generic API axios instance for other services (users, schedules, etc.)
+export const api = axios.create({
+  baseURL: API_GATEWAY_BASE,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// attach auth interceptor
+api.interceptors.request.use((config: any) => {
+  const token = localStorage.getItem('token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});

@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import axios from "axios";
+import { api } from "@/lib/api";
 import { 
   BookOpen, 
   Calendar as CalendarIcon, 
@@ -45,16 +46,7 @@ const StudentPortal = () => {
         const token = localStorage.getItem("token");
         if (!token) return;
 
-        const response = await axios.post(
-          "http://localhost:8888/api/users/introspect",
-          { token },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-        
+        const response = await api.post(`/users/introspect`, { token });
         setUserInfo(response.data.result);
       } catch (error) {
         console.error("Failed to fetch user info:", error);
@@ -83,18 +75,10 @@ const StudentPortal = () => {
       }
 
       // Call API to join course
-      const response = await axios.post(
-        "http://localhost:8888/api/schedules/join",
-        { 
-          userId: userInfo.id.toString(),
-          joinCode: joinCourseCode.trim() 
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await api.post(`/schedules/join`, { 
+        userId: userInfo.id.toString(),
+        joinCode: joinCourseCode.trim() 
+      });
 
       if (response.data.code === 200 && response.data.result) {
         alert("Tham gia khóa học thành công!");

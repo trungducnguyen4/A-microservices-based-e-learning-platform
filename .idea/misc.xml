@@ -8,6 +8,7 @@
         <option value="$PROJECT_DIR$/ScheduleService/pom.xml" />
         <option value="$PROJECT_DIR$/HomeworkService/HomeworkService/pom.xml" />
         <option value="$PROJECT_DIR$/ApiGateway/pom.xml" />
+        <option value="$PROJECT_DIR$/HomeworkService/pom.xml" />
       </list>
     </option>
   </component>

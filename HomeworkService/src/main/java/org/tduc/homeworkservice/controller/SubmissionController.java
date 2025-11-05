@@ -20,7 +20,6 @@ import java.util.Optional;
 @RequestMapping("/api/submission")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*")
 public class SubmissionController {
     
     private final SubmissionService submissionService;

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 export type UserRole = 'student' | 'teacher' | 'admin';
 
@@ -60,49 +61,52 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      
-      // Mock authentication - replace with actual API call
-      // For demo purposes, we'll simulate different users based on email
-      let mockUser: User;
-      let mockToken = 'mock-jwt-token-' + Date.now();
+      // Real authentication via API Gateway
+      // Use Vite env var if available, fall back to localhost gateway
+      const API_BASE = (import.meta as any)?.env?.VITE_API_BASE ?? 'http://localhost:8888';
 
-      if (email.includes('teacher')) {
-        mockUser = {
-          id: 'teacher-123',
-          email,
-          name: 'John Teacher',
-          role: 'teacher',
-          avatar: '/teacher-avatar.jpg'
-        };
-      } else if (email.includes('admin')) {
-        mockUser = {
-          id: 'admin-123',
-          email,
-          name: 'Admin User',
-          role: 'admin',
-          avatar: '/admin-avatar.jpg'
-        };
-      } else {
-        mockUser = {
-          id: 'student-123',
-          email,
-          name: 'Jane Student',
-          role: 'student',
-          avatar: '/student-avatar.jpg'
-        };
+      // UserService expects { username, password }
+      const payload = { username: email, password };
+
+      const response = await axios.post(`${API_BASE}/api/users/auth/login`, payload, {
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const apiResp = response.data;
+      const token: string | undefined = apiResp?.result?.token;
+      if (!token) {
+        throw new Error(apiResp?.message || 'No token returned from server');
       }
 
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Save token
+      localStorage.setItem('token', token);
 
-      // Store auth data
-      localStorage.setItem('token', mockToken);
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      
-      setUser(mockUser);
-      
-      // Redirect based on role
-      switch (mockUser.role) {
+      // Decode JWT payload to build minimal user object
+      const decodeJWT = (t: string) => {
+        try {
+          const payloadPart = t.split('.')[1];
+          const decoded = atob(payloadPart.replace(/-/g, '+').replace(/_/g, '/'));
+          return JSON.parse(decoded);
+        } catch (err) {
+          console.error('Failed to decode JWT', err);
+          return null;
+        }
+      };
+
+      const decoded = decodeJWT(token) || {};
+      const builtUser: User = {
+        id: decoded.sub || decoded.userId || decoded.id || 'unknown',
+        email: decoded.email || email,
+        name: decoded.name || decoded.fullName || decoded.username || email,
+        role: (decoded.role || decoded.roles || 'student') as User['role'],
+        avatar: decoded.avatar || undefined
+      };
+
+      localStorage.setItem('user', JSON.stringify(builtUser));
+      setUser(builtUser);
+
+      // Redirect based on role (same as before)
+      switch (builtUser.role) {
         case 'admin':
           navigate('/admin');
           break;
@@ -117,7 +121,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     } catch (error) {
       console.error('Login error:', error);
-      throw new Error('Login failed. Please check your credentials.');
+      // Try to extract message from axios error
+      const msg = (error as any)?.response?.data?.message || (error as any)?.message || 'Login failed. Please check your credentials.';
+      throw new Error(msg);
     } finally {
       setIsLoading(false);
     }

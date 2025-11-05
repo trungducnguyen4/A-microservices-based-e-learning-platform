@@ -1,5 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
+import { api } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,7 @@ const Register = () => {
     setSuccess(false);
 
     try {
-      const response = await axios.post("http://localhost:8888/api/users/register", {
+      const response = await api.post(`/users/register`, {
         username,
         password,
         email,

@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map; // <-- Add this import
 
 @RestController
+@RequestMapping("/api/users")
 public class UserController {
     @Autowired
     private UserService userService;
@@ -75,6 +76,16 @@ public class UserController {
         AuthResponse result = userService.authenticate(authRequest);
         ApiResponse<AuthResponse> response = new ApiResponse<>();
         response.setResult(result);
+        return response;
+    }
+
+    // Public registration endpoint (used by client: POST /api/users/register forwarded by ApiGateway)
+    // Accept both /auth/register and /register so requests forwarded by the gateway or sent directly will match.
+    @PostMapping({"/auth/register", "/register"})
+    public ApiResponse<User> register(@RequestBody @Valid UserCreationRequest request) {
+        ApiResponse<User> response = new ApiResponse<>();
+        response.setCode(HttpStatus.OK.value());
+        response.setResult(userService.createRequest(request));
         return response;
     }
 

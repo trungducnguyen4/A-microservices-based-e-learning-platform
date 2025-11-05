@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { api } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,11 +61,7 @@ const Profile = () => {
       }
 
       // Gọi API để lấy thông tin us
-      const response = await axios.get(`http://localhost:8888/api/users/profile/${payload.username}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      const response = await api.get(`/users/profile/${payload.username}`);
 
       const userData = response.data.result;
       setProfile({
@@ -114,14 +111,13 @@ const Profile = () => {
       }
 
       // Gọi API để cập nhật thông tin user
-      await axios.put(`http://localhost:8888/api/users/profile/${payload.username}`, {
+      await api.put(`/users/profile/${payload.username}`, {
         email: profile.email,
         fullName: profile.fullName,
         phone: profile.phone,
         department: profile.department
       }, {
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
