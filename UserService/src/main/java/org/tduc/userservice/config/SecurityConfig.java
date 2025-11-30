@@ -21,7 +21,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Configuration
-@EnableMethodSecurity
+// Enable JSR-250 annotations such as @PermitAll
+@EnableMethodSecurity(jsr250Enabled = true)
 public class SecurityConfig {
 
 	// ✅ Filter lấy thông tin người dùng từ header do API Gateway gắn vào
@@ -72,6 +73,7 @@ public class SecurityConfig {
 								"/api/users/auth/login",
 								"/api/users/auth/register",
 								"/api/users/register",
+								"/api/users/choose-role",
 								"/actuator/**"
 						).permitAll()
 
@@ -86,6 +88,13 @@ public class SecurityConfig {
 				.exceptionHandling(ex -> ex.accessDeniedHandler((request, response, accessDeniedException) -> {
 						// Log and send a small message for debugging (kept minimal)
 						request.getServletContext().log("Access denied for request: " + request.getRequestURI() + " - " + accessDeniedException.getMessage());
+						// Additional debug: log current authentication (principal and authorities) if available
+						var auth = SecurityContextHolder.getContext().getAuthentication();
+						if (auth != null) {
+							request.getServletContext().log("Current authentication principal: " + auth.getName() + ", authorities: " + auth.getAuthorities());
+						} else {
+							request.getServletContext().log("Current authentication: <none>");
+						}
 						response.sendError(HttpServletResponse.SC_FORBIDDEN);
 					}));
 

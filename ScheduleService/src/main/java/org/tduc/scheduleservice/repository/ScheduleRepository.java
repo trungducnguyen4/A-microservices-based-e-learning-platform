@@ -9,6 +9,8 @@ import java.util.Optional;
 public interface ScheduleRepository extends JpaRepository<Schedule, String> {
     boolean existsByJoinCode(String randomCode);
 
-    List<Schedule> findByTeacherId(String teacherId);
+    List<Schedule> findByUserId(String userId);
     Optional<Schedule> findByJoinCode(String joinCode);
+    
+    // No course-based lookup here; schedules are joined using joinCode only
 }

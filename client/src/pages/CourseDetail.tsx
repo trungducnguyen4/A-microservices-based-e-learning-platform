@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
-import { api } from "@/lib/api";
+import { api, homeworkService } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Users, BookOpen, Clock, Calendar, Plus, Eye, Edit, Trash2, Loader2 } from "lucide-react";
+import { ArrowLeft, Users, BookOpen, Clock, Calendar, Plus, Eye, Edit, Trash2, Loader2, Copy } from "lucide-react";
 
 export default function CourseDetail() {
   const navigate = useNavigate();
@@ -16,6 +16,10 @@ export default function CourseDetail() {
   const [course, setCourse] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [students, setStudents] = useState<any[]>([]);
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [lessons, setLessons] = useState<any[]>([]);
 
   // Decode JWT để lấy token
   const decodeJWT = (token: string) => {
@@ -59,7 +63,7 @@ export default function CourseDetail() {
       if (!courseData.title && !courseData.name) {
         throw new Error("Khóa học không có tiêu đề");
       }
-      
+
       setCourse({
         id: courseData.id || courseId,
         title: courseData.title || courseData.name,
@@ -70,8 +74,61 @@ export default function CourseDetail() {
         enrolledStudents: courseData.enrolledStudents || 0,
         progress: courseData.progress || 0,
         startDate: courseData.startDate || courseData.createdAt || "Chưa xác định",
+        joinCode: courseData.joinCode || courseData.code || "",
         status: courseData.status || "active"
       });
+
+      // Load assignments for this course from HomeworkService
+      try {
+        const hwResp = await homeworkService.getHomeworksByCourse(String(courseId), 0, 100);
+
+        // homework API may return different shapes depending on backend (Page<T> or List<T>)
+        // Normalize to an array `hwList` safely before mapping
+        let hwList: any[] = [];
+        if (Array.isArray(hwResp)) {
+          hwList = hwResp;
+        } else if (Array.isArray(hwResp?.result)) {
+          hwList = hwResp.result;
+        } else if (Array.isArray(hwResp?.result?.content)) {
+          hwList = hwResp.result.content;
+        } else if (Array.isArray(hwResp?.content)) {
+          hwList = hwResp.content;
+        } else if (Array.isArray(hwResp?.data)) {
+          hwList = hwResp.data;
+        } else {
+          // Fallback: try to use result when it's a single item (not ideal)
+          hwList = [];
+        }
+
+        setAssignments(hwList.map((h: any) => ({
+          id: h.id,
+          title: h.title || h.name || 'Untitled',
+          dueDate: h.dueDate || h.due_date || h.due || '—',
+          submitted: h.submittedCount || h.submitted || 0,
+          total: h.totalStudents || h.total || courseData.enrolledStudents || 0,
+          status: h.status || 'active'
+        })));
+      } catch (e: any) {
+        // ignore assignment load failure but log
+        console.error('Failed to load assignments for course', e);
+      }
+
+      // Try to load enrolled students / participants from schedule service if available
+      try {
+        const partsResp = await api.get(`/schedules/${courseId}/participants`);
+        const parts = partsResp.data?.result || partsResp.data || [];
+        setStudents(parts.map((p: any) => ({
+          id: p.id || p.userId || p.studentId,
+          name: p.name || p.username || p.displayName || p.fullName || 'Unknown',
+          email: p.email || p.contact || '',
+          progress: p.progress || 0,
+          lastActive: p.lastActive || p.updatedAt || ''
+        })));
+      } catch (e) {
+        // If participants endpoint not present, fall back to empty list
+        console.info('Participants endpoint not available or failed', e?.message || e);
+        setStudents([]);
+      }
 
     } catch (err: any) {
       console.error("Error loading course detail:", err);
@@ -96,26 +153,7 @@ export default function CourseDetail() {
     }
   }, [courseId]);
 
-  const students = [
-    { id: 1, name: "Nguyễn Văn A", email: "nguyenvana@email.com", progress: 75, lastActive: "2024-01-20" },
-    { id: 2, name: "Trần Thị B", email: "tranthib@email.com", progress: 60, lastActive: "2024-01-19" },
-    { id: 3, name: "Lê Văn C", email: "levanc@email.com", progress: 90, lastActive: "2024-01-21" },
-    { id: 4, name: "Phạm Thị D", email: "phamthid@email.com", progress: 45, lastActive: "2024-01-18" },
-    { id: 5, name: "Hoàng Văn E", email: "hoangvane@email.com", progress: 80, lastActive: "2024-01-20" },
-  ];
-
-  const assignments = [
-    { id: 1, title: "Bài tập 1: Component cơ bản", dueDate: "2024-01-25", submitted: 20, total: 25, status: "active" },
-    { id: 2, title: "Bài tập 2: Props và State", dueDate: "2024-02-01", submitted: 15, total: 25, status: "active" },
-    { id: 3, title: "Bài tập 3: Hooks", dueDate: "2024-02-08", submitted: 0, total: 25, status: "draft" },
-  ];
-
-  const lessons = [
-    { id: 1, title: "Giới thiệu React", duration: "45 phút", completed: true },
-    { id: 2, title: "JSX và Components", duration: "60 phút", completed: true },
-    { id: 3, title: "Props và State", duration: "75 phút", completed: false },
-    { id: 4, title: "Event Handling", duration: "50 phút", completed: false },
-  ];
+  
 
   // Loading state
   if (loading) {
@@ -173,6 +211,26 @@ export default function CourseDetail() {
         <div className="flex-1">
           <h1 className="text-3xl font-bold text-primary">{course.title}</h1>
           <p className="text-muted-foreground mt-1">{course.description}</p>
+          {course.joinCode && (
+            <div className="mt-2 flex items-center gap-3">
+              <div className="text-sm text-muted-foreground">Mã tham gia:</div>
+              <div className="font-mono text-sm bg-muted/10 px-2 py-1 rounded">{course.joinCode}</div>
+              <Button size="sm" variant="outline" onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(course.joinCode);
+                  // small UX feedback
+                  // eslint-disable-next-line no-alert
+                  alert('Join code copied to clipboard');
+                } catch (e) {
+                  // eslint-disable-next-line no-console
+                  console.error('Copy failed', e);
+                }
+              }}>
+                <Copy className="w-4 h-4 mr-2" />
+                Sao chép
+              </Button>
+            </div>
+          )}
         </div>
         <Badge variant={course.status === "active" ? "default" : "secondary"}>
           {course.status === "active" ? "Đang diễn ra" : "Nháp"}
@@ -184,12 +242,12 @@ export default function CourseDetail() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <Users className="h-8 w-8 text-primary" />
-              <div>
-                <p className="text-2xl font-bold">{course.enrolledStudents}/{course.maxStudents}</p>
-                <p className="text-sm text-muted-foreground">Học sinh</p>
-              </div>
-            </div>
+                  <Users className="h-8 w-8 text-primary" />
+                  <div>
+                    <p className="text-2xl font-bold">{students.length}/{course.maxStudents}</p>
+                    <p className="text-sm text-muted-foreground">Học sinh</p>
+                  </div>
+                </div>
           </CardContent>
         </Card>
 
@@ -379,6 +437,10 @@ export default function CourseDetail() {
                 <div>
                   <p className="font-medium">Số học sinh tối đa</p>
                   <p className="text-muted-foreground">{course.maxStudents}</p>
+                </div>
+                <div>
+                  <p className="font-medium">Mã tham gia (joinCode)</p>
+                  <p className="text-muted-foreground">{course.joinCode || 'Chưa có'}</p>
                 </div>
               </div>
               <div className="flex gap-4 pt-4">

@@ -20,7 +20,20 @@ public class AuthContextUtil {
      */
     public Long getCurrentUserId() {
         String userIdStr = getHeader(USER_ID_HEADER);
-        return userIdStr != null ? Long.parseLong(userIdStr) : null;
+        if (userIdStr == null) return null;
+        try {
+            return Long.parseLong(userIdStr);
+        } catch (NumberFormatException e) {
+            // Not a numeric id (maybe UUID) — return null to let callers choose raw id if needed.
+            return null;
+        }
+    }
+
+    /**
+     * Return the raw user id header value (may be UUID or numeric string).
+     */
+    public String getCurrentUserIdRaw() {
+        return getHeader(USER_ID_HEADER);
     }
     
     /**

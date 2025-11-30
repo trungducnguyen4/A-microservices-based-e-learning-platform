@@ -21,6 +21,18 @@ spring:
           uri: ${USER_SERVICE_URL:http://localhost:8080}
           predicates:
             - Path=/api/users/**
+        - id: schedule-service
+          uri: ${SCHEDULE_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/schedules/**
+        - id: homework-service
+          uri: ${HOMEWORK_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/homework/**
+        - id: announcement-service
+          uri: ${ANNOUNCEMENT_SERVICE_URL:http://localhost:8090}
+          predicates:
+            - Path=/api/announcements/**
           # Do not strip path: user-service expects /api/users/... as configured in UserService
       # (global CORS or more routes can be added here)
   data:
@@ -33,7 +45,9 @@ server:
   port: 8888
 
 jwt:
-  secret: your-very-secure-jwt-secret-key-here
+  # Default to the legacy signer used previously in UserService so signatures match when no env var is set.
+  # Resolution order: JWT_SECRET env var -> property jwt.secret -> this default value
+  secret: ${JWT_SECRET:mysupersecretrandomstringwith32chars!}
 
 management:
   endpoints:
@@ -63,6 +77,19 @@ spring:
           uri: ${USER_SERVICE_URL:http://user-service:8080}
           predicates:
             - Path=/api/users/**
+      
+        - id: schedule-service
+          uri: ${SCHEDULE_SERVICE_URL:http://schedule-service:8082}
+          predicates:
+            - Path=/api/schedules/**
+        - id: homework-service
+          uri: ${HOMEWORK_SERVICE_URL:http://homework-service:8081}
+          predicates:
+            - Path=/api/homework/**
+        - id: announcement-service
+          uri: ${ANNOUNCEMENT_SERVICE_URL:http://announcement-service:8090}
+          predicates:
+            - Path=/api/announcements/**
       # (additional routes and global cors can be added here)
   data:
     redis:
@@ -74,7 +101,8 @@ server:
   port: ${SERVER_PORT:8888}
 
 jwt:
-  secret: ${JWT_SECRET:your-very-secure-jwt-secret-key-here}
+  # Docker/profile-aware property. Prefer environment variable JWT_SECRET when running in containers.
+  secret: ${JWT_SECRET:mysupersecretrandomstringwith32chars!}
 
 management:
   endpoints:

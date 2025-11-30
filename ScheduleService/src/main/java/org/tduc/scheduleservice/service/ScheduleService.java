@@ -55,7 +55,7 @@ public class ScheduleService {
         return savedSchedule;
     }
     public List<Schedule> getSchedulesById(String teacherId) {
-        return scheduleRepository.findByTeacherId(teacherId);
+        return scheduleRepository.findByUserId(teacherId);
     }
     public Schedule getScheduleById(String scheduleId) {
         return scheduleRepository.findById(scheduleId)

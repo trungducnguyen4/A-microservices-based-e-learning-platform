@@ -1,20 +1,22 @@
 spring:
   application:
     name: UserService
+  # Activate the development profile by default for local runs so datasource properties are loaded
   profiles:
     active: development
 
 ---
-# Development Profile
+# Development Profile (use XAMPP MySQL on localhost:3306)
 spring:
   config:
     activate:
       on-profile: development
   datasource:
-    url: jdbc:mysql://localhost:3306/user_db
+    # Use XAMPP MySQL (adjust username/password if your XAMPP MySQL uses different credentials)
+    url: jdbc:mysql://localhost:3306/user_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
     password:
-    driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
       ddl-auto: update
@@ -23,10 +25,11 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
         format_sql: true
-  redis:
-    host: localhost
-    port: 6379
-    timeout: 2000ms
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000ms
 
 server:
   port: 8080
@@ -40,7 +43,10 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include:
+          - health
+          - info
+          - metrics
   endpoint:
     health:
       show-details: always
@@ -63,10 +69,11 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
-  redis:
-    host: ${SPRING_REDIS_HOST:redis}
-    port: ${SPRING_REDIS_PORT:6379}
-    timeout: 2000ms
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000ms
 
 server:
   port: ${SERVER_PORT:8080}
@@ -80,7 +87,10 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include:
+          - health
+          - info
+          - metrics
   endpoint:
     health:
       show-details: always
@@ -109,10 +119,11 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
-  redis:
-    host: ${SPRING_REDIS_HOST}
-    port: ${SPRING_REDIS_PORT:6379}
-    timeout: 2000ms
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000ms
 
 server:
   port: ${SERVER_PORT:8080}
@@ -126,7 +137,9 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include:
+          - health
+          - info
   endpoint:
     health:
       show-details: when-authorized

@@ -42,9 +42,8 @@ const Navigation = () => {
       ];
     }
 
-    const baseItems = [
-      { path: "/", label: "Dashboard", icon: BarChart3 },
-    ];
+    // When authenticated we don't show the generic Dashboard link in the navbar
+    const baseItems = [];
 
     switch (user?.role) {
       case 'admin':

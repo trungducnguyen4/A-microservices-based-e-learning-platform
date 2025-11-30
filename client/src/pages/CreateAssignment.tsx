@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ArrowLeft, Calendar as CalendarIcon, Clock, FileText, Settings, Upload, Plus, X, Save, Send } from "lucide-react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
-import { homeworkService, fileService, type HomeworkCreationRequest } from "@/lib/api";
+import { homeworkService, fileService, api, type HomeworkCreationRequest } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 export default function CreateAssignment() {
@@ -33,20 +33,57 @@ export default function CreateAssignment() {
     maxScore: "",
     estimatedDurationMinutes: "",
     submissionType: "BOTH" as "TEXT" | "FILE" | "BOTH",
+    assignmentType: "Exercise" as "Exercise" | "Question",
     allowLateSubmissions: false,
     resubmissionAllowed: false,
     maxAttempts: "3",
     maxFileSizeMB: "10",
     allowedFileTypes: [] as string[],
-    tags: [] as string[],
   });
 
-  // Mock courses data - replace with real API call
-  const courses = [
-    { id: "1", name: "React và TypeScript Cơ Bản" },
-    { id: "2", name: "JavaScript ES6+" },
-    { id: "3", name: "Node.js Backend" },
-  ];
+  const [topic, setTopic] = useState<string>("");
+  const [assignTo, setAssignTo] = useState<'ALL' | 'SPECIFIC'>('ALL');
+  const [specificStudentIds, setSpecificStudentIds] = useState<string>('');
+  const [visibilityPublic, setVisibilityPublic] = useState<boolean>(false);
+
+  // Courses (schedules) created by the current teacher
+  const [courses, setCourses] = useState<{ id: string; name: string }[]>([]);
+
+  // Load teacher-owned schedules to populate the course select
+  useEffect(() => {
+    const loadCourses = async () => {
+      try {
+        const res = await api.get('/schedules/my-owned');
+        const items = res.data?.result || [];
+        // Debug log raw response
+        // eslint-disable-next-line no-console
+        console.log('schedules/my-owned response items:', items);
+
+        const mapped = items.map((s: any) => {
+          const id = s.courseId || s.id || (s.course && (s.course.courseId || s.course.id));
+          const name = s.title || s.name || (s.course && (s.course.title || s.course.name));
+          return { id: id ? id.toString() : null, name: name || (id ? id.toString() : '') };
+        })
+        // filter out any entries that don't have a usable id (Select requires non-empty value)
+        .filter((m: any) => m.id && m.id.toString().trim() !== '');
+
+        // Debug mapped (only non-empty ids)
+        // eslint-disable-next-line no-console
+        console.log('mapped courses for CreateAssignment (filtered):', mapped);
+
+        setCourses(mapped as { id: string; name: string }[]);
+
+        // If teacher has only one course, auto-select it
+        if (mapped.length === 1 && (!formData.courseId || formData.courseId === '')) {
+          setFormData(prev => ({ ...prev, courseId: (mapped[0].id as string) }));
+        }
+      } catch (error: any) {
+        toast({ title: 'Failed to load courses', description: error.response?.data?.message || 'Could not load your courses', variant: 'destructive' });
+      }
+    };
+
+    loadCourses();
+  }, []);
 
   const fileTypes = [
     { value: "application/pdf", label: "PDF" },
@@ -56,6 +93,15 @@ export default function CreateAssignment() {
     { value: "application/msword", label: "Word" },
     { value: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", label: "Word (DOCX)" },
   ];
+              <div className="flex items-center justify-between mt-4">
+                <div>
+                  <Label htmlFor="visibility">Visibility</Label>
+                  <p className="text-sm text-muted-foreground">Public makes the assignment visible to anyone with the link</p>
+                </div>
+                <div>
+                  <Switch id="visibility" checked={visibilityPublic} onCheckedChange={(v) => setVisibilityPublic(!!v)} />
+                </div>
+              </div>
 
   const handleFileUpload = async (files: FileList | null) => {
     if (!files) return;
@@ -63,7 +109,7 @@ export default function CreateAssignment() {
     setIsLoading(true);
     try {
       const uploadedFiles = await Promise.all(
-        Array.from(files).map(file => fileService.uploadFile(file, { type: 'homework-attachment' }))
+        Array.from(files).map(file => fileService.uploadFile(file, { type: 'assignments' }))
       );
       
       setAttachments(prev => [...prev, ...uploadedFiles]);
@@ -86,21 +132,7 @@ export default function CreateAssignment() {
     setAttachments(prev => prev.filter(file => file.id !== fileId));
   };
 
-  const addTag = (tag: string) => {
-    if (tag && !formData.tags.includes(tag)) {
-      setFormData(prev => ({
-        ...prev,
-        tags: [...prev.tags, tag]
-      }));
-    }
-  };
-
-  const removeTag = (tag: string) => {
-    setFormData(prev => ({
-      ...prev,
-      tags: prev.tags.filter(t => t !== tag)
-    }));
-  };
+  
 
   const toggleFileType = (fileType: string) => {
     setFormData(prev => ({
@@ -112,11 +144,19 @@ export default function CreateAssignment() {
   };
 
   const handleSubmit = async (asDraft = false) => {
-    if (!formData.title || !formData.courseId || !dueDate) {
+    const missing: string[] = [];
+    if (!formData.title || formData.title.trim() === '') missing.push('Title');
+    if (!formData.courseId || formData.courseId.toString().trim() === '') missing.push('Course');
+    if (!dueDate) missing.push('Due date');
+
+    if (missing.length > 0) {
+      // log current values for debugging
+      // eslint-disable-next-line no-console
+      console.log('CreateAssignment submit blocked — values:', { formData, dueDate });
       toast({
-        title: "Missing required fields",
-        description: "Please fill in title, course, and due date.",
-        variant: "destructive",
+        title: 'Missing required fields',
+        description: `Please fill in: ${missing.join(', ')}`,
+        variant: 'destructive',
       });
       return;
     }
@@ -127,7 +167,17 @@ export default function CreateAssignment() {
         title: formData.title,
         description: formData.description,
         courseId: formData.courseId,
+        // attach extra metadata
+        // assignmentType and topic are additional fields consumed by HomeworkService
+        // they will be ignored if backend doesn't support them
+        // server-side should validate/strip unknown fields
+        // classId is optional
         classId: formData.classId || undefined,
+        // custom fields
+        // @ts-ignore
+        assignmentType: formData.assignmentType,
+        // @ts-ignore
+        topic: topic || undefined,
         dueDate: dueDate.toISOString(),
         maxScore: parseFloat(formData.maxScore) || 100,
         submissionType: formData.submissionType,
@@ -138,8 +188,21 @@ export default function CreateAssignment() {
         estimatedDurationMinutes: parseInt(formData.estimatedDurationMinutes) || undefined,
         allowedFileTypes: formData.allowedFileTypes.length > 0 ? formData.allowedFileTypes : undefined,
         maxFileSizeMB: parseInt(formData.maxFileSizeMB) || 10,
-        tags: formData.tags.length > 0 ? formData.tags : undefined,
+        // tags removed — accept all types by default; frontend will only send allowedFileTypes when user sets them
       };
+
+      // If this is a Question-type assignment, include the questions payload
+      if (formData.assignmentType === 'Question') {
+        // Map our question structure to a backend-friendly format
+        // Example shape: { text, options: string[], correctIndex, points }
+        // @ts-ignore
+        homeworkData.questions = questions.map(q => ({
+          text: q.text,
+          options: q.options,
+          correctIndex: q.correctIndex,
+          points: q.points,
+        }));
+      }
 
       const result = await homeworkService.createHomework(homeworkData);
       
@@ -181,6 +244,25 @@ export default function CreateAssignment() {
         ? { ...q, options: q.options.map((opt: string, idx: number) => idx === optionIndex ? value : opt) }
         : q
     ));
+  };
+
+  const addQuestion = () => {
+    const nextId = questions.length > 0 ? Math.max(...questions.map(q => q.id)) + 1 : 1;
+    const newQ = { id: nextId, text: '', options: ['',''], correctIndex: 0, points: 1 };
+    setQuestions(prev => [...prev, newQ]);
+  };
+
+  const addOptionToQuestion = (questionId: number) => {
+    setQuestions(prev => prev.map(q => q.id === questionId ? { ...q, options: [...q.options, ''] } : q));
+  };
+
+  const removeOptionFromQuestion = (questionId: number, optionIndex: number) => {
+    setQuestions(prev => prev.map(q => {
+      if (q.id !== questionId) return q;
+      const opts = q.options.filter((_: any, idx: number) => idx !== optionIndex);
+      const correctIndex = q.correctIndex >= opts.length ? Math.max(0, opts.length - 1) : q.correctIndex;
+      return { ...q, options: opts, correctIndex };
+    }));
   };
 
   return (
@@ -230,6 +312,47 @@ export default function CreateAssignment() {
                 </Select>
               </div>
             </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+                <div>
+                  <Label htmlFor="assignmentType">Type</Label>
+                  <Select value={formData.assignmentType} onValueChange={(value: any) => setFormData({...formData, assignmentType: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Exercise">Exercise</SelectItem>
+                        
+                        <SelectItem value="Question">Question</SelectItem>
+                      </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="topic">Topic</Label>
+                  <Input id="topic" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Optional topic" />
+                </div>
+
+                <div>
+                  <Label htmlFor="assignTo">Assign To</Label>
+                  <Select value={assignTo} onValueChange={(v: any) => setAssignTo(v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={'ALL'}>All students</SelectItem>
+                      <SelectItem value={'SPECIFIC'}>Specific students</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {assignTo === 'SPECIFIC' && (
+                <div className="mt-2">
+                  <Label htmlFor="specificStudentIds">Student IDs (comma-separated)</Label>
+                  <Input id="specificStudentIds" value={specificStudentIds} onChange={(e) => setSpecificStudentIds(e.target.value)} placeholder="e.g. id1,id2" />
+                </div>
+              )}
 
             <div>
               <Label htmlFor="description">Description</Label>
@@ -364,6 +487,67 @@ export default function CreateAssignment() {
           </CardContent>
         </Card>
 
+        {/* Question builder (visible when Type = Question) */}
+        {formData.assignmentType === 'Question' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Question Bank / Multiple Choice
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {questions.map((q, qi) => (
+                  <div key={q.id} className="border rounded p-3">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <Label>Question {qi + 1}</Label>
+                        <Input value={q.text} onChange={(e) => updateQuestion(q.id, 'text', e.target.value)} placeholder="Enter question text" />
+                      </div>
+                      <div className="ml-4 flex flex-col items-end">
+                        <Button variant="ghost" size="icon" onClick={() => removeQuestion(q.id)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="mt-3">
+                      <Label>Options</Label>
+                      <div className="space-y-2 mt-2">
+                        {q.options.map((opt: string, idx: number) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <input type="radio" name={`correct-${q.id}`} checked={q.correctIndex === idx} onChange={() => updateQuestion(q.id, 'correctIndex', idx)} />
+                            <Input value={opt} onChange={(e) => updateQuestionOption(q.id, idx, e.target.value)} placeholder={`Option ${idx + 1}`} />
+                            <Button variant="ghost" size="icon" onClick={() => removeOptionFromQuestion(q.id, idx)}>
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+
+                        <div className="mt-2">
+                          <Button variant="outline" onClick={() => addOptionToQuestion(q.id)}>Add Option</Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <div>
+                        <Label>Points</Label>
+                        <Input type="number" value={q.points} onChange={(e) => updateQuestion(q.id, 'points', parseInt(e.target.value || '0'))} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                <div>
+                  <Button onClick={addQuestion}>Add Question</Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* File Configuration */}
         {(formData.submissionType === 'FILE' || formData.submissionType === 'BOTH') && (
           <Card>
@@ -407,47 +591,7 @@ export default function CreateAssignment() {
           </Card>
         )}
 
-        {/* Tags */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Tags</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {formData.tags.map((tag) => (
-                <Badge key={tag} variant="secondary" className="flex items-center gap-1">
-                  {tag}
-                  <X className="h-3 w-3 cursor-pointer" onClick={() => removeTag(tag)} />
-                </Badge>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Add a tag..."
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addTag(e.currentTarget.value);
-                    e.currentTarget.value = '';
-                  }
-                }}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={(e) => {
-                  const input = (e.target as HTMLElement).parentElement?.querySelector('input');
-                  if (input?.value) {
-                    addTag(input.value);
-                    input.value = '';
-                  }
-                }}
-              >
-                Add
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            
 
         {/* Teacher File Attachments */}
         <Card>

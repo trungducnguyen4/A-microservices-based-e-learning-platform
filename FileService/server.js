@@ -160,6 +160,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
       message: 'File uploaded successfully',
       result: {
         fileId: path.parse(req.file.filename).name,
+        id: path.parse(req.file.filename).name,
         originalName: req.file.originalname,
         filename: req.file.filename,
         path: req.file.path,
@@ -170,6 +171,9 @@ app.post('/upload', upload.single('file'), async (req, res) => {
         thumbnailPath: thumbnailPath ? path.relative(UPLOAD_DIR, thumbnailPath) : null,
         url: `/file/${req.file.filename}`,
         downloadUrl: `/download/${req.file.filename}`
+        ,
+        // Echo back any metadata fields sent with the upload (homeworkId, studentId, etc.)
+        metadata: Object.keys(req.body || {}).length > 0 ? { ...req.body } : null
       }
     };
 
@@ -218,7 +222,8 @@ app.post('/upload-multiple', upload.array('files', 10), async (req, res) => {
       }
 
       uploadedFiles.push({
-        fileId: path.parse(file.filename).name,
+          fileId: path.parse(file.filename).name,
+          id: path.parse(file.filename).name,
         originalName: file.originalname,
         filename: file.filename,
         path: file.path,
@@ -229,6 +234,8 @@ app.post('/upload-multiple', upload.array('files', 10), async (req, res) => {
         thumbnailPath: thumbnailPath ? path.relative(UPLOAD_DIR, thumbnailPath) : null,
         url: `/file/${file.filename}`,
         downloadUrl: `/download/${file.filename}`
+          ,
+          metadata: Object.keys(req.body || {}).length > 0 ? { ...req.body } : null
       });
     }
 

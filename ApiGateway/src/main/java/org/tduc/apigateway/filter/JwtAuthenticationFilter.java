@@ -1,153 +1,175 @@
 package org.tduc.apigateway.filter;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.security.Keys;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cloud.gateway.filter.GatewayFilterChain;
-import org.springframework.cloud.gateway.filter.GlobalFilter;
-import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.http.server.reactive.ServerHttpResponse;
-import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
-import java.nio.charset.StandardCharsets;
 import org.springframework.web.server.ServerWebExchange;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.web.server.WebFilter;
+import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
-import javax.crypto.SecretKey;
-import java.util.List;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.Base64;
+import java.util.Map;
 
 @Component
-public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
+@Order(0)
+public class JwtAuthenticationFilter implements WebFilter {
 
     private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+    private static final ObjectMapper mapper = new ObjectMapper();
 
-    @Value("${jwt.secret}")
+    // try to read your configured secret / public key (adjust property names to your project)
+    @Value("${jwt.secret:}")
     private String jwtSecret;
 
-    // Các endpoint không cần authentication
-    private static final List<String> EXCLUDED_PATHS = List.of(
-        "/api/users/login",
-        "/api/users/register",
-        "/actuator/health",
-        "/api/users/auth/login",
-        "/api/users/auth/register",
-        "/api/public/"
-    );
+    @Value("${jwt.public-key:}")
+    private String jwtPublicKeyPem;
 
     @Override
-    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        ServerHttpRequest request = exchange.getRequest();
-        String path = request.getURI().getPath();
+    public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+        String token = resolveToken(exchange);
+        if (token != null) {
+            try {
+                // validate token and extract claims for downstream services
+                Map<String, Object> claims = validateTokenAndAuthenticate(token);
 
-        // Allow CORS preflight requests to pass through without authentication
-        if (request.getMethod() != null && request.getMethod().equals(HttpMethod.OPTIONS)) {
-            log.debug("Allowing preflight OPTIONS request to: {}", path);
-            return chain.filter(exchange);
-        }
+                // If we have claims, propagate minimal user info as headers so downstream
+                // services can create authentication from headers.
+                if (claims != null) {
+                    // Prefer an explicit "userId" claim if present (newer tokens include UUID id).
+                    // Fallback to subject for legacy tokens which stored username or numeric id in sub.
+                    String userId = claims.containsKey("userId") ? claims.get("userId").toString() : claims.getOrDefault("sub", "").toString();
+                    String username = claims.containsKey("username") ? claims.get("username").toString() : (userId != null ? userId : "");
+                    String role = "";
+                    if (claims.containsKey("role")) role = claims.get("role").toString();
+                    else if (claims.containsKey("roles")) role = claims.get("roles").toString();
 
-        log.info("Processing request to: {}", path);
-
-        // Bỏ qua authentication cho các endpoint public
-        if (isExcludedPath(path)) {
-            log.debug("Request to {} matched excluded path, skipping authentication", path);
-            return chain.filter(exchange);
-        }
-
-        // Lấy JWT token từ header
-        String token = getJwtFromRequest(request);
-        
-        if (!StringUtils.hasText(token)) {
-            log.warn("No JWT token found in request to: {}", path);
-            return onError(exchange, "Missing authentication token", HttpStatus.UNAUTHORIZED);
-        }
-
-        try {
-            // Validate JWT token
-            Claims claims = validateToken(token);
-            
-            // Thêm user info vào header để microservices sử dụng
-            ServerHttpRequest modifiedRequest = exchange.getRequest().mutate()
-                .header("X-User-Id", claims.getSubject())
-                .header("X-User-Role", claims.get("role", String.class))
-                .header("X-User-Username", claims.get("username", String.class))
+            // Log what we will propagate to downstream services for easier debugging
+            log.info("Propagating headers -> X-User-Id: {}, X-User-Username: {}, X-User-Role: {}", userId, username, role);
+            ServerHttpRequest modified = exchange.getRequest().mutate()
+                .header("X-User-Id", userId)
+                .header("X-User-Username", username)
+                .header("X-User-Role", role)
                 .build();
 
-            log.info("Successfully authenticated user: {} with role: {}", 
-                claims.get("username"), claims.get("role"));
-
-            return chain.filter(exchange.mutate().request(modifiedRequest).build());
-            
-        } catch (Exception e) {
-            log.error("JWT validation failed: {}", e.getMessage());
-            return onError(exchange, "Invalid authentication token", HttpStatus.UNAUTHORIZED);
+                    ServerWebExchange mutatedExchange = exchange.mutate().request(modified).build();
+                    return chain.filter(mutatedExchange);
+                }
+            } catch (Exception ex) {
+                log.error("Error validating JWT token: {}", ex.getMessage());
+                exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+                return exchange.getResponse().setComplete();
+            }
         }
+        return chain.filter(exchange);
     }
 
-    private boolean isExcludedPath(String path) {
-    if (path == null) return false;
-    String p = path.toLowerCase();
-
-    // Direct matches or prefix matches for excluded paths
-    boolean matched = EXCLUDED_PATHS.stream()
-        .map(String::toLowerCase)
-        .anyMatch(ex -> p.equals(ex) || p.startsWith(ex) || p.startsWith(ex.endsWith("/") ? ex : ex + "/"));
-
-    if (matched) return true;
-
-    // Common public/static prefixes
-    return p.startsWith("/api/public/") || p.equals("/") || p.startsWith("/static/") || p.startsWith("/css/") || p.startsWith("/js/") || p.startsWith("/images/");
-    }
-
-    private String getJwtFromRequest(ServerHttpRequest request) {
-        String bearerToken = request.getHeaders().getFirst("Authorization");
-        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
+    private String resolveToken(ServerWebExchange exchange) {
+        String auth = exchange.getRequest().getHeaders().getFirst("Authorization");
+        if (auth != null && auth.startsWith("Bearer ")) {
+            return auth.substring(7);
         }
         return null;
     }
 
-    private Claims validateToken(String token) {
-        try {
-            byte[] keyBytes;
-            try {
-                keyBytes = Decoders.BASE64.decode(jwtSecret);
-            } catch (IllegalArgumentException ex) {
-                // jwtSecret was not base64 encoded, fall back to raw bytes
-                log.debug("JWT secret is not base64-encoded, using raw UTF-8 bytes");
-                keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
-            }
+    private Map<String, Object> validateTokenAndAuthenticate(String token) throws Exception {
+        String[] parts = token.split("\\.");
+        if (parts.length != 3) {
+            throw new IllegalArgumentException("Invalid JWT format");
+        }
 
-            SecretKey key = Keys.hmacShaKeyFor(keyBytes);
-            return Jwts.parserBuilder()
-                    .setSigningKey(key)
-                    .build()
-                    .parseClaimsJws(token)
-                    .getBody();
-        } catch (Exception e) {
-            log.error("Error validating JWT token: {}", e.getMessage());
-            throw e;
+        String headerB64 = parts[0];
+        String payloadB64 = parts[1];
+        String tokenSignatureB64 = parts[2];
+
+        // Log raw parts (base64url). Be careful in production with PII.
+        log.info("JWT header (base64url): {}", headerB64);
+        log.info("JWT payload (base64url): {}", payloadB64);
+        log.info("JWT signature (from token, base64url): {}", tokenSignatureB64);
+
+        // parse header to detect alg / kid
+        byte[] headerBytes = base64UrlDecode(headerB64);
+        Map<String, Object> header = mapper.readValue(headerBytes, Map.class);
+        String alg = (String) header.getOrDefault("alg", "unknown");
+        String kid = (String) header.getOrDefault("kid", null);
+        log.info("JWT alg: {}, kid: {}", alg, kid);
+
+        // compute expected signature when using HMAC (HS*) and secret available
+        if (alg != null && alg.startsWith("HS") && jwtSecret != null && !jwtSecret.isEmpty()) {
+            String signingInput = headerB64 + "." + payloadB64;
+            String expectedSig = computeHmacBase64Url(signingInput, jwtSecret, alg);
+            log.info("Locally computed signature (base64url): {}", expectedSig);
+            if (!constantTimeEquals(expectedSig, tokenSignatureB64)) {
+                throw new IllegalArgumentException("JWT signature does not match locally computed signature. JWT validity cannot be asserted and should not be trusted.");
+            }
+            // signature valid — parse and return payload claims
+            byte[] payloadBytes = base64UrlDecode(payloadB64);
+            Map<String, Object> payload = mapper.readValue(payloadBytes, Map.class);
+            return payload;
+        } else if (alg != null && (alg.startsWith("RS") || alg.startsWith("ES"))) {
+            // For asymmetric algorithms we usually verify with a public key.
+            // We cannot compute the expected signature without the private key.
+            if (jwtPublicKeyPem != null && !jwtPublicKeyPem.isEmpty()) {
+                byte[] pubBytes = jwtPublicKeyPem.getBytes(StandardCharsets.UTF_8);
+                String pubThumb = sha256Hex(pubBytes);
+                log.info("Configured public key fingerprint (sha256 hex): {}", pubThumb);
+            } else {
+                log.info("No configured public key found in properties; cannot compute expected signature for {}.", alg);
+            }
+            // actual verification with public key should happen elsewhere; throw to show mismatch
+            throw new IllegalArgumentException("JWT signature does not match locally computed signature. JWT validity cannot be asserted and should not be trusted.");
+        } else {
+            log.info("No local signer information available to compute expected signature (alg: {}, secret present: {}).", alg, (jwtSecret != null && !jwtSecret.isEmpty()));
+            throw new IllegalArgumentException("Unable to validate JWT signature locally.");
         }
     }
 
-    private Mono<Void> onError(ServerWebExchange exchange, String err, HttpStatus httpStatus) {
-        ServerHttpResponse response = exchange.getResponse();
-        response.setStatusCode(httpStatus);
-        response.getHeaders().add("Content-Type", "application/json");
-        
-        String body = String.format("{\"error\": \"%s\", \"status\": %d}", err, httpStatus.value());
-        
-        return response.writeWith(Mono.just(response.bufferFactory().wrap(body.getBytes())));
+    private static byte[] base64UrlDecode(String input) {
+        return Base64.getUrlDecoder().decode(input);
     }
 
-    @Override
-    public int getOrder() {
-        return -1; // Ưu tiên cao nhất
+    private static String computeHmacBase64Url(String signingInput, String secret, String alg) throws Exception {
+        String macAlg;
+        if ("HS256".equals(alg)) macAlg = "HmacSHA256";
+        else if ("HS384".equals(alg)) macAlg = "HmacSHA384";
+        else if ("HS512".equals(alg)) macAlg = "HmacSHA512";
+        else throw new IllegalArgumentException("Unsupported HMAC alg: " + alg);
+
+        Mac mac = Mac.getInstance(macAlg);
+        mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), macAlg));
+        byte[] sig = mac.doFinal(signingInput.getBytes(StandardCharsets.UTF_8));
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(sig);
+    }
+
+    private static String sha256Hex(byte[] data) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] digest = md.digest(data);
+            StringBuilder sb = new StringBuilder();
+            for (byte b : digest) sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (Exception e) {
+            return "<error>";
+        }
+    }
+
+    // constant time comparison to avoid timing attacks
+    private static boolean constantTimeEquals(String a, String b) {
+        if (a == null || b == null) return false;
+        byte[] aa = a.getBytes(StandardCharsets.UTF_8);
+        byte[] bb = b.getBytes(StandardCharsets.UTF_8);
+        if (aa.length != bb.length) return false;
+        int result = 0;
+        for (int i = 0; i < aa.length; i++) result |= aa[i] ^ bb[i];
+        return result == 0;
     }
 }

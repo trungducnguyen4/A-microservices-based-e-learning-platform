@@ -18,7 +18,7 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ScheduleCreationRequest {
     @Column(nullable = false)
-    String teacherId;
+    String userId;
     List<String> collaborators;
     @Column(nullable = false)
     String title;

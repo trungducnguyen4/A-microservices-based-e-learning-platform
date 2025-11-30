@@ -105,8 +105,8 @@ public class Homework {
     // File upload configuration
     @Column(columnDefinition = "JSON")
     String allowedFileTypes;
-    
-    @Column
+
+    @Column(name = "max_file_size_mb")
     Integer maxFileSizeMB;
     
     // Advanced features

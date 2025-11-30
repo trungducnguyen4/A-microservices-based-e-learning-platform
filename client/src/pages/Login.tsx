@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   
@@ -31,13 +31,13 @@ const Login = () => {
     e.preventDefault();
     setError(null);
 
-    if (!email || !password) {
+    if (!username || !password) {
       setError("Please fill in all fields");
       return;
     }
 
     try {
-      await login(email, password);
+      await login(username, password);
       toast({
         title: "Login successful",
         description: "Welcome back!",
@@ -54,12 +54,12 @@ const Login = () => {
 
   // Demo login shortcuts
   const quickLogin = (role: 'student' | 'teacher' | 'admin') => {
-    const emails = {
-      student: 'student@example.com',
-      teacher: 'teacher@example.com',
-      admin: 'admin@example.com'
+    const usernames = {
+      student: 'student',
+      teacher: 'teacher',
+      admin: 'admin'
     };
-    setEmail(emails[role]);
+    setUsername(usernames[role]);
     setPassword('password');
   };
 
@@ -87,13 +87,13 @@ const Login = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="username">Username</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="username"
+                  type="text"
+                  placeholder="Enter your username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   required
                   disabled={isLoading}
                 />

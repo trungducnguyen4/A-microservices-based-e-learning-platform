@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,21 +35,32 @@ const StudentPortal = () => {
   const [userInfo, setUserInfo] = useState<{
     username?: string;
     email?: string;
-    id?: number;
+    id?: string | number;
   } | null>(null);
+  const { user: authUser } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [coursesLoading, setCoursesLoading] = useState(false);
+  const [enrolledCourses, setEnrolledCourses] = useState<any[]>([]);
   const [joinCourseCode, setJoinCourseCode] = useState("");
   const [joinDialogOpen, setJoinDialogOpen] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
+    // Prefer using auth context user (fast). Fallback to introspect endpoint if not present.
     const fetchUserInfo = async () => {
       try {
+        if (authUser) {
+          setUserInfo({ username: authUser.name, email: authUser.email, id: authUser.id });
+          return;
+        }
+
         const token = localStorage.getItem("token");
         if (!token) return;
 
         const response = await api.post(`/users/introspect`, { token });
-        setUserInfo(response.data.result);
+        // response.data.result should include user info (id, username/email, etc.)
+        setUserInfo(response.data.result || null);
       } catch (error) {
         console.error("Failed to fetch user info:", error);
       } finally {
@@ -56,7 +69,49 @@ const StudentPortal = () => {
     };
 
     fetchUserInfo();
-  }, []);
+  }, [authUser]);
+
+  // Fetch enrolled courses for current user
+  useEffect(() => {
+    const fetchEnrollments = async () => {
+      try {
+        // Always request /schedules/my-schedule and let the backend resolve current user from headers/token.
+        setCoursesLoading(true);
+        const res = await api.get(`/schedules/my-schedule`);
+        // Expect res.data.result to be an array of ScheduleCreationResponse
+        const data = res.data?.result || [];
+
+        // Map backend schedule structure to UI-friendly course object
+        const mapped = data.map((s: any, idx: number) => ({
+          id: s.courseId || s.courseId || idx,
+          title: s.title || "Untitled Course",
+          instructor: s.teacherId || "",
+          progress: s.progress || 0,
+          totalLessons: s.totalLessons || 0,
+          completedLessons: s.completedLessons || 0,
+          nextLesson: s.nextLesson || "",
+          rating: s.rating || 0,
+          duration: s.duration || "",
+          level: s.level || "",
+        }));
+
+        setEnrolledCourses(mapped);
+        // Log to browser console how many courses this user is enrolled in
+        try {
+          const who = userInfo?.username || userInfo?.id || authUser?.name || 'unknown';
+          console.info(`MyCourses: user=${who} enrolledCount=${mapped.length}`);
+        } catch (e) {
+          console.info('MyCourses: enrolledCount=', mapped.length);
+        }
+      } catch (error) {
+        console.error("Failed to load enrolled courses:", error);
+      } finally {
+        setCoursesLoading(false);
+      }
+    };
+
+    fetchEnrollments();
+  }, [userInfo]);
 
   const handleJoinCourse = async () => {
     if (!joinCourseCode.trim()) return;
@@ -74,17 +129,25 @@ const StudentPortal = () => {
         return;
       }
 
+      // Prepare payload. If frontend user id looks like a username (not UUID), omit userId
+      // and let backend resolve from Authorization/header. This avoids storing usernames in DB.
+      const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+      const payload: any = { joinCode: joinCourseCode.trim() };
+      if (userInfo?.id && uuidRegex.test(String(userInfo.id))) {
+        payload.userId = String(userInfo.id);
+      }
+
       // Call API to join course
-      const response = await api.post(`/schedules/join`, { 
-        userId: userInfo.id.toString(),
-        joinCode: joinCourseCode.trim() 
-      });
+      const response = await api.post(`/schedules/join`, payload);
 
       if (response.data.code === 200 && response.data.result) {
         alert("Tham gia khóa học thành công!");
         setJoinCourseCode("");
         setJoinDialogOpen(false);
-        // Reload page or update course list
+        // Log to console and reload so UI shows updated enrollments
+        try {
+          console.info('JoinCourse: success, refreshing enrolled courses');
+        } catch (e) {}
         window.location.reload();
       } else {
         alert(response.data.message || "Không thể tham gia khóa học");
@@ -97,44 +160,8 @@ const StudentPortal = () => {
     }
   };
 
-  const enrolledCourses = [
-    {
-      id: 1,
-      title: "Advanced React Development",
-      instructor: "John Doe",
-      progress: 75,
-      totalLessons: 24,
-      completedLessons: 18,
-      nextLesson: "State Management with Redux",
-      rating: 4.8,
-      duration: "8 weeks",
-      level: "Advanced"
-    },
-    {
-      id: 2,
-      title: "Python for Data Science",
-      instructor: "Jane Smith",
-      progress: 45,
-      totalLessons: 32,
-      completedLessons: 14,
-      nextLesson: "Data Visualization with Matplotlib",
-      rating: 4.6,
-      duration: "10 weeks",
-      level: "Intermediate"
-    },
-    {
-      id: 3,
-      title: "UX/UI Design Fundamentals",
-      instructor: "Mike Johnson",
-      progress: 90,
-      totalLessons: 16,
-      completedLessons: 15,
-      nextLesson: "Final Project Presentation",
-      rating: 4.9,
-      duration: "6 weeks",
-      level: "Beginner"
-    },
-  ];
+  // Use fetched enrolled courses, fallback to empty array while loading
+  // `enrolledCourses` state is populated by effect above
 
   const upcomingClasses = [
     {
@@ -228,8 +255,8 @@ const StudentPortal = () => {
             <AvatarFallback>AC</AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-medium">{userInfo?.username || "Alice Cooper"}</p>
-            <p className="text-sm text-muted-foreground">Student ID: STU001</p>
+            <p className="font-medium">{userInfo?.username || authUser?.name || "Alice Cooper"}</p>
+            <p className="text-sm text-muted-foreground">Student ID: {userInfo?.id || authUser?.id || 'STU001'}</p>
           </div>
         </div>
       </div>
@@ -241,7 +268,7 @@ const StudentPortal = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Enrolled Courses</p>
-                <p className="text-2xl font-bold">3</p>
+                <p className="text-2xl font-bold">{coursesLoading ? '...' : enrolledCourses.length}</p>
               </div>
               <BookOpen className="w-8 h-8 text-blue-500" />
             </div>
@@ -252,7 +279,7 @@ const StudentPortal = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Overall Progress</p>
-                <p className="text-2xl font-bold">70%</p>
+                <p className="text-2xl font-bold">{enrolledCourses.length ? `${Math.round(enrolledCourses.reduce((s, c) => s + (c.progress || 0), 0) / enrolledCourses.length)}%` : '0%'}</p>
               </div>
               <TrendingUp className="w-8 h-8 text-green-500" />
             </div>
@@ -373,7 +400,7 @@ const StudentPortal = () => {
                       </p>
                     </div>
                     <div className="flex flex-col space-y-2">
-                      <Button size="sm">
+                      <Button size="sm" onClick={() => course.id && navigate(`/course/${course.id}`)}>
                         <Play className="w-4 h-4 mr-2" />
                         Continue
                       </Button>
@@ -418,7 +445,7 @@ const StudentPortal = () => {
                             {getStatusBadge(assignment.status)}
                           </div>
                         </div>
-                        <Button size="sm">
+                        <Button size="sm" onClick={() => navigate(`/student/assignment/${assignment.id}`)}>
                           <FileText className="w-4 h-4 mr-2" />
                           {assignment.status === 'pending' ? 'Start' : 'Continue'}
                         </Button>

@@ -17,11 +17,26 @@ import {
   GraduationCap,
   Settings
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Dashboard = () => {
   const { user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  // If authenticated, redirect immediately to role-specific dashboard
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const role = user?.role;
+    if (role === 'student') {
+      navigate('/student');
+    } else if (role === 'teacher') {
+      navigate('/teacher');
+    } else if (role === 'admin') {
+      navigate('/admin');
+    }
+  }, [isAuthenticated, user, navigate]);
 
   // Show different content based on authentication status
   if (!isAuthenticated) {

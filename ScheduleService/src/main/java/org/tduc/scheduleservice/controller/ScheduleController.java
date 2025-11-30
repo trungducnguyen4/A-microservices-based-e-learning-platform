@@ -1,6 +1,5 @@
 package org.tduc.scheduleservice.controller;
 
-import jakarta.persistence.Entity;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -8,21 +7,54 @@ import org.springframework.web.bind.annotation.*;
 import org.tduc.scheduleservice.dto.request.ApiResponse;
 import org.tduc.scheduleservice.dto.request.ScheduleCreationRequest;
 import org.tduc.scheduleservice.dto.request.ScheduleEditRequest;
+import org.tduc.scheduleservice.dto.response.ScheduleCreationResponse;
+import org.tduc.scheduleservice.mapper.ScheduleMapper;
+import org.tduc.scheduleservice.util.AuthContextUtil;
 import org.tduc.scheduleservice.model.Schedule;
 import org.tduc.scheduleservice.service.ScheduleService;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
+@RequestMapping("/api/schedules")
 public class ScheduleController {
     @Autowired
     private ScheduleService scheduleService;
+
+    @Autowired
+    private AuthContextUtil authContextUtil;
+
+    @Autowired
+    private ScheduleMapper scheduleMapper;
 
     @PostMapping("/create")
     public ApiResponse<Schedule> createSchedule(@RequestBody @Valid ScheduleCreationRequest request) {
         ApiResponse<Schedule> response = new ApiResponse<>();
         response.setCode(HttpStatus.OK.value());
         response.setResult(scheduleService.createSchedule(request));
+        return response;
+    }
+
+    /**
+     * Get schedules owned by the current user (teacher). Returns ScheduleCreationResponse list.
+     */
+    @GetMapping("/my-owned")
+    public ApiResponse<List<ScheduleCreationResponse>> getMyOwnedSchedules() {
+        ApiResponse<List<ScheduleCreationResponse>> response = new ApiResponse<>();
+
+        // Prefer raw header (may be UUID); otherwise use numeric id if available
+        String rawUserId = authContextUtil.getCurrentUserIdRaw();
+        List<Schedule> schedules;
+        if (rawUserId != null && !rawUserId.isBlank()) {
+            schedules = scheduleService.getSchedulesById(rawUserId);
+        } else {
+            Long numeric = authContextUtil.getCurrentUserId();
+            schedules = scheduleService.getSchedulesById(String.valueOf(numeric));
+        }
+
+        response.setCode(HttpStatus.OK.value());
+        response.setResult(schedules.stream().map(scheduleMapper::toScheduleCreationResponse).collect(Collectors.toList()));
         return response;
     }
 

@@ -23,9 +23,11 @@ public class Schedule {
     @GenericGenerator(name = "uuid", strategy = "org.hibernate.id.UUIDGenerator")
     @Column(length = 36, updatable = false, nullable = false)
     String id;
+    
+    // No course reference needed here; joinCode is used to join schedules
 
     @Column(nullable = false)
-    String teacherId;
+    String userId;
     List<String> collaborators;
     @Column(nullable = false)
     String title;

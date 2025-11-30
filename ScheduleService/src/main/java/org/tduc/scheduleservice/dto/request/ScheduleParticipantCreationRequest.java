@@ -16,4 +16,7 @@ public class ScheduleParticipantCreationRequest {
     String userId;
     @Column(nullable = false)
     String joinCode;
+    // Optional: incoming Authorization header passed from controller so service can call UserService
+    // Not persisted; used only for resolving username -> userId when needed.
+    String authHeader;
 }

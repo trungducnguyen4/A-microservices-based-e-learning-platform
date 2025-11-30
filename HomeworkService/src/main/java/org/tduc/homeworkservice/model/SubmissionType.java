@@ -2,6 +2,7 @@ package org.tduc.homeworkservice.model;
 
 public enum SubmissionType {
     FILE_UPLOAD,
+    BOTH,
     TEXT,
     LINK,
     INLINE_QUIZ,

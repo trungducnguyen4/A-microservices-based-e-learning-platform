@@ -75,19 +75,23 @@ const TeacherDashboard = () => {
         return;
       }
 
-      setTeacherId(payload.sub);
+      const userId = payload.userId || payload.sub || payload.id || "";
+      setTeacherId(userId);
 
-      // Call API to get teacher's courses
-      const response = await api.get(`/schedules/${payload.sub}`);
+      // Call API to get teacher's owned schedules (backend resolves current user from headers)
+      const response = await api.get(`/schedules/my-owned`);
 
       const teacherCourses = response.data.result.map((course: any) => ({
-        id: course.id,
+        // support response shapes: { id, courseId }
+        id: course.id || course.courseId,
         name: course.title || course.name,
-        students: course.enrolledStudents || 0,
+        students: course.enrolledStudents || course.maxParticipants || 0,
         status: course.status || "Active",
         color: getRandomColor(),
-        description: course.description
+        description: course.description || ''
       }));
+
+      console.info(`MyCourses: user=${userId} enrolledCount=${teacherCourses.length}`, teacherCourses);
 
       // Combine with sample data
       setCourses([

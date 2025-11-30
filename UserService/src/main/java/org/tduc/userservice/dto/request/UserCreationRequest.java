@@ -18,7 +18,8 @@ public class UserCreationRequest {
      String username;
     @Size(min = 8, message = "PASSWORD_MAX")
     String password;
-
+    String firstName;
+    String lastName;
     String email;
     String fullName;
 }

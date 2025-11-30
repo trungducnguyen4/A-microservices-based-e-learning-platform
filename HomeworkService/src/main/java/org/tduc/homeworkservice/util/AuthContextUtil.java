@@ -20,7 +20,16 @@ public class AuthContextUtil {
      */
     public Long getCurrentUserId() {
         String userIdStr = getHeader(USER_ID_HEADER);
-        return userIdStr != null ? Long.parseLong(userIdStr) : null;
+        if (userIdStr == null) return null;
+        try {
+            return Long.parseLong(userIdStr);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    public String getCurrentUserIdRaw() {
+        return getHeader(USER_ID_HEADER);
     }
     
     /**
@@ -82,7 +91,9 @@ public class AuthContextUtil {
      * Get current user context as a formatted string for logging
      */
     public String getCurrentUserContext() {
+        String id = getCurrentUserIdRaw();
+        if (id == null) id = (getCurrentUserId() != null) ? String.valueOf(getCurrentUserId()) : "null";
         return String.format("User[id=%s, username=%s, role=%s]", 
-            getCurrentUserId(), getCurrentUsername(), getCurrentUserRole());
+            id, getCurrentUsername(), getCurrentUserRole());
     }
 }

@@ -214,12 +214,37 @@ export const fileService = {
   uploadFile: async (file: File, metadata?: any): Promise<FileUploadResponse> => {
     const formData = new FormData();
     formData.append('file', file);
-    if (metadata) {
-      formData.append('metadata', JSON.stringify(metadata));
+
+    // FileService expects fields like 'fileType' or other metadata as form fields
+    if (metadata && typeof metadata === 'object') {
+      Object.keys(metadata).forEach((key) => {
+        // normalize common key name
+        if (key === 'type') {
+          formData.append('fileType', metadata[key]);
+        } else {
+          formData.append(key, metadata[key]);
+        }
+      });
     }
 
     const response = await fileApi.post('/upload', formData);
-    return response.data;
+
+    // Normalize FileService response: { code, message, result: { fileId, originalName, filename, ... } }
+    const data = response.data;
+    const result = data?.result || data;
+
+    if (!result) return result;
+
+    return {
+      id: result.fileId || result.id || result.filename?.split('.')[0],
+      filename: result.filename,
+      originalName: result.originalName || result.originalname || result.filename,
+      size: result.size,
+      mimetype: result.mimeType || result.mimetype,
+      path: result.path,
+      url: result.url || result.downloadUrl,
+      uploadedAt: result.uploadedAt,
+    } as unknown as FileUploadResponse;
   },
 
   uploadMultipleFiles: async (files: File[], metadata?: any): Promise<FileUploadResponse[]> => {
@@ -227,12 +252,31 @@ export const fileService = {
     files.forEach(file => {
       formData.append('files', file);
     });
-    if (metadata) {
-      formData.append('metadata', JSON.stringify(metadata));
+
+    if (metadata && typeof metadata === 'object') {
+      Object.keys(metadata).forEach((key) => {
+        if (key === 'type') {
+          formData.append('fileType', metadata[key]);
+        } else {
+          formData.append(key, metadata[key]);
+        }
+      });
     }
 
-    const response = await fileApi.post('/upload/multiple', formData);
-    return response.data;
+    const response = await fileApi.post('/upload-multiple', formData);
+    const data = response.data;
+    const results = data?.result || [];
+
+    return results.map((r: any) => ({
+      id: r.fileId || r.id || r.filename?.split('.')[0],
+      filename: r.filename,
+      originalName: r.originalName || r.originalname || r.filename,
+      size: r.size,
+      mimetype: r.mimeType || r.mimetype,
+      path: r.path,
+      url: r.url || r.downloadUrl,
+      uploadedAt: r.uploadedAt,
+    }));
   },
 
   downloadFile: async (fileId: string) => {
@@ -244,7 +288,20 @@ export const fileService = {
 
   getFileInfo: async (fileId: string) => {
     const response = await fileApi.get(`/file/${fileId}`);
-    return response.data;
+    const data = response.data;
+    const r = data?.result || data;
+    if (!r) return r;
+
+    return {
+      id: r.fileId || fileId,
+      filename: r.filename,
+      size: r.size,
+      mimeType: r.mimeType || r.mimeType,
+      createdAt: r.createdAt,
+      modifiedAt: r.modifiedAt,
+      url: r.url,
+      downloadUrl: r.downloadUrl,
+    };
   },
 
   deleteFile: async (fileId: string) => {
@@ -253,8 +310,22 @@ export const fileService = {
   },
 
   listFiles: async (page = 0, limit = 20) => {
-    const response = await fileApi.get(`/files?page=${page}&limit=${limit}`);
-    return response.data;
+    // FileService exposes /list/:fileType - but keep a generic list that callers can adapt.
+    const response = await fileApi.get(`/list/documents?page=${page}&limit=${limit}`);
+    const data = response.data;
+    const result = data?.result || { files: [] };
+    return {
+      ...data,
+      result: {
+        files: (result.files || []).map((f: any) => ({
+          filename: f.filename,
+          url: f.url,
+          size: f.size,
+          mimeType: f.mimeType || f.mimeType,
+        })),
+        pagination: result.pagination,
+      }
+    };
   },
 
   generateThumbnail: async (fileId: string, width = 200, height = 200) => {

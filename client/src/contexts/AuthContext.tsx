@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-export type UserRole = 'student' | 'teacher' | 'admin';
+export type UserRole = 'student' | 'teacher' | 'admin' | '';
 
 export interface User {
   id: string;
@@ -16,7 +16,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   updateUser: (userData: Partial<User>) => void;
   hasRole: (role: UserRole) => boolean;
@@ -58,7 +58,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     initializeAuth();
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (username: string, password: string) => {
     try {
       setIsLoading(true);
       // Real authentication via API Gateway
@@ -66,7 +66,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const API_BASE = (import.meta as any)?.env?.VITE_API_BASE ?? 'http://localhost:8888';
 
       // UserService expects { username, password }
-      const payload = { username: email, password };
+  const payload = { username, password };
 
       const response = await axios.post(`${API_BASE}/api/users/auth/login`, payload, {
         headers: { 'Content-Type': 'application/json' }
@@ -94,30 +94,39 @@ export function AuthProvider({ children }: AuthProviderProps) {
       };
 
       const decoded = decodeJWT(token) || {};
+      const rawRole = decoded.role || decoded.roles || '';
+      const normalizedRole = rawRole ? String(rawRole).toLowerCase() as User['role'] : '';
+
+      // Prefer explicit userId claim (UUID) when present. Fall back to sub for legacy tokens.
       const builtUser: User = {
-        id: decoded.sub || decoded.userId || decoded.id || 'unknown',
-        email: decoded.email || email,
-        name: decoded.name || decoded.fullName || decoded.username || email,
-        role: (decoded.role || decoded.roles || 'student') as User['role'],
+        id: decoded.userId || decoded.sub || decoded.id || 'unknown',
+        email: decoded.email || username,
+        name: decoded.name || decoded.fullName || decoded.username || username,
+        role: normalizedRole,
         avatar: decoded.avatar || undefined
       };
 
       localStorage.setItem('user', JSON.stringify(builtUser));
       setUser(builtUser);
 
-      // Redirect based on role (same as before)
-      switch (builtUser.role) {
-        case 'admin':
-          navigate('/admin');
-          break;
-        case 'teacher':
-          navigate('/teacher');
-          break;
-        case 'student':
-          navigate('/student');
-          break;
-        default:
-          navigate('/');
+      // If user has no role yet, send them to choose-role flow
+      if (builtUser.role === '') {
+        navigate('/choose-role');
+      } else {
+        // Redirect based on role
+        switch (builtUser.role) {
+          case 'admin':
+            navigate('/admin');
+            break;
+          case 'teacher':
+            navigate('/teacher');
+            break;
+          case 'student':
+            navigate('/student');
+            break;
+          default:
+            navigate('/');
+        }
       }
     } catch (error) {
       console.error('Login error:', error);
