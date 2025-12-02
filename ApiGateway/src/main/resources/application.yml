@@ -29,6 +29,10 @@ spring:
           uri: ${HOMEWORK_SERVICE_URL:http://localhost:8081}
           predicates:
             - Path=/api/homework/**
+        - id: homework-submission-service
+          uri: ${HOMEWORK_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/submission/**
         - id: announcement-service
           uri: ${ANNOUNCEMENT_SERVICE_URL:http://localhost:8090}
           predicates:
@@ -86,6 +90,10 @@ spring:
           uri: ${HOMEWORK_SERVICE_URL:http://homework-service:8081}
           predicates:
             - Path=/api/homework/**
+        - id: homework-submission-service
+          uri: ${HOMEWORK_SERVICE_URL:http://homework-service:8081}
+          predicates:
+            - Path=/api/submission/**
         - id: announcement-service
           uri: ${ANNOUNCEMENT_SERVICE_URL:http://announcement-service:8090}
           predicates:

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { api } from "@/lib/api";
+import { api, homeworkService, submissionService } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,11 +34,18 @@ import {
 
 const TeacherDashboard = () => {
   const navigate = useNavigate();
-  const [selectedCourse, setSelectedCourse] = useState("math-101");
-  const [courses, setCourses] = useState([
-    // Keep one sample data
-    { id: "math-101", name: "Mathematics 101", students: 45, status: "Active", color: "bg-blue-500", description: "Basic mathematics course" }
-  ]);
+  const [selectedCourse, setSelectedCourse] = useState("");
+  const [courses, setCourses] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [editingAnnouncement, setEditingAnnouncement] = useState<any | null>(null);
+  const [annTitle, setAnnTitle] = useState<string>("");
+  const [annBody, setAnnBody] = useState<string>("");
+  const [annPinned, setAnnPinned] = useState<boolean>(false);
+  const [schedule, setSchedule] = useState<any[]>([]);
+  const [totalStudents, setTotalStudents] = useState<number>(0);
+  const [classesToday, setClassesToday] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [teacherId, setTeacherId] = useState<string>("");
@@ -93,11 +100,36 @@ const TeacherDashboard = () => {
 
       console.info(`MyCourses: user=${userId} enrolledCount=${teacherCourses.length}`, teacherCourses);
 
-      // Combine with sample data
-      setCourses([
-        { id: "math-101", name: "Mathematics 101", students: 45, status: "Active", color: "bg-blue-500", description: "Basic mathematics course" },
-        ...teacherCourses
-      ]);
+      // Use only API-provided courses
+      setCourses(teacherCourses);
+      // compute aggregated stats from API-provided courses
+      const total = teacherCourses.reduce((acc: number, c: any) => acc + (c.students || 0), 0);
+      setTotalStudents(total);
+      // compute classes today from the schedules returned by /schedules/my-owned
+      try {
+        const rawSchedules = response.data.result || response.data || [];
+        const arr = Array.isArray(rawSchedules) ? rawSchedules : (Array.isArray(rawSchedules.result) ? rawSchedules.result : []);
+        // filter schedules whose startTime is today (local date)
+        const today = new Date();
+        const isSameLocalDate = (iso: string | null | undefined) => {
+          if (!iso) return false;
+          const d = new Date(iso);
+          return d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
+        };
+
+        const todays = arr.filter((s: any) => isSameLocalDate(s.startTime));
+        setSchedule(todays.map((s: any) => ({
+          id: s.id || s.courseId,
+          title: s.title || s.name || s.courseName || 'Class',
+          time: s.startTime ? new Date(s.startTime).toLocaleTimeString() : '',
+          date: s.startTime ? new Date(s.startTime).toLocaleDateString() : '',
+          type: s.type || 'lecture'
+        })));
+        setClassesToday(todays.length || 0);
+      } catch (err) {
+        setClassesToday(0);
+      }
+      if (teacherCourses.length > 0) setSelectedCourse(teacherCourses[0].id);
 
     } catch (err: any) {
       console.error("Error loading courses:", err);
@@ -137,25 +169,117 @@ const TeacherDashboard = () => {
     loadTeacherCourses();
   }, []);
 
-  const students = [
-    { id: 1, name: "Nguyễn Văn An", email: "an.nguyen@email.com", progress: 85, lastActive: "2 hours ago", avatar: "" },
-    { id: 2, name: "Trần Thị Bảo", email: "bao.tran@email.com", progress: 92, lastActive: "1 day ago", avatar: "" },
-    { id: 3, name: "Lê Minh Cường", email: "cuong.le@email.com", progress: 78, lastActive: "3 hours ago", avatar: "" },
-    { id: 4, name: "Phạm Thu Dung", email: "dung.pham@email.com", progress: 95, lastActive: "30 minutes ago", avatar: "" },
-  ];
+  // Load participants (students) and assignments when selectedCourse changes
+  const loadCourseParticipants = async (courseId: string) => {
+    try {
+      const resp = await api.get(`/schedules/${courseId}/participants`);
+      const parts = resp.data?.result || resp.data || [];
+      const mapped = (Array.isArray(parts) ? parts : []).map((p: any) => ({
+        id: p.userId || p.studentId || p.id,
+        name: p.fullName || p.name || p.username || (p.email ? String(p.email).split('@')[0] : `User ${String(p.userId || p.studentId || p.id).slice(0,8)}`),
+        email: p.email || '',
+        progress: p.progress || 0,
+        lastActive: p.lastActive || p.updatedAt || ''
+      }));
+      setStudents(mapped);
+    } catch (err) {
+      console.info('Participants load failed', err?.message || err);
+      setStudents([]);
+    }
+  };
 
-  const assignments = [
-    { id: 1, title: "Linear Algebra Quiz", dueDate: "2024-01-15", submissions: 38, total: 45, status: "Open" },
-    { id: 2, title: "Calculus Problem Set", dueDate: "2024-01-20", submissions: 22, total: 45, status: "Open" },
-    { id: 3, title: "Final Project", dueDate: "2024-01-30", submissions: 0, total: 45, status: "Draft" },
-  ];
+  const loadAssignmentsForCourse = async (courseId: string) => {
+    try {
+      const resp = await homeworkService.getHomeworksByCourse(String(courseId), 0, 100);
+      // normalize
+      let list: any[] = [];
+      if (Array.isArray(resp)) list = resp;
+      else if (Array.isArray(resp?.result)) list = resp.result;
+      else if (Array.isArray(resp?.result?.content)) list = resp.result.content;
+      else if (Array.isArray(resp?.data)) list = resp.data;
+      else if (Array.isArray(resp?.content)) list = resp.content;
 
-  const schedule = [
-    { id: 1, title: "Math 101 - Lecture 5", time: "9:00 AM", date: "Today", type: "lecture" },
-    { id: 2, title: "Physics 201 - Lab Session", time: "2:00 PM", date: "Today", type: "lab" },
-    { id: 3, title: "Office Hours", time: "4:00 PM", date: "Today", type: "office" },
-    { id: 4, title: "Math 101 - Quiz Review", time: "10:00 AM", date: "Tomorrow", type: "review" },
-  ];
+      const mapped = list.map((h: any) => ({
+        id: h.id,
+        title: h.title || h.name || 'Untitled',
+        dueDate: h.dueDate || h.due_date || h.due || '—',
+        // may be filled below by counting unique student submissions
+        submissions: h.submittedCount || h.submitted || 0,
+        total: h.totalStudents || h.total || 0,
+        status: h.status || 'Draft'
+      }));
+      setAssignments(mapped);
+
+      // Enrich assignments with accurate submission counts by fetching submissions per homework
+      try {
+        const counts = await Promise.all(mapped.map(async (a) => {
+          try {
+            const sresp = await submissionService.getSubmissionsByHomework(String(a.id));
+            const raw = sresp?.result || sresp;
+            let subs: any[] = [];
+            if (Array.isArray(raw)) subs = raw;
+            else if (Array.isArray(raw?.content)) subs = raw.content;
+            else if (Array.isArray(raw?.result)) subs = raw.result;
+            else if (Array.isArray(raw?.submissions)) subs = raw.submissions;
+            else subs = [];
+
+            const unique = new Set(subs.map((s: any) => (s.studentId || s.student?.id || s.userId || s.student_id))).size;
+            return unique || 0;
+          } catch (err) {
+            return a.submissions || 0;
+          }
+        }));
+
+        const enriched = mapped.map((a, idx) => ({ ...a, submissions: counts[idx] }));
+        setAssignments(enriched);
+      } catch (err) {
+        // if per-assignment counts fail, keep whatever the homework record provided
+        console.info('Failed to fetch per-assignment submission counts', err?.message || err);
+      }
+    } catch (err) {
+      console.info('Assignments load failed', err?.message || err);
+      setAssignments([]);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedCourse) {
+      // load announcements, courses, participants and assignments for the selected course
+      loadAnnouncementsForCourse(selectedCourse);
+      loadCourseParticipants(selectedCourse);
+      loadAssignmentsForCourse(selectedCourse);
+      // optionally load schedule; leave empty if not available
+      setSchedule([]);
+    } else {
+      setAnnouncements([]);
+      setStudents([]);
+      setAssignments([]);
+      setSchedule([]);
+    }
+  }, [selectedCourse]);
+
+  const loadAnnouncementsForCourse = async (courseId: string) => {
+    try {
+      const resp = await api.get(`/announcements/course/${courseId}`);
+      const raw = resp.data?.result || resp.data || resp;
+      let list: any[] = [];
+      if (Array.isArray(raw)) list = raw;
+      else if (Array.isArray(raw?.result)) list = raw.result;
+      else if (Array.isArray(raw?.content)) list = raw.content;
+      else list = [];
+
+      const mapped = list.map((a: any) => ({
+        id: a.id,
+        title: a.title || a.subject || 'Announcement',
+        body: a.body || a.message || a.content || '',
+        createdAt: a.createdAt || a.created_at || a.publishedAt || a.created || ''
+      }));
+      setAnnouncements(mapped);
+    } catch (err) {
+      console.info('Announcements load failed', err?.message || err);
+      setAnnouncements([]);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -218,13 +342,13 @@ const TeacherDashboard = () => {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Total Students</p>
-                  <p className="text-2xl font-bold text-foreground">105</p>
+                  <p className="text-2xl font-bold text-foreground">{totalStudents}</p>
                 </div>
                 <Users className="w-8 h-8 text-primary" />
               </div>
@@ -236,7 +360,7 @@ const TeacherDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Active Courses</p>
-                  <p className="text-2xl font-bold text-foreground">3</p>
+                  <p className="text-2xl font-bold text-foreground">{courses.length}</p>
                 </div>
                 <BookOpen className="w-8 h-8 text-accent" />
               </div>
@@ -247,20 +371,8 @@ const TeacherDashboard = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Pending Assignments</p>
-                  <p className="text-2xl font-bold text-foreground">7</p>
-                </div>
-                <FileText className="w-8 h-8 text-warning" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
                   <p className="text-sm font-medium text-muted-foreground">Classes Today</p>
-                  <p className="text-2xl font-bold text-foreground">3</p>
+                  <p className="text-2xl font-bold text-foreground">{classesToday}</p>
                 </div>
                 <Calendar className="w-8 h-8 text-success" />
               </div>
@@ -271,24 +383,157 @@ const TeacherDashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2">
-            <Tabs defaultValue="courses" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-4">
+            <Tabs defaultValue="announcements" className="space-y-6">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="announcements">Announcements</TabsTrigger>
                 <TabsTrigger value="courses">Courses</TabsTrigger>
-                <TabsTrigger value="students">Students</TabsTrigger>
-                <TabsTrigger value="assignments">Assignments</TabsTrigger>
                 <TabsTrigger value="analytics">Analytics</TabsTrigger>
               </TabsList>
+
+              
+
+              <TabsContent value="announcements" className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold text-foreground">Announcements</h3>
+                  <div className="flex items-center gap-3">
+                    <Select value={selectedCourse} onValueChange={setSelectedCourse}>
+                      <SelectTrigger className="w-48">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {courses.map(course => (
+                          <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Dialog>
+                      {/* hidden trigger used for programmatic open during edit (does not clear state) */}
+                      <DialogTrigger asChild>
+                        <button type="button" title="open-ann-dialog" style={{ display: 'none' }} />
+                      </DialogTrigger>
+                      <DialogTrigger asChild>
+                        <Button className="bg-primary hover:bg-primary/90" onClick={() => {
+                          // open create dialog (clear state)
+                          setEditingAnnouncement(null);
+                          setAnnTitle("");
+                          setAnnBody("");
+                          setAnnPinned(false);
+                        }}>
+                          <Plus className="w-4 h-4 mr-2" />
+                          New Announcement
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>{editingAnnouncement ? 'Edit Announcement' : 'New Announcement'}</DialogTitle>
+                          <DialogDescription>{editingAnnouncement ? 'Update the announcement and save.' : 'Post a new announcement to the selected course.'}</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div>
+                            <Label htmlFor="annTitle">Title</Label>
+                            <Input id="annTitle" value={annTitle} onChange={(e) => setAnnTitle(e.target.value)} placeholder="Announcement title" />
+                          </div>
+                          <div>
+                            <Label htmlFor="annBody">Content</Label>
+                            <Textarea id="annBody" value={annBody} onChange={(e) => setAnnBody(e.target.value)} placeholder="Write something..." />
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <input type="checkbox" id="annPinned" checked={annPinned} onChange={(e) => setAnnPinned(e.target.checked)} />
+                            <Label htmlFor="annPinned">Pin announcement</Label>
+                          </div>
+                          <div className="flex justify-end gap-2">
+                            <Button variant="outline">Cancel</Button>
+                            <Button onClick={async () => {
+                              if (!selectedCourse) {
+                                alert('Please select a course first');
+                                return;
+                              }
+                              try {
+                                const payload = { title: annTitle || 'Announcement', content: annBody || '', courseId: selectedCourse, pinned: annPinned };
+                                // create new announcement
+                                await api.post('/announcements', payload);
+                                // if editing, delete old announcement to simulate update (backend has no PUT)
+                                if (editingAnnouncement?.id) {
+                                  try {
+                                    await api.delete(`/announcements/${editingAnnouncement.id}`);
+                                  } catch (e) {
+                                    console.info('Failed to delete old announcement after update', e);
+                                  }
+                                }
+                                // refresh
+                                await loadAnnouncementsForCourse(selectedCourse);
+                              } catch (err) {
+                                console.error('Create announcement failed', err);
+                                alert('Failed to create announcement');
+                              }
+                            }}>Post</Button>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {announcements.length === 0 ? (
+                    <Card>
+                      <CardContent className="p-8 text-center">
+                        <p className="text-muted-foreground">No announcements for this course.</p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    announcements.map((a) => (
+                      <Card key={a.id}>
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h4 className="font-medium text-foreground">{a.title}</h4>
+                              <p className="text-sm text-muted-foreground mt-1">{(a.body || a.content || '').substring(0, 180)}</p>
+                              <div className="text-xs text-muted-foreground mt-2">{a.createdAt ? new Date(a.createdAt).toLocaleString() : ''}</div>
+                            </div>
+                            <div className="flex flex-col items-end ml-4 space-y-2">
+                              <Button variant="ghost" size="sm" onClick={() => {
+                                // open edit dialog prefilled
+                                setEditingAnnouncement(a);
+                                setAnnTitle(a.title || '');
+                                setAnnBody(a.body || a.content || '');
+                                setAnnPinned(Boolean(a.pinned));
+                                const btn = document.querySelector('button[title="open-ann-dialog"]') as HTMLButtonElement | null;
+                                if (btn) btn.click();
+                              }}>
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={async () => {
+                                if (!confirm('Delete this announcement?')) return;
+                                try {
+                                  await api.delete(`/announcements/${a.id}`);
+                                  await loadAnnouncementsForCourse(selectedCourse);
+                                } catch (err) {
+                                  console.error('Delete failed', err);
+                                  alert('Failed to delete announcement');
+                                }
+                              }}>
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              </TabsContent>
 
               <TabsContent value="courses" className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h3 className="text-lg font-semibold text-foreground">My Courses</h3>
                   <Button variant="outline" size="sm" onClick={() => window.location.href = "/teacher/create-course"}>
                     <Plus className="w-4 h-4 mr-2" />
-                    New Course
+                    Create Course
                   </Button>
                 </div>
 
-                {/* Search Bar */}
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
@@ -298,15 +543,6 @@ const TeacherDashboard = () => {
                     className="pl-10"
                   />
                 </div>
-
-                {error && (
-                  <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                    <p className="text-destructive text-sm">{error}</p>
-                    <Button variant="outline" size="sm" className="mt-2" onClick={loadTeacherCourses}>
-                      Thử lại
-                    </Button>
-                  </div>
-                )}
 
                 {loading ? (
                   <div className="flex items-center justify-center p-8">
@@ -318,26 +554,15 @@ const TeacherDashboard = () => {
                 ) : (
                   <div className="grid gap-4">
                     {filteredCourses.length === 0 ? (
-                      searchQuery ? (
-                        <Card className="p-8 text-center">
-                          <Search className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                          <h4 className="font-semibold mb-2">Không tìm thấy khóa học</h4>
-                          <p className="text-muted-foreground mb-4">Không có khóa học nào phù hợp với từ khóa "{searchQuery}"</p>
-                          <Button variant="outline" onClick={() => setSearchQuery("")}>
-                            Xóa bộ lọc
-                          </Button>
-                        </Card>
-                      ) : (
-                        <Card className="p-8 text-center">
-                          <BookOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                          <h4 className="font-semibold mb-2">Chưa có khóa học nào</h4>
-                          <p className="text-muted-foreground mb-4">Bạn chưa tạo khóa học nào. Hãy tạo khóa học đầu tiên!</p>
-                          <Button onClick={() => window.location.href = "/teacher/create-course"}>
-                            <Plus className="w-4 h-4 mr-2" />
-                            Tạo khóa học mới
-                          </Button>
-                        </Card>
-                      )
+                      <Card className="p-8 text-center">
+                        <BookOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                        <h4 className="font-semibold mb-2">Chưa có khóa học nào</h4>
+                        <p className="text-muted-foreground mb-4">Bạn chưa tạo khóa học nào. Hãy tạo khóa học đầu tiên!</p>
+                        <Button onClick={() => window.location.href = "/teacher/create-course"}>
+                          <Plus className="w-4 h-4 mr-2" />
+                          Tạo khóa học mới
+                        </Button>
+                      </Card>
                     ) : (
                       filteredCourses.map((course) => (
                         <Card key={course.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleCourseClick(course.id)}>
@@ -373,113 +598,6 @@ const TeacherDashboard = () => {
                     )}
                   </div>
                 )}
-              </TabsContent>
-
-              <TabsContent value="students" className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold text-foreground">Students</h3>
-                  <Select value={selectedCourse} onValueChange={setSelectedCourse}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {courses.map(course => (
-                        <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-3">
-                  {students.map((student) => (
-                    <Card key={student.id}>
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <Avatar>
-                              <AvatarImage src={student.avatar} />
-                              <AvatarFallback>{student.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium text-foreground">{student.name}</p>
-                              <p className="text-sm text-muted-foreground">{student.email}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-4">
-                            <div className="text-right">
-                              <p className="text-sm font-medium text-foreground">{student.progress}% Progress</p>
-                              <p className="text-xs text-muted-foreground">Last active: {student.lastActive}</p>
-                            </div>
-                            <Button variant="ghost" size="sm">
-                              <MessageCircle className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="assignments" className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold text-foreground">Assignments</h3>
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Create Assignment
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Create Assignment</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <Input placeholder="Assignment title" />
-                        <Textarea placeholder="Description" />
-                        <Input type="datetime-local" />
-                        <Button className="w-full">Create</Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-                
-                <div className="space-y-3">
-                  {assignments.map((assignment) => (
-                    <Card key={assignment.id}>
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="font-medium text-foreground">{assignment.title}</h4>
-                            <p className="text-sm text-muted-foreground">Due: {assignment.dueDate}</p>
-                          </div>
-                          <div className="flex items-center space-x-4">
-                            <div className="text-right">
-                              <p className="text-sm font-medium text-foreground">
-                                {assignment.submissions}/{assignment.total} Submitted
-                              </p>
-                              <Badge variant={assignment.status === "Open" ? "default" : "secondary"}>
-                                {assignment.status}
-                              </Badge>
-                            </div>
-                            <div className="flex space-x-1">
-                              <Button variant="ghost" size="sm">
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                              <Button variant="ghost" size="sm">
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <Button variant="ghost" size="sm">
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
               </TabsContent>
 
               <TabsContent value="analytics" className="space-y-4">

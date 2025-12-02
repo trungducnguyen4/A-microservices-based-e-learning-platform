@@ -21,6 +21,7 @@ import CreateCourse from "./pages/CreateCourse";
 import CreateAssignment from "./pages/CreateAssignment";
 import AssignmentSubmission from "./pages/AssignmentSubmission";
 import StudentAssignments from "./pages/StudentAssignments";
+import StudentSubmissions from "./pages/StudentSubmissions";
 import TeacherGrading from "./pages/TeacherGrading";
 import CourseDetail from "./pages/CourseDetail";
 import NotFound from "./pages/NotFound";
@@ -118,6 +119,11 @@ const App = () => (
               <Route path="/student/assignments" element={
                 <StudentRoute>
                   <StudentAssignments />
+                </StudentRoute>
+              } />
+              <Route path="/student/submissions" element={
+                <StudentRoute>
+                  <StudentSubmissions />
                 </StudentRoute>
               } />
               <Route path="/student/assignment/:homeworkId" element={

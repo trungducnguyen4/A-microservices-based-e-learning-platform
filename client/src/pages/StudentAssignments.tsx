@@ -45,6 +45,7 @@ interface SubmissionStatus {
   isLate: boolean;
   attemptNumber: number;
   status: string;
+  latestSubmission?: any;
 }
 
 type FilterStatus = "all" | "pending" | "submitted" | "graded" | "overdue";
@@ -78,38 +79,59 @@ export default function StudentAssignments() {
       const response = await homeworkService.getActiveHomeworksForStudent(studentId);
       const publishedAssignments = response.result || response;
       setAssignments(publishedAssignments);
-      
-      // Load submission status for each assignment
+      // Load student's submissions in one call and group by homeworkId so we can
+      // accurately compute attempt counts and latest submission info.
+      const subsResp = await submissionService.getSubmissionsByStudent(studentId, 0, 200);
+      const subsResult = subsResp.result || subsResp;
+      // subsResult may be a page (with content) or an array
+      const allSubs: any[] = Array.isArray(subsResult.content) ? subsResult.content : (Array.isArray(subsResult) ? subsResult : (subsResult?.content || []));
+
+      const grouped: { [key: string]: any[] } = {};
+      allSubs.forEach(s => {
+        const hid = s.homeworkId || s.homework?.id;
+        if (!hid) return;
+        if (!grouped[hid]) grouped[hid] = [];
+        grouped[hid].push(s);
+      });
+
       const submissionStatuses: { [key: string]: SubmissionStatus } = {};
-      await Promise.all(
-        publishedAssignments.map(async (homework) => {
-          try {
-            const submissionResponse = await submissionService.getLatestSubmission(homework.id, studentId);
-            const submission = submissionResponse.result;
-            
-            submissionStatuses[homework.id] = {
-              homeworkId: homework.id,
-              hasSubmission: !!submission,
-              isGraded: submission?.status === "GRADED",
-              score: submission?.score,
-              isLate: submission?.isLate || false,
-              attemptNumber: submission?.attemptNumber || 0,
-              status: submission?.status || "NOT_SUBMITTED"
-            };
-          } catch (error) {
-            // No submission found
-            submissionStatuses[homework.id] = {
-              homeworkId: homework.id,
-              hasSubmission: false,
-              isGraded: false,
-              isLate: false,
-              attemptNumber: 0,
-              status: "NOT_SUBMITTED"
-            };
-          }
-        })
-      );
-      
+      publishedAssignments.forEach((homework: any) => {
+        const list = grouped[homework.id] || [];
+        if (list.length === 0) {
+          submissionStatuses[homework.id] = {
+            homeworkId: homework.id,
+            hasSubmission: false,
+            isGraded: false,
+            isLate: false,
+            attemptNumber: 0,
+            status: "NOT_SUBMITTED"
+          };
+        } else {
+          // determine latest by attemptNumber or submittedAt
+          const latest = list.reduce((a, b) => {
+            const an = a.attemptNumber || 0;
+            const bn = b.attemptNumber || 0;
+            if (an === bn) {
+              const at = new Date(a.submittedAt || a.createdAt || 0).getTime();
+              const bt = new Date(b.submittedAt || b.createdAt || 0).getTime();
+              return bt > at ? b : a;
+            }
+            return bn > an ? b : a;
+          });
+
+          submissionStatuses[homework.id] = {
+            homeworkId: homework.id,
+            hasSubmission: true,
+            isGraded: latest?.status === "GRADED",
+            score: latest?.score,
+            isLate: latest?.isLate || false,
+            attemptNumber: list.length, // show number of attempts made
+            status: latest?.status || "SUBMITTED",
+            latestSubmission: latest
+          };
+        }
+      });
+
       setSubmissions(submissionStatuses);
     } catch (error: any) {
       toast({
@@ -212,6 +234,16 @@ export default function StudentAssignments() {
   };
 
   const stats = getStats();
+
+  const handleAssignmentClick = (homework: HomeworkData) => {
+    const submission = submissions[homework.id];
+    const attempts = submission?.attemptNumber || 0;
+    if (attempts >= homework.maxAttempts && !homework.resubmissionAllowed) {
+      toast({ title: 'Max attempts reached', description: 'You have reached the maximum number of attempts for this assignment.', variant: 'destructive' });
+      return;
+    }
+    navigate(`/student/assignment/${homework.id}`);
+  };
 
   if (isLoading) {
     return (
@@ -342,7 +374,7 @@ export default function StudentAssignments() {
                   urgency === "urgent" ? "border-red-200 bg-red-50/50" : 
                   urgency === "soon" ? "border-orange-200 bg-orange-50/50" : ""
                 }`}
-                onClick={() => navigate(`/student/assignment/${homework.id}`)}
+                onClick={() => handleAssignmentClick(homework)}
               >
                 <CardContent className="p-6">
                   <div className="flex flex-col lg:flex-row gap-4">
@@ -401,6 +433,20 @@ export default function StudentAssignments() {
                             {submission?.attemptNumber || 0}/{homework.maxAttempts} attempts
                           </span>
                         )}
+                          {/* Small preview of student's latest submission */}
+                          {submission?.hasSubmission && submission?.latestSubmission && (
+                            <div className="mt-3 p-3 bg-muted/50 rounded text-sm">
+                              <div className="font-medium mb-1">My Submission</div>
+                              {submission.latestSubmission.content ? (
+                                <div className="text-sm text-muted-foreground line-clamp-3 whitespace-pre-wrap">{submission.latestSubmission.content}</div>
+                              ) : (
+                                <div className="text-sm text-muted-foreground">No written response</div>
+                              )}
+                              {submission.latestSubmission.files && submission.latestSubmission.files.length > 0 && (
+                                <div className="mt-2 text-xs text-muted-foreground">{submission.latestSubmission.files.length} file(s) attached</div>
+                              )}
+                            </div>
+                          )}
                       </div>
                     </div>
 

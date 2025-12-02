@@ -32,6 +32,9 @@ public class ScheduleCreationResponse {
     // 3. Người tham gia
     String teacherId;  // tham chiếu User Service
     Integer maxParticipants;
+    
+    // Current number of enrolled participants — populated by controller/service when returning responses
+    Integer enrolledStudents;
 
     // 4. Trạng thái & quản lý
     @Enumerated(EnumType.STRING)

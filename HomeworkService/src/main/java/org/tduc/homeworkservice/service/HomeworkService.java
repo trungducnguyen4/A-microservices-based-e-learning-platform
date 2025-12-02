@@ -14,6 +14,7 @@ import org.tduc.homeworkservice.dto.response.HomeworkResponse;
 import org.tduc.homeworkservice.exception.AppException;
 import org.tduc.homeworkservice.exception.ErrorCode;
 import org.tduc.homeworkservice.mapper.HomeworkMapper;
+import org.tduc.homeworkservice.util.AuthContextUtil;
 import org.tduc.homeworkservice.model.*;
 import org.tduc.homeworkservice.repository.HomeworkRepository;
 import org.tduc.homeworkservice.repository.HomeworkAttachmentRepository;
@@ -31,6 +32,7 @@ public class HomeworkService {
     private final HomeworkRepository homeworkRepository;
     private final HomeworkAttachmentRepository attachmentRepository;
     private final HomeworkMapper homeworkMapper;
+    private final AuthContextUtil authContextUtil;
 
     /**
      * Get all homeworks
@@ -62,9 +64,25 @@ public class HomeworkService {
         }
 
         Homework homework = homeworkMapper.toHomework(request);
+        // Set createdBy from API Gateway forwarded headers (X-User-Id or username).
+        String createdBy = authContextUtil.getCurrentUserIdRaw();
+        if (createdBy == null) {
+            Long numeric = authContextUtil.getCurrentUserId();
+            if (numeric != null) createdBy = String.valueOf(numeric);
+            else createdBy = authContextUtil.getCurrentUsername();
+        }
+        if (createdBy == null || createdBy.isBlank()) {
+            createdBy = "system"; // fallback to a non-null value to satisfy DB constraint
+        }
+        homework.setCreatedBy(createdBy);
         homework.setCreatedAt(LocalDateTime.now());
         homework.setUpdatedAt(LocalDateTime.now());
-        homework.setStatus(HomeworkStatus.DRAFT);
+        // Respect requested status (allow creating as PUBLISHED if caller provided it), default to DRAFT
+        if (request.getStatus() != null) {
+            homework.setStatus(request.getStatus());
+        } else {
+            homework.setStatus(HomeworkStatus.DRAFT);
+        }
         
         Homework savedHomework = homeworkRepository.save(homework);
         log.info("Created homework with ID: {}", savedHomework.getId());

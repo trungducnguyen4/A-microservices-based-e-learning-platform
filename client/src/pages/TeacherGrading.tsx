@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,7 +23,7 @@ import {
   Star
 } from "lucide-react";
 import { format } from "date-fns";
-import { homeworkService, submissionService, fileService } from "@/lib/api";
+import { homeworkService, submissionService, fileService, api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -58,6 +58,7 @@ interface SubmissionData {
 export default function TeacherGrading() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const location = useLocation();
   
   const [assignments, setAssignments] = useState<HomeworkData[]>([]);
   const [selectedAssignment, setSelectedAssignment] = useState<string>("");
@@ -90,11 +91,25 @@ export default function TeacherGrading() {
     try {
       setIsLoading(true);
       const response = await homeworkService.getHomeworksByTeacher(teacherId);
-      const teacherAssignments = response.result || response;
-      setAssignments(teacherAssignments);
-      
-      if (teacherAssignments.length > 0 && !selectedAssignment) {
-        setSelectedAssignment(teacherAssignments[0].id);
+      const raw = response?.result || response;
+
+      // Normalize various possible response shapes to an array
+      let hwList: any[] = [];
+      if (Array.isArray(raw)) hwList = raw;
+      else if (Array.isArray(raw?.result)) hwList = raw.result;
+      else if (Array.isArray(raw?.content)) hwList = raw.content;
+      else if (Array.isArray(raw?.homeworks)) hwList = raw.homeworks;
+      else hwList = [];
+
+      setAssignments(hwList);
+
+      // If a homeworkId query param exists, select it; otherwise pick first
+      const params = new URLSearchParams(location.search);
+      const qId = params.get('homeworkId');
+      if (qId && hwList.find((h: any) => String(h.id) === String(qId))) {
+        setSelectedAssignment(String(qId));
+      } else if (hwList.length > 0 && !selectedAssignment) {
+        setSelectedAssignment(hwList[0].id);
       }
     } catch (error: any) {
       toast({
@@ -113,7 +128,99 @@ export default function TeacherGrading() {
     try {
       setIsLoading(true);
       const response = await submissionService.getSubmissionsByHomework(selectedAssignment);
-      setSubmissions(response.result || response);
+      const raw = response?.result || response;
+
+      // Normalize submissions to array
+      let subsList: any[] = [];
+      if (Array.isArray(raw)) subsList = raw;
+      else if (Array.isArray(raw?.content)) subsList = raw.content;
+      else if (Array.isArray(raw?.result)) subsList = raw.result;
+      else if (Array.isArray(raw?.submissions)) subsList = raw.submissions;
+      else subsList = [];
+
+      // Group submissions by studentId and keep the latest submission per student
+      const groupedByStudent: Record<string, any[]> = {};
+      subsList.forEach((s: any) => {
+        const sid = s.studentId || s.student?.id || s.userId || s.student_id;
+        if (!sid) return;
+        if (!groupedByStudent[sid]) groupedByStudent[sid] = [];
+        groupedByStudent[sid].push(s);
+      });
+
+      const latestPerStudent = Object.values(groupedByStudent).map(list => {
+        return list.reduce((a, b) => {
+          const an = a.attemptNumber || 0;
+          const bn = b.attemptNumber || 0;
+          if (an === bn) {
+            const at = new Date(a.submittedAt || a.createdAt || 0).getTime();
+            const bt = new Date(b.submittedAt || b.createdAt || 0).getTime();
+            return bt > at ? b : a;
+          }
+          return bn > an ? b : a;
+        });
+      });
+
+      // Resolve full names for the latest submission per student using public profiles
+      const studentIds = latestPerStudent
+        .map((s: any) => s.studentId || s.student?.id || s.userId || s.student_id)
+        .filter((id: any) => !!id);
+
+      const uniqueIds = Array.from(new Set(studentIds));
+
+      const profilePromises = uniqueIds.map(async (id) => {
+        // Try public profile endpoint first, then fallback to user endpoint
+        try {
+          const profResp = await api.get(`/users/public/${id}`);
+          const prof = profResp.data?.result || profResp.data || {};
+          const name = prof.fullName || prof.name || prof.username || '';
+          if (name) return { id, name };
+        } catch (err) {
+          // continue to fallback
+        }
+
+        try {
+          const profResp2 = await api.get(`/users/${id}`);
+          const prof2 = profResp2.data?.result || profResp2.data || {};
+          const name2 = prof2.fullName || prof2.name || prof2.username || prof2.displayName || '';
+          if (name2) return { id, name: name2 };
+        } catch (err) {
+          // final fallback, return empty name
+        }
+
+        return { id, name: '' };
+      });
+
+      const profiles = await Promise.all(profilePromises);
+      const nameMap: Record<string,string> = Object.fromEntries(profiles.map((p: any) => [p.id, p.name]));
+
+      const submissionsWithNames = latestPerStudent.map((s: any) => {
+        const sid = s.studentId || s.student?.id || s.userId || s.student_id;
+
+        // Attempt to derive name from submission payload first
+        const embeddedName = s.studentName || s.student?.fullName || s.student?.full_name || s.student?.name || s.user?.fullName || s.user?.name || s.user?.username || s.student?.profile?.fullName || '';
+
+        // Fallback order: embeddedName -> nameMap -> email local part -> id short
+        let finalName = embeddedName && String(embeddedName).trim() ? embeddedName : (nameMap[sid] || '');
+        if (!finalName && (s.student?.email || s.email)) {
+          const em = s.student?.email || s.email;
+          finalName = String(em).split('@')[0];
+        }
+        if (!finalName && sid) finalName = `User ${String(sid).slice(0,8)}`;
+
+        // Log if name still appears generic for debugging
+        if (finalName.startsWith('User ')) {
+          console.info('TeacherGrading: could not resolve full name for student id', sid);
+        }
+
+        return {
+          ...s,
+          studentId: sid,
+          studentName: finalName
+        } as SubmissionData;
+      });
+
+      // Use latestPerStudent (with resolved names) for teacher grading so teacher sees final submission only
+      setSubmissions(submissionsWithNames);
     } catch (error: any) {
       toast({
         title: "Failed to load submissions",
@@ -137,13 +244,20 @@ export default function TeacherGrading() {
     try {
       setIsGrading(true);
       
+      // Determine submission id from common fields (id or submissionId)
+      const submissionId = selectedSubmission.id || selectedSubmission.submissionId || selectedSubmission.submission_id;
+      if (!submissionId) {
+        throw new Error('Submission id missing for selected submission');
+      }
+
       const gradingData = {
+        submissionId,
         score,
         feedback,
         gradedBy: teacherId,
       };
-      
-      await submissionService.gradeSubmission(selectedSubmission.id, gradingData);
+
+      await submissionService.gradeSubmission(submissionId, gradingData);
       
       toast({
         title: "Grading saved",

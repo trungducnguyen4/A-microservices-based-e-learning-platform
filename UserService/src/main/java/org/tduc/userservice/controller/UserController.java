@@ -68,6 +68,30 @@ public class UserController {
         return response;
     }
 
+    /**
+     * Public-facing minimal profile for other services / frontend to display basic info.
+     * This intentionally allows anonymous access and returns only non-sensitive fields.
+     */
+    @GetMapping("/public/{userId}")
+    @PermitAll
+    public ApiResponse<Map<String, Object>> getPublicProfile(@PathVariable("userId") String userId) {
+        ApiResponse<Map<String, Object>> response = new ApiResponse<>();
+        response.setCode(HttpStatus.OK.value());
+        try {
+            UserResponse user = userService.getUser(userId);
+            java.util.Map<String, Object> out = new java.util.HashMap<>();
+            out.put("id", user.getId());
+            out.put("username", user.getUsername());
+            out.put("fullName", user.getFullName());
+            out.put("email", user.getEmail());
+            response.setResult(out);
+        } catch (Exception ex) {
+            // If user not found, return empty result (404 would be fine too but keep simple)
+            response.setResult(java.util.Map.of());
+        }
+        return response;
+    }
+
     @PutMapping("/users/{userId}")
     @PreAuthorize("#userId == authentication.name or hasAuthority('ADMIN')")
     public ApiResponse<UserResponse> editUser(@PathVariable String userId, @RequestBody UserEditRequest request) {

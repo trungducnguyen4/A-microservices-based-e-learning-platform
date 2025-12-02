@@ -95,7 +95,28 @@ const StudentPortal = () => {
           level: s.level || "",
         }));
 
-        setEnrolledCourses(mapped);
+        // Try to resolve instructor names via public profile endpoint
+        const instructorIds = Array.from(new Set(mapped.map((m: any) => m.instructor).filter(Boolean)));
+        if (instructorIds.length > 0) {
+          try {
+            const profPromises = instructorIds.map((id: string) => api.get(`/users/public/${id}`).then(r => ({ id, data: r.data?.result || r.data || {} })).catch(() => ({ id, data: {} })));
+            const profResults = await Promise.all(profPromises);
+            const profMap: Record<string, any> = {};
+            profResults.forEach((p: any) => {
+              profMap[String(p.id)] = p.data;
+            });
+
+            const mappedWithNames = mapped.map((c: any) => ({
+              ...c,
+              instructorName: (profMap[String(c.instructor)]?.fullName || profMap[String(c.instructor)]?.username || c.instructor || 'Unknown')
+            }));
+            setEnrolledCourses(mappedWithNames);
+          } catch (e) {
+            setEnrolledCourses(mapped);
+          }
+        } else {
+          setEnrolledCourses(mapped);
+        }
         // Log to browser console how many courses this user is enrolled in
         try {
           const who = userInfo?.username || userInfo?.id || authUser?.name || 'unknown';
@@ -380,7 +401,7 @@ const StudentPortal = () => {
                     <div className="flex-1">
                       <h3 className="font-semibold text-lg">{course.title}</h3>
                       <p className="text-sm text-muted-foreground mb-2">
-                        By {course.instructor} • {course.duration} • {course.level}
+                        By {course.instructorName || course.instructor} • {course.duration} • {course.level}
                       </p>
                       <div className="flex items-center space-x-4 mb-3">
                         <div className="flex items-center">

@@ -81,6 +81,7 @@ const Navigation = () => {
       case 'student':
         return [
           { path: "/student/assignments", label: "My Assignments", icon: FileText },
+          { path: "/student/submissions", label: "My Submissions", icon: BookOpen },
         ];
       default:
         return [];

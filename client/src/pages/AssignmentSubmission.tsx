@@ -65,6 +65,9 @@ export default function AssignmentSubmission() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionText, setSubmissionText] = useState("");
   const [submissionFiles, setSubmissionFiles] = useState<any[]>([]);
+  const [attemptCount, setAttemptCount] = useState<number | null>(null);
+  const [showMySubmissions, setShowMySubmissions] = useState(false);
+  const [mySubmissions, setMySubmissions] = useState<any[] | null>(null);
   
   // Get student ID from authentication
   const { user } = useAuth();
@@ -73,6 +76,36 @@ export default function AssignmentSubmission() {
   useEffect(() => {
     loadHomeworkData();
   }, [homeworkId]);
+
+  const formatMimeType = (mime: string) => {
+    if (!mime) return mime;
+    const map: Record<string, string> = {
+      "application/pdf": "PDF",
+      "application/msword": "DOC",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "DOCX",
+      "image/png": "PNG",
+      "image/jpeg": "JPG",
+      "image/jpg": "JPG",
+      "text/plain": "TXT",
+      "application/zip": "ZIP",
+      "application/vnd.ms-excel": "XLS",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "XLSX",
+    };
+
+    if (map[mime]) return map[mime];
+
+    // subtype after '/'
+    const subtype = mime.split('/')[1] || mime;
+
+    // If subtype looks like a common extension (contains '.'), take last token
+    if (subtype.includes('.')) {
+      const last = subtype.split('.').pop() || subtype;
+      if (last.length <= 5) return last.toUpperCase();
+    }
+
+    // Replace separators with spaces and uppercase for fallback
+    return subtype.replace(/[^a-z0-9]+/gi, ' ').toUpperCase();
+  };
 
   const loadHomeworkData = async () => {
     if (!homeworkId) return;
@@ -93,6 +126,16 @@ export default function AssignmentSubmission() {
         }
       } catch (error) {
         // No existing submission - this is fine
+      }
+      // Load count of submissions by this student for this homework
+      try {
+        const subsResp = await submissionService.getSubmissionsByStudent(studentId, 0, 200);
+        const subsResult = subsResp.result || subsResp;
+        const items = Array.isArray(subsResult.content) ? subsResult.content : (Array.isArray(subsResult) ? subsResult : (subsResult || []));
+        const count = items.filter((s: any) => s.homeworkId === homeworkId).length;
+        setAttemptCount(count);
+      } catch (err) {
+        // ignore count failures
       }
     } catch (error: any) {
       toast({
@@ -160,6 +203,22 @@ export default function AssignmentSubmission() {
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const loadMySubmissions = async () => {
+    if (!homeworkId) return;
+    try {
+      setIsLoading(true);
+      const subsResp = await submissionService.getSubmissionsByStudent(studentId, 0, 200);
+      const subsResult = subsResp.result || subsResp;
+      const allSubs: any[] = Array.isArray(subsResult.content) ? subsResult.content : (Array.isArray(subsResult) ? subsResult : (subsResult || []));
+      const filtered = allSubs.filter(s => (s.homeworkId || s.homework?.id) === homeworkId).sort((a,b) => (b.attemptNumber || 0) - (a.attemptNumber || 0));
+      setMySubmissions(filtered);
+    } catch (err) {
+      toast({ title: 'Failed to load submissions', description: 'Could not load your submissions for this assignment', variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -287,6 +346,18 @@ export default function AssignmentSubmission() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="text-3xl font-bold text-primary">{homework.title}</h1>
+        <div className="ml-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              setShowMySubmissions(prev => !prev);
+              if (!mySubmissions) await loadMySubmissions();
+            }}
+          >
+            My Submissions
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -347,10 +418,12 @@ export default function AssignmentSubmission() {
                 <CardTitle className="flex items-center gap-2">
                   <Upload className="h-5 w-5" />
                   Your Submission
-                  {submission && (
-                    <Badge variant="secondary">
-                      Attempt {submission.attemptNumber + 1}
-                    </Badge>
+                  {(
+                    attemptCount !== null
+                      ? <Badge variant="secondary">Attempt {attemptCount + 1}</Badge>
+                      : (submission && (
+                          <Badge variant="secondary">Attempt {submission.attemptNumber + 1}</Badge>
+                        ))
                   )}
                 </CardTitle>
               </CardHeader>
@@ -393,10 +466,7 @@ export default function AssignmentSubmission() {
                       
                       {homework.allowedFileTypes && homework.allowedFileTypes.length > 0 && (
                         <p className="text-xs text-muted-foreground mt-2">
-                          Allowed types: {homework.allowedFileTypes.map(type => {
-                            const ext = type.split('/')[1];
-                            return ext.toUpperCase();
-                          }).join(', ')}
+                          Allowed types: {homework.allowedFileTypes.map(formatMimeType).join(', ')}
                         </p>
                       )}
                       
@@ -576,11 +646,11 @@ export default function AssignmentSubmission() {
                   <p className="text-sm font-medium">Attempts</p>
                   <div className="flex items-center gap-2 mt-1">
                     <Progress 
-                      value={submission ? (submission.attemptNumber / homework.maxAttempts) * 100 : 0} 
+                      value={((attemptCount ?? (submission?.attemptNumber ?? 0)) / homework.maxAttempts) * 100} 
                       className="flex-1"
                     />
                     <span className="text-sm text-muted-foreground">
-                      {submission ? submission.attemptNumber : 0} / {homework.maxAttempts}
+                      {attemptCount ?? (submission ? submission.attemptNumber : 0)} / {homework.maxAttempts}
                     </span>
                   </div>
                 </div>

@@ -71,9 +71,9 @@ public interface HomeworkRepository extends JpaRepository<Homework, String> {
     @Query("SELECT h FROM Homework h WHERE LOWER(h.title) LIKE LOWER(CONCAT('%', :title, '%')) OR LOWER(h.description) LIKE LOWER(CONCAT('%', :description, '%'))")
     Page<Homework> findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(@Param("title") String title, @Param("description") String description, Pageable pageable);
     
-    // Find active homeworks for student
-    @Query("SELECT h FROM Homework h WHERE h.courseId = :courseId AND h.status = 'PUBLISHED' AND h.dueDate > :currentTime")
-    List<Homework> findActiveHomeworksForStudent(@Param("courseId") String courseId, @Param("currentTime") LocalDateTime currentTime);
+    // Find active homeworks for student (published, not overdue, and assigned to the student or unassigned)
+    @Query("SELECT h FROM Homework h WHERE h.status = 'PUBLISHED' AND h.dueDate > :currentTime AND (h.assignedTo IS NULL OR h.assignedTo LIKE CONCAT('%', :studentId, '%')) ORDER BY h.dueDate ASC")
+    List<Homework> findActiveHomeworksForStudent(@Param("studentId") String studentId, @Param("currentTime") LocalDateTime currentTime);
     
     // Find overdue homeworks
     @Query("SELECT h FROM Homework h WHERE h.courseId = :courseId AND h.status = 'PUBLISHED' AND h.dueDate < :currentTime")

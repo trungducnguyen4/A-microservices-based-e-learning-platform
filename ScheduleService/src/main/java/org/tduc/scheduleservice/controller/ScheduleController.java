@@ -27,6 +27,8 @@ public class ScheduleController {
 
     @Autowired
     private ScheduleMapper scheduleMapper;
+    @Autowired
+    private org.tduc.scheduleservice.service.ScheduleParticipantService scheduleParticipantService;
 
     @PostMapping("/create")
     public ApiResponse<Schedule> createSchedule(@RequestBody @Valid ScheduleCreationRequest request) {
@@ -54,7 +56,19 @@ public class ScheduleController {
         }
 
         response.setCode(HttpStatus.OK.value());
-        response.setResult(schedules.stream().map(scheduleMapper::toScheduleCreationResponse).collect(Collectors.toList()));
+        // Map schedules and enrich with enrolled student counts
+        List<ScheduleCreationResponse> result = schedules.stream().map(scheduleMapper::toScheduleCreationResponse).collect(Collectors.toList());
+        for (int i = 0; i < schedules.size(); i++) {
+            Schedule s = schedules.get(i);
+            ScheduleCreationResponse r = result.get(i);
+            try {
+                int count = scheduleParticipantService.getParticipantsByScheduleId(s.getId()).size();
+                r.setEnrolledStudents(count);
+            } catch (Exception ex) {
+                // If participant lookup fails, leave enrolledStudents null to avoid hiding schedules
+            }
+        }
+        response.setResult(result);
         return response;
     }
 

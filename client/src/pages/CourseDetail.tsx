@@ -9,10 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, Users, BookOpen, Clock, Calendar, Plus, Eye, Edit, Trash2, Loader2, Copy } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function CourseDetail() {
   const navigate = useNavigate();
   const { courseId } = useParams();
+  const { user } = useAuth();
   const [course, setCourse] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -20,6 +22,27 @@ export default function CourseDetail() {
   const [students, setStudents] = useState<any[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
   const [lessons, setLessons] = useState<any[]>([]);
+
+  // Helper: try to normalize an API response into an array of items
+  const normalizeList = (resp: any): any[] => {
+    if (!resp) return [];
+    // resp might be already an array
+    if (Array.isArray(resp)) return resp;
+
+    // common wrappers
+    if (Array.isArray(resp.result)) return resp.result;
+    if (Array.isArray(resp.result?.content)) return resp.result.content;
+    if (Array.isArray(resp.content)) return resp.content;
+    if (Array.isArray(resp.data)) return resp.data;
+    if (Array.isArray(resp.homeworks)) return resp.homeworks;
+    if (Array.isArray(resp.submissions)) return resp.submissions;
+
+    // try nested places
+    if (Array.isArray(resp.result?.data)) return resp.result.data;
+    if (Array.isArray(resp.payload)) return resp.payload;
+
+    return [];
+  };
 
   // Decode JWT để lấy token
   const decodeJWT = (token: string) => {
@@ -81,51 +104,60 @@ export default function CourseDetail() {
       // Load assignments for this course from HomeworkService
       try {
         const hwResp = await homeworkService.getHomeworksByCourse(String(courseId), 0, 100);
+        const hwListRaw = normalizeList(hwResp);
 
-        // homework API may return different shapes depending on backend (Page<T> or List<T>)
-        // Normalize to an array `hwList` safely before mapping
-        let hwList: any[] = [];
-        if (Array.isArray(hwResp)) {
-          hwList = hwResp;
-        } else if (Array.isArray(hwResp?.result)) {
-          hwList = hwResp.result;
-        } else if (Array.isArray(hwResp?.result?.content)) {
-          hwList = hwResp.result.content;
-        } else if (Array.isArray(hwResp?.content)) {
-          hwList = hwResp.content;
-        } else if (Array.isArray(hwResp?.data)) {
-          hwList = hwResp.data;
-        } else {
-          // Fallback: try to use result when it's a single item (not ideal)
-          hwList = [];
-        }
-
-        setAssignments(hwList.map((h: any) => ({
+        const mapped = hwListRaw.map((h: any) => ({
           id: h.id,
           title: h.title || h.name || 'Untitled',
           dueDate: h.dueDate || h.due_date || h.due || '—',
           submitted: h.submittedCount || h.submitted || 0,
-          total: h.totalStudents || h.total || courseData.enrolledStudents || 0,
+          total: h.totalStudents || h.total || 0,
           status: h.status || 'active'
-        })));
+        }));
+
+        // Set assignments strictly from DB response; do not fall back to token-derived student lists
+        setAssignments(mapped);
       } catch (e: any) {
-        // ignore assignment load failure but log
         console.error('Failed to load assignments for course', e);
+        setAssignments([]);
       }
 
       // Try to load enrolled students / participants from schedule service if available
       try {
         const partsResp = await api.get(`/schedules/${courseId}/participants`);
-        const parts = partsResp.data?.result || partsResp.data || [];
-        setStudents(parts.map((p: any) => ({
-          id: p.id || p.userId || p.studentId,
-          name: p.name || p.username || p.displayName || p.fullName || 'Unknown',
+        const partsList = normalizeList(partsResp.data || partsResp);
+
+        // Map participants to student records; do not invent missing fields
+        const baseStudents = partsList.map((p: any) => ({
+          id: p.userId || p.studentId || p.user_id || p.id,
           email: p.email || p.contact || '',
           progress: p.progress || 0,
           lastActive: p.lastActive || p.updatedAt || ''
+        })).filter(s => s.id);
+
+        // Fetch profiles for these student ids to display full names
+        const profilePromises = baseStudents.map(async (s) => {
+          try {
+            const profResp = await api.get(`/users/public/${s.id}`);
+            const prof = profResp.data?.result || profResp.data || {};
+            return { id: s.id, name: prof.fullName || prof.name || prof.username || '' };
+          } catch (err) {
+            return { id: s.id, name: '' };
+          }
+        });
+
+        const profiles = await Promise.all(profilePromises);
+
+        const nameMap: Record<string,string> = Object.fromEntries(profiles.map((p: any) => [p.id, p.name]));
+
+        setStudents(baseStudents.map((s) => ({
+          id: s.id,
+          name: nameMap[s.id] || (s.email ? String(s.email).split('@')[0] : `User ${String(s.id).slice(0,8)}`),
+          email: s.email,
+          progress: s.progress,
+          lastActive: s.lastActive
         })));
       } catch (e) {
-        // If participants endpoint not present, fall back to empty list
         console.info('Participants endpoint not available or failed', e?.message || e);
         setStudents([]);
       }
@@ -145,6 +177,58 @@ export default function CourseDetail() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper: fallback to token-less user id retrieval if needed
+  const authContextFallbackUserId = () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return null;
+      const payload = decodeJWT(token);
+      return payload?.userId || payload?.user_id || payload?.sub || payload?.username || null;
+    } catch (err) {
+      return null;
+    }
+  };
+
+  // Handlers for assignment buttons (use named functions for easier logging/debugging)
+  const handleViewAssignmentClick = (assignment: any) => {
+    // Debug log to help trace why navigation may not happen
+    // eslint-disable-next-line no-console
+    console.log('handleViewAssignmentClick', { assignment, user });
+    const id = assignment?.id;
+    if (!id) {
+      // eslint-disable-next-line no-console
+      console.warn('Assignment id missing, cannot navigate');
+      return;
+    }
+    // Determine role robustly (role may be a string or an array)
+    const roleField = user?.role || user?.roles || '';
+    let isStudent = false;
+    if (Array.isArray(roleField)) {
+      isStudent = roleField.map(r => String(r).toLowerCase()).includes('student');
+    } else if (typeof roleField === 'string') {
+      isStudent = String(roleField).toLowerCase().includes('student');
+    }
+
+    if (isStudent) {
+      navigate(`/student/assignment/${encodeURIComponent(id)}`);
+    } else {
+      // Navigate teacher to grading view
+      navigate(`/teacher/grading?homeworkId=${encodeURIComponent(id)}`);
+    }
+  };
+
+  const handleEditAssignmentClick = (assignment: any) => {
+    // eslint-disable-next-line no-console
+    console.log('handleEditAssignmentClick', { assignment, user });
+    const id = assignment?.id;
+    if (!id) {
+      // eslint-disable-next-line no-console
+      console.warn('Assignment id missing, cannot navigate to edit');
+      return;
+    }
+    navigate(`/teacher/create-assignment?id=${encodeURIComponent(id)}`);
   };
 
   useEffect(() => {
@@ -244,7 +328,7 @@ export default function CourseDetail() {
             <div className="flex items-center gap-3">
                   <Users className="h-8 w-8 text-primary" />
                   <div>
-                    <p className="text-2xl font-bold">{students.length}/{course.maxStudents}</p>
+                    <p className="text-2xl font-bold">{students.length}</p>
                     <p className="text-sm text-muted-foreground">Học sinh</p>
                   </div>
                 </div>
@@ -342,15 +426,17 @@ export default function CourseDetail() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Bài Tập và Đánh Giá</CardTitle>
-              <Button onClick={() => navigate("/teacher/create-assignment")}>
-                <Plus className="h-4 w-4 mr-2" />
-                Tạo Bài Tập Mới
-              </Button>
+              {user?.role === 'teacher' && (
+                <Button onClick={() => navigate("/teacher/create-assignment")}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Tạo Bài Tập Mới
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {assignments.map((assignment) => (
-                  <div key={assignment.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div key={assignment.id} className="flex items-center justify-between p-4 border rounded-lg cursor-pointer" onClick={() => handleViewAssignmentClick(assignment)}>
                     <div>
                       <h3 className="font-medium">{assignment.title}</h3>
                       <p className="text-sm text-muted-foreground">Hạn nộp: {assignment.dueDate}</p>
@@ -362,10 +448,24 @@ export default function CourseDetail() {
                       <Badge variant={assignment.status === "active" ? "default" : "secondary"}>
                         {assignment.status === "active" ? "Đang diễn ra" : "Nháp"}
                       </Badge>
-                      <Button size="sm" variant="outline">
+                      {user && String(user.role).toLowerCase() === 'student' && (() => {
+                        const isPublished = ['published', 'active'].includes(String(assignment.status || '').toLowerCase());
+                        return (
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="bg-primary text-white hover:bg-primary/90"
+                            onClick={() => handleViewAssignmentClick(assignment)}
+                            disabled={!isPublished}
+                          >
+                            Nộp bài
+                          </Button>
+                        );
+                      })()}
+                      <Button type="button" size="sm" variant="outline" className="relative z-50" onClick={() => handleViewAssignmentClick(assignment)}>
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button size="sm" variant="outline">
+                      <Button type="button" size="sm" variant="outline" className="relative z-50" onClick={() => handleEditAssignmentClick(assignment)}>
                         <Edit className="h-4 w-4" />
                       </Button>
                     </div>
@@ -443,16 +543,18 @@ export default function CourseDetail() {
                   <p className="text-muted-foreground">{course.joinCode || 'Chưa có'}</p>
                 </div>
               </div>
-              <div className="flex gap-4 pt-4">
-                <Button variant="outline">
-                  <Edit className="h-4 w-4 mr-2" />
-                  Chỉnh Sửa
-                </Button>
-                <Button variant="destructive">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Xóa Khóa Học
-                </Button>
-              </div>
+              {user?.role === 'teacher' && (
+                <div className="flex gap-4 pt-4">
+                  <Button variant="outline">
+                    <Edit className="h-4 w-4 mr-2" />
+                    Chỉnh Sửa
+                  </Button>
+                  <Button variant="destructive">
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Xóa Khóa Học
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

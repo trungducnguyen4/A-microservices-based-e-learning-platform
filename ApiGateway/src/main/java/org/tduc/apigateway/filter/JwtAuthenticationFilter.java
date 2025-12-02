@@ -39,11 +39,8 @@ public class JwtAuthenticationFilter implements WebFilter {
         String token = resolveToken(exchange);
         if (token != null) {
             try {
-                // validate token and extract claims for downstream services
                 Map<String, Object> claims = validateTokenAndAuthenticate(token);
 
-                // If we have claims, propagate minimal user info as headers so downstream
-                // services can create authentication from headers.
                 if (claims != null) {
                     // Prefer an explicit "userId" claim if present (newer tokens include UUID id).
                     // Fallback to subject for legacy tokens which stored username or numeric id in sub.
@@ -53,13 +50,14 @@ public class JwtAuthenticationFilter implements WebFilter {
                     if (claims.containsKey("role")) role = claims.get("role").toString();
                     else if (claims.containsKey("roles")) role = claims.get("roles").toString();
 
-            // Log what we will propagate to downstream services for easier debugging
-            log.info("Propagating headers -> X-User-Id: {}, X-User-Username: {}, X-User-Role: {}", userId, username, role);
-            ServerHttpRequest modified = exchange.getRequest().mutate()
-                .header("X-User-Id", userId)
-                .header("X-User-Username", username)
-                .header("X-User-Role", role)
-                .build();
+                    // Log what we will propagate to downstream services for easier debugging
+                    log.info("Propagating headers -> X-User-Id: {}, X-User-Username: {}, X-User-Role: {}", userId, username, role);
+
+                    ServerHttpRequest modified = exchange.getRequest().mutate()
+                            .header("X-User-Id", userId)
+                            .header("X-User-Username", username)
+                            .header("X-User-Role", role)
+                            .build();
 
                     ServerWebExchange mutatedExchange = exchange.mutate().request(modified).build();
                     return chain.filter(mutatedExchange);
@@ -117,16 +115,15 @@ public class JwtAuthenticationFilter implements WebFilter {
             return payload;
         } else if (alg != null && (alg.startsWith("RS") || alg.startsWith("ES"))) {
             // For asymmetric algorithms we usually verify with a public key.
-            // We cannot compute the expected signature without the private key.
             if (jwtPublicKeyPem != null && !jwtPublicKeyPem.isEmpty()) {
                 byte[] pubBytes = jwtPublicKeyPem.getBytes(StandardCharsets.UTF_8);
                 String pubThumb = sha256Hex(pubBytes);
                 log.info("Configured public key fingerprint (sha256 hex): {}", pubThumb);
+                // Real verification with public key should be implemented here (e.g. using java.security.Signature)
             } else {
                 log.info("No configured public key found in properties; cannot compute expected signature for {}.", alg);
             }
-            // actual verification with public key should happen elsewhere; throw to show mismatch
-            throw new IllegalArgumentException("JWT signature does not match locally computed signature. JWT validity cannot be asserted and should not be trusted.");
+            throw new IllegalArgumentException("Unable to validate JWT signature locally for asymmetric algorithm: " + alg);
         } else {
             log.info("No local signer information available to compute expected signature (alg: {}, secret present: {}).", alg, (jwtSecret != null && !jwtSecret.isEmpty()));
             throw new IllegalArgumentException("Unable to validate JWT signature locally.");
