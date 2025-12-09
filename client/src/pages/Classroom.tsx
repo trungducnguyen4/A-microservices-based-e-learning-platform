@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +21,6 @@ import {
   Settings,
   Hand,
   FileText,
-  Camera,
   Maximize,
   Minimize,
   PhoneOff,
@@ -30,529 +30,88 @@ import {
   WifiOff,
   Volume2
 } from "lucide-react";
-import { Room, RoomEvent, createLocalTracks, RemoteParticipant, LocalParticipant, DataPacket_Kind, Track, LocalTrack } from "livekit-client";
-import PreJoinForm from "@/components/PreJoinForm";
-
-interface ChatMessage {
-  id: string;
-  sender: string;
-  message: string;
-  timestamp: string;
-  senderId: string;
-}
+import { useAuth } from "@/contexts/AuthContext";
+import { useClassroom } from "@/hooks/useClassroom";
+import { useChat } from "@/hooks/useChat";
+import { useMediaDevices } from "@/hooks/useMediaDevices";
+import { getDeviceLabel } from "@/utils/deviceManager";
 
 const Classroom = () => {
-  // Pre-join state
-  const [hasJoined, setHasJoined] = useState(false);
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  
+  // State
   const [userName, setUserName] = useState("");
   const [roomName, setRoomName] = useState("");
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   
-  // Media states
+  // Media states (local)
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOn, setIsVideoOn] = useState(true);
-  const [isScreenSharing, setIsScreenSharing] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   
-  // Chat states
-  const [chatMessage, setChatMessage] = useState("");
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  
-  // UI states
-  const [showSettings, setShowSettings] = useState(false);
-  const [connectionQuality, setConnectionQuality] = useState<"excellent" | "good" | "poor">("excellent");
-  const [isReconnecting, setIsReconnecting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [handRaised, setHandRaised] = useState(false);
-  const [audioLevel, setAudioLevel] = useState(0);
-  
-  // Device states
-  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
-  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
-  const [selectedAudioDevice, setSelectedAudioDevice] = useState<string>("");
-  const [selectedVideoDevice, setSelectedVideoDevice] = useState<string>("");
-  
-  // LiveKit states
-  const [room, setRoom] = useState<Room | null>(null);
-  const [participants, setParticipants] = useState<RemoteParticipant[]>([]);
-  const [localParticipant, setLocalParticipant] = useState<LocalParticipant | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const localVideoRef = useRef<HTMLDivElement>(null);
-  const remoteVideosRef = useRef<HTMLDivElement>(null);
-  const chatEndRef = useRef<HTMLDivElement>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  
-  // Refs to keep track of local tracks
-  const localTracksRef = useRef<LocalTrack[]>([]);
-
-  // Auto-scroll chat to bottom when new messages arrive
+  // Get room code from URL and auto-join
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages]);
-
-  // LiveKit connection
-  useEffect(() => {
-    if (!hasJoined) return;
-    
-    let currentRoom: Room | null = null;
-    let reconnectAttempts = 0;
-    const maxReconnectAttempts = 5;
-
-    async function joinRoom() {
-      try {
-        setError(null);
-        
-        const resp = await fetch(
-          `http://localhost:4000/getToken?room=${encodeURIComponent(roomName)}&user=${encodeURIComponent(userName)}`
-        );
-        
-        if (!resp.ok) {
-          throw new Error("Failed to get token from server");
-        }
-        
-        const { token, url } = await resp.json();
-
-        const r = new Room({
-          adaptiveStream: true,
-          dynacast: true,
-        });
-        
-        // Connection state listeners
-        r.on(RoomEvent.Reconnecting, () => {
-          console.log("🔄 Reconnecting...");
-          setIsReconnecting(true);
-          setConnectionQuality("poor");
-        });
-        
-        r.on(RoomEvent.Reconnected, () => {
-          console.log("✅ Reconnected successfully");
-          setIsReconnecting(false);
-          setConnectionQuality("excellent");
-          reconnectAttempts = 0;
-        });
-        
-        r.on(RoomEvent.Disconnected, () => {
-          console.log("❌ Disconnected from room");
-          setIsConnected(false);
-          if (reconnectAttempts < maxReconnectAttempts) {
-            reconnectAttempts++;
-            setTimeout(() => joinRoom(), 2000);
-          } else {
-            setError("Connection lost. Please refresh the page.");
-          }
-        });
-
-        await r.connect(url, token);
-        setRoom(r);
-        setLocalParticipant(r.localParticipant);
-        currentRoom = r;
-        setIsConnected(true);
-
-        // Update participants state
-        const remoteParticipants = Array.from(r.remoteParticipants.values());
-        setParticipants(remoteParticipants);
-
-        // Publish local tracks with device selection
-        const tracks = await createLocalTracks({ 
-          audio: {
-            deviceId: selectedAudioDevice || undefined,
-          }, 
-          video: isVideoOn ? {
-            deviceId: selectedVideoDevice || undefined,
-          } : false 
-        });
-        
-        // Store tracks in ref for later control
-        localTracksRef.current = tracks;
-        
-        tracks.forEach(track => {
-          r.localParticipant.publishTrack(track);
-          
-          // Setup audio meter for local audio
-          if (track.kind === 'audio') {
-            setupAudioMeter(track.mediaStreamTrack);
-          }
-        });
-
-        // Render local video
-        if (localVideoRef.current) {
-          localVideoRef.current.innerHTML = '';
-          tracks.forEach(track => {
-            if (track.kind === 'video') {
-              const el = track.attach();
-              el.style.width = "100%";
-              el.style.height = "100%";
-              el.style.objectFit = "cover";
-              localVideoRef.current?.appendChild(el);
-            }
-          });
-        }
-
-        // Set initial mic state
-        r.localParticipant.setMicrophoneEnabled(!isMuted);
-
-        // Render existing remote participants
-        renderRemoteParticipants(r);
-
-        // Event listeners
-        r.on(RoomEvent.ParticipantConnected, (participant) => {
-          console.log("👥 New participant:", participant.identity);
-          setParticipants(prev => [...prev, participant]);
-        });
-
-        r.on(RoomEvent.ParticipantDisconnected, (participant) => {
-          console.log("🚪 Participant left:", participant.identity);
-          setParticipants(prev => prev.filter(p => p.identity !== participant.identity));
-        });
-
-        r.on(RoomEvent.TrackSubscribed, (track, pub, participant) => {
-          if (participant.isLocal) return;
-          console.log("📹 Track subscribed:", track.kind, "from", participant.identity);
-          renderRemoteParticipants(r);
-        });
-
-        r.on(RoomEvent.TrackUnsubscribed, (track, pub, participant) => {
-          if (participant.isLocal) return;
-          console.log("📹 Track unsubscribed:", track.kind, "from", participant.identity);
-          renderRemoteParticipants(r);
-        });
-
-        // Data received (chat messages, hand raise, etc.)
-        r.on(RoomEvent.DataReceived, (payload: Uint8Array, participant) => {
-          const decoder = new TextDecoder();
-          const data = decoder.decode(payload);
-          
-          try {
-            const parsed = JSON.parse(data);
-            
-            if (parsed.type === 'hand-raise') {
-              // Handle hand raise notification
-              const notification: ChatMessage = {
-                id: Date.now().toString(),
-                sender: "System",
-                senderId: "system",
-                message: `${parsed.userName} ${parsed.raised ? 'raised' : 'lowered'} their hand`,
-                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-              };
-              setChatMessages(prev => [...prev, notification]);
-            } else if (parsed.message) {
-              // Chat message
-              setChatMessages(prev => [...prev, parsed as ChatMessage]);
-            }
-          } catch (error) {
-            console.error("Error parsing data:", error);
-          }
-        });
-
-        // Connection quality monitoring
-        r.on(RoomEvent.ConnectionQualityChanged, (quality, participant) => {
-          if (participant?.isLocal) {
-            if (quality === "excellent") setConnectionQuality("excellent");
-            else if (quality === "good") setConnectionQuality("good");
-            else setConnectionQuality("poor");
-          }
-        });
-
-        // Load available devices
-        await loadDevices();
-
-      } catch (error) {
-        console.error("Failed to join room:", error);
-        setIsConnected(false);
-        setError("Failed to join room. Please check your connection and try again.");
-      }
+    const roomFromUrl = searchParams.get('room');
+    if (roomFromUrl && user) {
+      console.log('[Classroom] Room code from URL:', roomFromUrl);
+      setRoomName(roomFromUrl);
+      setUserName(user.name || user.email);
+    } else if (!roomFromUrl) {
+      // No room code, redirect to meet
+      navigate('/meet');
     }
-
-    function renderRemoteParticipants(room: Room) {
-      if (!remoteVideosRef.current) return;
-      
-      remoteVideosRef.current.innerHTML = '';
-      
-      room.remoteParticipants.forEach(participant => {
-        participant.trackPublications.forEach(pub => {
-          if (pub.track && pub.track.kind === 'video') {
-            const el = pub.track.attach();
-            el.style.width = "100%";
-            el.style.height = "100%";
-            el.style.objectFit = "cover";
-            
-            const wrapper = document.createElement("div");
-            wrapper.className = "relative aspect-video bg-muted rounded-lg overflow-hidden";
-            wrapper.appendChild(el);
-            
-            const nameLabel = document.createElement("div");
-            nameLabel.className = "absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded";
-            nameLabel.textContent = participant.identity;
-            wrapper.appendChild(nameLabel);
-            
-            remoteVideosRef.current?.appendChild(wrapper);
-          }
-        });
-      });
-    }
-
-    joinRoom();
-
-    // Cleanup
-    return () => {
-      if (currentRoom) {
-        console.log("🧹 Cleaning up room connection");
-        currentRoom.disconnect();
-        setIsConnected(false);
-      }
-      // Stop all local tracks (đèn TẮT hết)
-      localTracksRef.current.forEach(track => track.stop());
-      localTracksRef.current = [];
-      
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
-    };
-  }, [hasJoined, roomName, userName]); // ✅ BỎ isVideoOn, isMuted khỏi dependency!
-
-  // Toggle mute
-  const toggleMute = async () => {
-    if (!room?.localParticipant) return;
-    
-    const newMutedState = !isMuted;
-    setIsMuted(newMutedState);
-    
-    if (newMutedState) {
-      // Mute: Stop audio track (đèn mic tắt)
-      const audioTrack = localTracksRef.current.find(t => t.kind === 'audio');
-      if (audioTrack) {
-        console.log('🔴 [Classroom] Stopping audio track:', audioTrack);
-        audioTrack.stop();
-        
-        // Stop MediaStreamTrack directly
-        const mediaTrack = audioTrack.mediaStreamTrack;
-        if (mediaTrack && mediaTrack.readyState === 'live') {
-          console.log('🔴 [Classroom] Stopping MediaStreamTrack:', mediaTrack.readyState);
-          mediaTrack.stop();
-        }
-        
-        await room.localParticipant.unpublishTrack(audioTrack);
-        // ✅ REMOVE FROM ARRAY!
-        localTracksRef.current = localTracksRef.current.filter(t => t !== audioTrack);
-      }
-      // Close audio context
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-        audioContextRef.current = null;
-        analyserRef.current = null;
-      }
-    } else {
-      // Unmute: Create new audio track
-      console.log('🟢 [Classroom] Creating new audio track');
-      const newTracks = await createLocalTracks({
-        audio: {
-          deviceId: selectedAudioDevice || undefined,
-        },
-        video: false,
-      });
-      
-      const audioTrack = newTracks.find(t => t.kind === 'audio');
-      if (audioTrack) {
-        console.log('🟢 [Classroom] Audio track created:', audioTrack);
-        await room.localParticipant.publishTrack(audioTrack);
-        localTracksRef.current.push(audioTrack);
-        setupAudioMeter(audioTrack.mediaStreamTrack);
-      }
-    }
-  };
-
-  // Toggle video
-  const toggleVideo = async () => {
-    if (!room?.localParticipant) return;
-    
-    const newVideoState = !isVideoOn;
-    setIsVideoOn(newVideoState);
-    
-    if (!newVideoState) {
-      // Turn OFF: Stop video track (đèn camera TẮT)
-      const videoTrack = localTracksRef.current.find(t => t.kind === 'video');
-      if (videoTrack) {
-        console.log('🔴 [Classroom] Stopping video track:', videoTrack);
-        videoTrack.stop(); // ← Đèn camera TẮT ở đây!
-        
-        // Stop MediaStreamTrack directly
-        const mediaTrack = videoTrack.mediaStreamTrack;
-        if (mediaTrack && mediaTrack.readyState === 'live') {
-          console.log('🔴 [Classroom] Stopping MediaStreamTrack:', mediaTrack.readyState);
-          mediaTrack.stop();
-        }
-        
-        await room.localParticipant.unpublishTrack(videoTrack);
-        // Remove from array
-        localTracksRef.current = localTracksRef.current.filter(t => t !== videoTrack);
-      }
-      // Clear video element
-      if (localVideoRef.current) {
-        localVideoRef.current.innerHTML = '';
-      }
-    } else {
-      // Turn ON: Create new video track
-      console.log('🟢 [Classroom] Creating new video track');
-      const newTracks = await createLocalTracks({
-        audio: false,
-        video: {
-          deviceId: selectedVideoDevice || undefined,
-        },
-      });
-      
-      const videoTrack = newTracks.find(t => t.kind === 'video');
-      if (videoTrack) {
-        console.log('🟢 [Classroom] Video track created:', videoTrack);
-        await room.localParticipant.publishTrack(videoTrack);
-        localTracksRef.current.push(videoTrack);
-        
-        // Render video
-        if (localVideoRef.current) {
-          localVideoRef.current.innerHTML = '';
-          const el = videoTrack.attach();
-          el.style.width = "100%";
-          el.style.height = "100%";
-          el.style.objectFit = "cover";
-          localVideoRef.current.appendChild(el);
-        }
-      }
-    }
-  };
-
-  // Leave room
-  const leaveRoom = () => {
-    if (room) {
-      room.disconnect();
-      setIsConnected(false);
-      setHasJoined(false);
-    }
-  };
-
-  // Handle join from PreJoinForm
-  const handleJoin = (name: string, room: string) => {
-    setUserName(name);
-    setRoomName(room);
-    setHasJoined(true);
-    
-    // Load saved preferences
-    const savedCameraEnabled = localStorage.getItem("livekit-camera-enabled");
-    const savedMicEnabled = localStorage.getItem("livekit-mic-enabled");
-    const savedAudioDevice = localStorage.getItem("livekit-selected-audio");
-    const savedVideoDevice = localStorage.getItem("livekit-selected-video");
-    
-    if (savedCameraEnabled) setIsVideoOn(savedCameraEnabled === "true");
-    if (savedMicEnabled) setIsMuted(savedMicEnabled === "false");
-    if (savedAudioDevice) setSelectedAudioDevice(savedAudioDevice);
-    if (savedVideoDevice) setSelectedVideoDevice(savedVideoDevice);
-  };
-
-  // Send chat message via LiveKit Data Channel
-  const handleSendMessage = () => {
-    if (chatMessage.trim() && room) {
-      const message: ChatMessage = {
-        id: Date.now().toString(),
-        sender: userName,
-        senderId: room.localParticipant.identity,
-        message: chatMessage.trim(),
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-      
-      // Send via LiveKit data channel
-      const encoder = new TextEncoder();
-      const data = encoder.encode(JSON.stringify(message));
-      room.localParticipant.publishData(data, { reliable: true });
-      
-      // Add to local chat
-      setChatMessages(prev => [...prev, message]);
-      setChatMessage("");
-    }
-  };
-
-  // Toggle hand raise
-  const toggleHandRaise = () => {
-    if (room) {
-      const newState = !handRaised;
-      setHandRaised(newState);
-      
-      // Broadcast hand raise status
-      const message = {
-        type: 'hand-raise',
-        userId: room.localParticipant.identity,
-        userName: userName,
-        raised: newState
-      };
-      
-      const encoder = new TextEncoder();
-      const data = encoder.encode(JSON.stringify(message));
-      room.localParticipant.publishData(data, { reliable: true });
-    }
-  };
-
-  // Screen sharing
-  const toggleScreenShare = async () => {
-    if (!room) return;
-    
-    try {
-      if (isScreenSharing) {
-        await room.localParticipant.setScreenShareEnabled(false);
-        setIsScreenSharing(false);
-      } else {
-        await room.localParticipant.setScreenShareEnabled(true);
-        setIsScreenSharing(true);
-      }
-    } catch (error) {
-      console.error("Error toggling screen share:", error);
-      setError("Failed to share screen. Please check permissions.");
-      setTimeout(() => setError(null), 5000);
-    }
-  };
-
-  // Load devices
-  const loadDevices = async () => {
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const audioInputs = devices.filter(d => d.kind === 'audioinput');
-      const videoInputs = devices.filter(d => d.kind === 'videoinput');
-      setAudioDevices(audioInputs);
-      setVideoDevices(videoInputs);
-    } catch (error) {
-      console.error("Error loading devices:", error);
-    }
-  };
-
-  // Setup audio level monitoring
-  const setupAudioMeter = (audioTrack: MediaStreamTrack) => {
-    const audioContext = new AudioContext();
-    const analyser = audioContext.createAnalyser();
-    const microphone = audioContext.createMediaStreamSource(new MediaStream([audioTrack]));
-    
-    analyser.smoothingTimeConstant = 0.8;
-    analyser.fftSize = 1024;
-    
-    microphone.connect(analyser);
-    
-    audioContextRef.current = audioContext;
-    analyserRef.current = analyser;
-    
-    updateAudioLevel();
-  };
-
-  const updateAudioLevel = () => {
-    if (!analyserRef.current) return;
-    
-    const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-    analyserRef.current.getByteFrequencyData(dataArray);
-    
-    const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-    setAudioLevel(Math.min(100, (average / 128) * 100));
-    
-    requestAnimationFrame(updateAudioLevel);
-  };
-
-  // Show pre-join form if not joined yet
-  if (!hasJoined) {
-    return <PreJoinForm onJoin={handleJoin} />;
-  }
+  }, [searchParams, user, navigate]);
+  
+  // Media devices hook
+  const {
+    audioDevices,
+    videoDevices,
+    selectedAudioDevice,
+    selectedVideoDevice,
+    setSelectedAudioDevice,
+    setSelectedVideoDevice,
+  } = useMediaDevices();
+  
+  // Classroom hook
+  const {
+    room,
+    participants,
+    localParticipant,
+    isConnected,
+    isReconnecting,
+    error,
+    connectionQuality,
+    audioLevel,
+    handRaised,
+    isScreenSharing,
+    localVideoRef,
+    remoteVideosRef,
+    toggleMute,
+    toggleVideo,
+    toggleScreenShare,
+    toggleHandRaise,
+    leaveRoom,
+  } = useClassroom({
+    roomName,
+    userName,
+    userId: user?.id,
+    userRole: user?.role || 'guest',
+    isVideoOn,
+    isMuted,
+    selectedAudioDevice,
+    selectedVideoDevice,
+  });
+  
+  // Chat hook
+  const {
+    chatMessages,
+    chatMessage,
+    chatEndRef,
+    setChatMessage,
+    sendMessage,
+  } = useChat(room, userName);
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -611,7 +170,7 @@ const Classroom = () => {
                     <SelectContent>
                       {audioDevices.map((device) => (
                         <SelectItem key={device.deviceId} value={device.deviceId}>
-                          {device.label || `Microphone ${device.deviceId.slice(0, 5)}`}
+                          {getDeviceLabel(device, 'Microphone')}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -626,7 +185,7 @@ const Classroom = () => {
                     <SelectContent>
                       {videoDevices.map((device) => (
                         <SelectItem key={device.deviceId} value={device.deviceId}>
-                          {device.label || `Camera ${device.deviceId.slice(0, 5)}`}
+                          {getDeviceLabel(device, 'Camera')}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -836,10 +395,10 @@ const Classroom = () => {
                 placeholder="Type your message..."
                 value={chatMessage}
                 onChange={(e) => setChatMessage(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                 className="flex-1"
               />
-              <Button size="sm" onClick={handleSendMessage}>
+              <Button size="sm" onClick={sendMessage}>
                 <Send className="w-4 h-4" />
               </Button>
             </div>

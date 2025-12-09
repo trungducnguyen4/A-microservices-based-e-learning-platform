@@ -13,8 +13,8 @@ import ProtectedRoute, {
 } from "./components/ProtectedRoute";
 import Navigation from "./components/Navigation";
 import Dashboard from "./pages/Dashboard";
-import Classroom from "./pages/Classroom";
 import AdminDashboard from "./pages/AdminDashboard";
+import Classroom from "./pages/Classroom";
 import StudentPortal from "./pages/StudentPortal";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import CreateCourse from "./pages/CreateCourse";
@@ -30,6 +30,8 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ChooseRole from "./pages/ChooseRole";
 import Profile from "./pages/Profile";
+import MeetingHome from "./pages/MeetingHome";
+import PreJoinScreen from "./pages/PreJoinScreen";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -73,6 +75,16 @@ const App = () => (
               <Route path="/profile" element={
                 <ProtectedRoute>
                   <Profile />
+                </ProtectedRoute>
+              } />
+              <Route path="/meet" element={
+                <ProtectedRoute>
+                  <MeetingHome />
+                </ProtectedRoute>
+              } />
+              <Route path="/prejoin" element={
+                <ProtectedRoute>
+                  <PreJoinScreen />
                 </ProtectedRoute>
               } />
               <Route path="/classroom" element={

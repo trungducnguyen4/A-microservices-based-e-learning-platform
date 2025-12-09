@@ -6,12 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Video, VideoOff, Mic, MicOff, Volume2 } from "lucide-react";
 import { createLocalTracks, LocalTrack } from "livekit-client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface PreJoinFormProps {
   onJoin: (userName: string, roomName: string) => void;
 }
 
 const PreJoinForm = ({ onJoin }: PreJoinFormProps) => {
+  const { user } = useAuth();
   const [userName, setUserName] = useState("");
   const [roomName, setRoomName] = useState("testroom");
   const [isCameraOn, setIsCameraOn] = useState(true);
@@ -29,10 +31,18 @@ const PreJoinForm = ({ onJoin }: PreJoinFormProps) => {
   const localTracksRef = useRef<LocalTrack[]>([]);
 
   useEffect(() => {
-    // Load saved username from localStorage
-    const savedUserName = localStorage.getItem("livekit-username");
-    if (savedUserName) {
-      setUserName(savedUserName);
+    // Ưu tiên user đã login từ AuthContext
+    if (user) {
+      // Sử dụng name nếu có, không thì email
+      const displayName = user.name || user.email;
+      setUserName(displayName);
+      console.log('[PreJoinForm] Auto-filled user name from auth:', displayName);
+    } else {
+      // Load saved username from localStorage cho guest
+      const savedUserName = localStorage.getItem("livekit-username");
+      if (savedUserName) {
+        setUserName(savedUserName);
+      }
     }
 
     // Load saved room name
@@ -90,6 +100,10 @@ const PreJoinForm = ({ onJoin }: PreJoinFormProps) => {
           localTracksRef.current.push(videoTrack);
           if (videoRef.current) {
             const videoElement = videoTrack.attach();
+            videoElement.style.transform = 'scaleX(-1)'; // ← Mirror effect
+            videoElement.style.width = '100%';
+            videoElement.style.height = '100%';
+            videoElement.style.objectFit = 'cover';
             videoRef.current.innerHTML = '';
             videoRef.current.appendChild(videoElement);
           }
@@ -200,6 +214,10 @@ const PreJoinForm = ({ onJoin }: PreJoinFormProps) => {
         // Render video
         if (videoRef.current) {
           const videoElement = videoTrack.attach();
+          videoElement.style.transform = 'scaleX(-1)'; // ← Mirror effect
+          videoElement.style.width = '100%';
+          videoElement.style.height = '100%';
+          videoElement.style.objectFit = 'cover';
           videoRef.current.innerHTML = '';
           videoRef.current.appendChild(videoElement);
         }

@@ -50,19 +50,19 @@ const Navigation = () => {
         return [
           ...baseItems,
           { path: "/admin", label: "Admin Panel", icon: Shield },
-          { path: "/classroom", label: "Classroom", icon: Video },
+          { path: "/meet", label: "Meet", icon: Video },
         ];
       case 'teacher':
         return [
           ...baseItems,
           { path: "/teacher", label: "Teacher Dashboard", icon: Users },
-          { path: "/classroom", label: "Classroom", icon: Video },
+          { path: "/meet", label: "Meet", icon: Video },
         ];
       case 'student':
         return [
           ...baseItems,
           { path: "/student", label: "Student Portal", icon: BookOpen },
-          { path: "/classroom", label: "Classroom", icon: Video },
+          { path: "/meet", label: "Meet", icon: Video },
         ];
       default:
         return baseItems;
