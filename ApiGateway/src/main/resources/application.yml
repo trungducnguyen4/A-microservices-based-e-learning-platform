@@ -37,6 +37,12 @@ spring:
           uri: ${ANNOUNCEMENT_SERVICE_URL:http://localhost:8090}
           predicates:
             - Path=/api/announcements/**
+        - id: classroom-service
+          uri: ${CLASSROOM_SERVICE_URL:http://localhost:4000}
+          predicates:
+            - Path=/api/classrooms/**
+          filters:
+            - RewritePath=/api/classrooms/(?<segment>.*), /$\{segment}
           # Do not strip path: user-service expects /api/users/... as configured in UserService
       # (global CORS or more routes can be added here)
   data:
@@ -98,6 +104,12 @@ spring:
           uri: ${ANNOUNCEMENT_SERVICE_URL:http://announcement-service:8090}
           predicates:
             - Path=/api/announcements/**
+        - id: classroom-service
+          uri: ${CLASSROOM_SERVICE_URL:http://classroom-service:4000}
+          predicates:
+            - Path=/api/classrooms/**
+          filters:
+            - RewritePath=/api/classrooms/(?<segment>.*), /$\{segment}
       # (additional routes and global cors can be added here)
   data:
     redis:

@@ -19,8 +19,36 @@ const roomService = require('./src/services/room.service');
 // Create Express app
 const app = express();
 
+// CORS is handled by API Gateway, but allow direct access for development
+// Only enable CORS if NOT behind API Gateway (check for X-Forwarded-For header)
+app.use((req, res, next) => {
+  // If request comes from API Gateway, skip CORS (Gateway handles it)
+  const isFromGateway = req.headers['x-forwarded-for'] || req.headers['x-forwarded-host'];
+  
+  if (!isFromGateway) {
+    // Direct access - set CORS headers
+    const allowedOrigins = [
+      'http://localhost:8081',
+      'http://localhost:8083',
+      'http://localhost:8888'
+    ];
+    const origin = req.headers.origin;
+    if (allowedOrigins.includes(origin)) {
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Access-Control-Allow-Credentials', 'true');
+      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Id, X-User-Role, X-User-Name');
+    }
+    
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(200);
+    }
+  }
+  
+  next();
+});
+
 // Middleware
-app.use(cors());
 app.use(express.json());
 app.use(requestLogger);
 

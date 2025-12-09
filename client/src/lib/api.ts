@@ -356,3 +356,6 @@ api.interceptors.request.use((config: any) => {
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
+
+// Export classroom service
+export { classroomService } from '@/services/classroomApi';

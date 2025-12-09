@@ -3,7 +3,7 @@
  * Xử lý các API calls liên quan đến meeting/classroom
  */
 
-const CLASSROOM_SERVICE_URL = 'http://localhost:4000';
+import { classroomService } from './classroomApi';
 
 export interface RoomCheckResponse {
   exists: boolean;
@@ -17,13 +17,8 @@ export interface RoomCheckResponse {
  */
 export const checkRoomExists = async (roomCode: string): Promise<RoomCheckResponse> => {
   try {
-    const response = await fetch(`${CLASSROOM_SERVICE_URL}/checkRoom?room=${roomCode}`);
-    const data = await response.json();
-    
-    if (!response.ok) {
-      return { exists: false };
-    }
-    
+    // Use classroomService which goes through API Gateway
+    const data = await classroomService.checkRoom(roomCode);
     return data;
   } catch (error) {
     console.error('[MeetingService] Error checking room:', error);

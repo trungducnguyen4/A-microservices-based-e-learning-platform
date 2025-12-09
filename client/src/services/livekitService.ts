@@ -3,7 +3,11 @@
  * Xử lý các API calls và operations liên quan đến LiveKit
  */
 
-const CLASSROOM_SERVICE_URL = 'http://localhost:4000';
+import { classroomService } from './classroomApi';
+
+// Use API Gateway instead of direct connection
+const API_GATEWAY_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8888/api';
+const CLASSROOM_SERVICE_URL = `${API_GATEWAY_BASE}/classrooms`;
 
 export interface TokenResponse {
   token: string;
@@ -20,34 +24,19 @@ export interface GetTokenParams {
 }
 
 /**
- * Get LiveKit token từ ClassroomService
+ * Get LiveKit token từ ClassroomService via API Gateway
  * @param params - Parameters cho token request
  * @returns Promise với token và connection info
  */
 export const getLivekitToken = async (params: GetTokenParams): Promise<TokenResponse> => {
   try {
-    const queryParams = new URLSearchParams({
-      room: params.room,
-      user: params.user,
-    });
-    
-    if (params.userId) {
-      queryParams.append('userId', params.userId);
-    }
-    
-    if (params.role) {
-      queryParams.append('role', params.role);
-    } else {
-      queryParams.append('role', 'guest');
-    }
-    
-    const resp = await fetch(`${CLASSROOM_SERVICE_URL}/getToken?${queryParams.toString()}`);
-    
-    if (!resp.ok) {
-      throw new Error("Failed to get token from server");
-    }
-    
-    const data = await resp.json();
+    // Use classroomService which goes through API Gateway
+    const data = await classroomService.getToken(
+      params.room,
+      params.user,
+      params.userId,
+      params.role
+    );
     return data;
   } catch (error) {
     console.error('[LivekitService] Error getting token:', error);
