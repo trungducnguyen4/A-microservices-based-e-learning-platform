@@ -56,8 +56,8 @@ export const useMeeting = (): UseMeetingReturn => {
   const handleConfirmCreateMeeting = () => {
     setIsCreating(true);
     setShowConfirmDialog(false);
-    // Redirect thẳng vào classroom, KHÔNG qua PreJoin
-    navigate(`/classroom?room=${pendingRoomCode}`);
+    // Replace history để khi back không còn trong stack
+    navigate(`/classroom?room=${pendingRoomCode}`, { replace: true });
   };
 
   /**
@@ -94,8 +94,8 @@ export const useMeeting = (): UseMeetingReturn => {
         return;
       }
       
-      // Room exists, navigate to PreJoin
-      navigate(`/prejoin?room=${cleanCode}`);
+      // Room exists, navigate to PreJoin (replace history)
+      navigate(`/prejoin?room=${cleanCode}`, { replace: true });
     } catch (error) {
       console.error('[useMeeting] Error validating room:', error);
       setJoinError("Unable to verify meeting room. Please try again.");

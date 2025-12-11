@@ -435,14 +435,16 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
   };
 
   /**
-   * Leave room
+   * Leave room and navigate back (will trigger page reload via Classroom component)
    */
   const leaveRoom = () => {
     if (room) {
       room.disconnect();
       setIsConnected(false);
     }
-    navigate('/meet');
+    
+    // Navigate to meet page with replace to avoid back history
+    navigate('/meet', { replace: true });
   };
 
   return {

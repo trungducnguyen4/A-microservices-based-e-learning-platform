@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   Video, 
   VideoOff, 
@@ -28,13 +38,15 @@ import {
   AlertCircle,
   Wifi,
   WifiOff,
-  Volume2
+  Volume2,
+  LogOut
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClassroom } from "@/hooks/useClassroom";
 import { useChat } from "@/hooks/useChat";
 import { useMediaDevices } from "@/hooks/useMediaDevices";
 import { getDeviceLabel } from "@/utils/deviceManager";
+import { useLeaveConfirmation } from "@/hooks/useLeaveConfirmation";
 
 const Classroom = () => {
   const { user } = useAuth();
@@ -112,6 +124,73 @@ const Classroom = () => {
     setChatMessage,
     sendMessage,
   } = useChat(room, userName);
+
+  // Store beforeunload handler ref to remove it before leaving
+  const beforeUnloadHandlerRef = useRef<((e: BeforeUnloadEvent) => void) | null>(null);
+
+  // Create wrapped leaveRoom that removes beforeunload first
+  const leaveRoomWithCleanup = () => {
+    // Remove beforeunload listener to prevent popup
+    if (beforeUnloadHandlerRef.current) {
+      window.removeEventListener('beforeunload', beforeUnloadHandlerRef.current);
+      beforeUnloadHandlerRef.current = null;
+    }
+    
+    // Disconnect room first
+    leaveRoom();
+    
+    // Small delay to ensure disconnect completes, then reload
+    setTimeout(() => {
+      window.location.href = '/meet';
+    }, 100);
+  };
+
+  // Leave confirmation hook
+  const {
+    showLeaveDialog,
+    handleLeaveRequest,
+    handleConfirmLeave,
+    handleCancelLeave,
+    isLeavingConfirmed,
+  } = useLeaveConfirmation(leaveRoomWithCleanup);
+
+  // Handle back button - show confirmation dialog
+  useEffect(() => {
+    // Push a dummy state to prevent back
+    window.history.pushState(null, '', window.location.href);
+    
+    const handlePopState = (e: PopStateEvent) => {
+      // User pressed back button - show confirmation dialog
+      e.preventDefault();
+      
+      // Push state again to prevent actual back
+      window.history.pushState(null, '', window.location.href);
+      
+      // Show confirmation dialog
+      handleLeaveRequest();
+    };
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Show browser's native confirmation when closing tab
+      if (isConnected) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    };
+
+    // Store reference for later removal
+    beforeUnloadHandlerRef.current = handleBeforeUnload;
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      beforeUnloadHandlerRef.current = null;
+    };
+  }, [isConnected, handleLeaveRequest, isLeavingConfirmed]);
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -208,7 +287,7 @@ const Classroom = () => {
               </div>
             </DialogContent>
           </Dialog>
-          <Button variant="destructive" size="sm" onClick={leaveRoom}>
+          <Button variant="destructive" size="sm" onClick={handleLeaveRequest}>
             <PhoneOff className="w-4 h-4 mr-2" />
             Leave
           </Button>
@@ -405,6 +484,34 @@ const Classroom = () => {
           </div>
         </div>
       </div>
+
+      {/* Leave Confirmation Dialog */}
+      <AlertDialog open={showLeaveDialog} onOpenChange={handleCancelLeave}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <LogOut className="w-5 h-5 text-destructive" />
+              Leave Meeting?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>Are you sure you want to leave this meeting?</p>
+              <p className="text-sm">Your camera and microphone will be turned off, and you'll be disconnected from the room.</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelLeave}>
+              Stay in Meeting
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmLeave}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              <PhoneOff className="w-4 h-4 mr-2" />
+              Leave Meeting
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
