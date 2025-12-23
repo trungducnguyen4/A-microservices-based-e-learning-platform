@@ -366,7 +366,7 @@ const Classroom = () => {
                 <Button 
                   variant={isRecording ? "destructive" : "outline"} 
                   size="sm"
-                  className={`h-7 sm:h-8 text-[10px] sm:text-xs hidden xs:flex ${isRecording ? "animate-pulse" : ""}`}
+                  className={`h-7 sm:h-8 text-[10px] sm:text-xs flex ${isRecording ? "animate-pulse" : ""}`}
                 >
                   <FileText className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
                   <span className="hidden sm:inline">{isRecording ? 'Recording...' : 'Lecture'}</span>
