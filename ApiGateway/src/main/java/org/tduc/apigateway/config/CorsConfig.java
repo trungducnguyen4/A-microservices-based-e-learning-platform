@@ -15,11 +15,11 @@ public class CorsConfig {
     public CorsWebFilter corsWebFilter() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // Allow the local frontend origins used by the client app. Add other origins if needed.
-        // The client dev server runs on port 8081 (vite). Keep 8083 for backward compatibility.
-        config.setAllowedOrigins(Arrays.asList("http://localhost:8081", "http://localhost:8083"));
-        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.addAllowedHeader(CorsConfiguration.ALL);
+        // Allow the local frontend origins used by the client app
+        config.setAllowedOriginPatterns(Arrays.asList("http://localhost:*", "http://127.0.0.1:*"));
+        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"));
+        config.setAllowedHeaders(Arrays.asList("*"));
+        config.setExposedHeaders(Arrays.asList("Authorization", "Content-Type"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
 

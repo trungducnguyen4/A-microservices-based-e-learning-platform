@@ -39,3 +39,7 @@ yarn-error.log*
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Ignore environment files
+.env
+**/.env

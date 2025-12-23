@@ -372,6 +372,8 @@ api.interceptors.request.use((config: any) => {
   return config;
 });
 
+// Export classroom service
+export { classroomService } from '@/services/classroomApi';
 export const userService = {
   changePassword: async (oldPassword: string, newPassword: string) => {
     const response = await api.post('/users/change-password', { oldPassword, newPassword });

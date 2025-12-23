@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute, { 
   AdminRoute, 
@@ -14,8 +14,8 @@ import ProtectedRoute, {
 import Navigation from "./components/Navigation";
 import AdminLayout from "./components/AdminLayout";
 import Dashboard from "./pages/Dashboard";
-import Classroom from "./pages/Classroom";
 import AdminDashboard from "./pages/AdminDashboard";
+import Classroom from "./pages/Classroom";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboardHome from "./pages/AdminDashboardHome";
 import AdminUsers from "./pages/AdminUsers";
@@ -37,18 +37,20 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ChooseRole from "./pages/ChooseRole";
 import Profile from "./pages/Profile";
+import MeetingHome from "./pages/MeetingHome";
+import PreJoinScreen from "./pages/PreJoinScreen";
+import ClassroomLayoutDemo from "./pages/ClassroomLayoutDemo";
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <div className="min-h-screen bg-background">
-            <Navigation />
-            <Routes>
+// Component to conditionally render Navigation
+const AppContent = () => {
+  const location = useLocation();
+  const hideNavbar = ['/classroom', '/prejoin'].includes(location.pathname);
+  
+  return (
+    <div className="min-h-screen bg-background">
+      {!hideNavbar && <Navigation />}
+      <Routes>
               {/* Public routes */}
               <Route path="/" element={
                 <PublicRoute>
@@ -82,9 +84,24 @@ const App = () => (
                   <Profile />
                 </ProtectedRoute>
               } />
+              <Route path="/meet" element={
+                <ProtectedRoute>
+                  <MeetingHome />
+                </ProtectedRoute>
+              } />
+              <Route path="/prejoin" element={
+                <ProtectedRoute>
+                  <PreJoinScreen />
+                </ProtectedRoute>
+              } />
               <Route path="/classroom" element={
                 <ProtectedRoute>
                   <Classroom />
+                </ProtectedRoute>
+              } />
+              <Route path="/demo-layout" element={
+                <ProtectedRoute>
+                  <ClassroomLayoutDemo />
                 </ProtectedRoute>
               } />
 
@@ -169,7 +186,18 @@ const App = () => (
               {/* 404 page */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </div>
+    </div>
+  );
+};
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <AuthProvider>
+          <AppContent />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
