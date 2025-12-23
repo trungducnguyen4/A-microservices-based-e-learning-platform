@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Background circle -->
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0891b2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#06b6d4;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <circle cx="128" cy="128" r="128" fill="url(#grad1)" />
+  
+  <!-- Book/Learning icon -->
+  <g fill="white">
+    <!-- Left page -->
+    <path d="M 80 60 L 100 60 L 100 160 L 80 160 Q 75 160 75 155 L 75 65 Q 75 60 80 60" opacity="0.8" />
+    
+    <!-- Right page -->
+    <path d="M 156 60 L 176 60 Q 181 60 181 65 L 181 155 Q 181 160 176 160 L 156 160" opacity="1" />
+    
+    <!-- Center spine -->
+    <rect x="100" y="60" width="8" height="100" fill="white" opacity="0.6" />
+    
+    <!-- Decorative lines on right page -->
+    <line x1="112" y1="80" x2="168" y2="80" stroke="white" stroke-width="2" opacity="0.6" />
+    <line x1="112" y1="100" x2="168" y2="100" stroke="white" stroke-width="2" opacity="0.5" />
+    <line x1="112" y1="120" x2="168" y2="120" stroke="white" stroke-width="2" opacity="0.5" />
+    <line x1="112" y1="140" x2="168" y2="140" stroke="white" stroke-width="2" opacity="0.4" />
+    
+    <!-- Badge/Spark for achievement -->
+    <circle cx="180" cy="70" r="8" fill="white" />
+    <path d="M 180 60 L 185 68 L 193 70 L 185 72 L 180 80 L 175 72 L 167 70 L 175 68 Z" fill="url(#grad1)" />
+  </g>
+</svg>

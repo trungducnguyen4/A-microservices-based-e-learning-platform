@@ -27,6 +27,7 @@ import {
   Shield
 } from "lucide-react";
 import { useAuth, getRoleDisplayName, getRoleColor } from "@/contexts/AuthContext";
+import { APP_LOGO_URL, APP_NAME } from "@/lib/brand";
 
 const Navigation = () => {
   const location = useLocation();
@@ -99,11 +100,17 @@ const Navigation = () => {
           {/* Logo and brand */}
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-white" />
-              </div>
+              <img
+                src={APP_LOGO_URL}
+                alt={APP_NAME}
+                className="w-8 h-8 rounded-lg object-cover"
+                onError={(e) => {
+                  // Fallback to icon if image missing
+                  (e.currentTarget as HTMLImageElement).style.display = 'none';
+                }}
+              />
               <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                EduPlatform
+                {APP_NAME}
               </span>
             </Link>
           </div>

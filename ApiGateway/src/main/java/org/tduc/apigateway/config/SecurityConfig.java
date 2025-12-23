@@ -7,9 +7,7 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.reactive.CorsWebFilter;
-import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
+// CORS is configured centrally in `CorsConfig`; do not define another CorsWebFilter here.
 
 @Configuration
 @EnableWebFluxSecurity

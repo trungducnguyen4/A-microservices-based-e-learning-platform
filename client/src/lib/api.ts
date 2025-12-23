@@ -227,13 +227,21 @@ export const fileService = {
       });
     }
 
-    const response = await fileApi.post('/upload', formData);
+    const response = await fileApi.post('/files/upload', formData);
 
     // Normalize FileService response: { code, message, result: { fileId, originalName, filename, ... } }
     const data = response.data;
     const result = data?.result || data;
 
     if (!result) return result;
+
+    // Normalize returned URL: if FileService returns a relative path like `/file/uuid.ext`,
+    // convert it to a gateway-served absolute path: <API_BASE>/files/file/uuid.ext
+    let rawUrl = result.url || result.downloadUrl;
+    if (typeof rawUrl === 'string' && rawUrl.startsWith('/')) {
+      const base = (import.meta as any)?.env?.VITE_API_BASE ?? API_GATEWAY_BASE;
+      rawUrl = base.replace(/\/$/, '') + '/files' + rawUrl;
+    }
 
     return {
       id: result.fileId || result.id || result.filename?.split('.')[0],
@@ -242,7 +250,7 @@ export const fileService = {
       size: result.size,
       mimetype: result.mimeType || result.mimetype,
       path: result.path,
-      url: result.url || result.downloadUrl,
+      url: rawUrl,
       uploadedAt: result.uploadedAt,
     } as unknown as FileUploadResponse;
   },
@@ -263,31 +271,38 @@ export const fileService = {
       });
     }
 
-    const response = await fileApi.post('/upload-multiple', formData);
+    const response = await fileApi.post('/files/upload-multiple', formData);
     const data = response.data;
     const results = data?.result || [];
 
-    return results.map((r: any) => ({
-      id: r.fileId || r.id || r.filename?.split('.')[0],
-      filename: r.filename,
-      originalName: r.originalName || r.originalname || r.filename,
-      size: r.size,
-      mimetype: r.mimeType || r.mimetype,
-      path: r.path,
-      url: r.url || r.downloadUrl,
-      uploadedAt: r.uploadedAt,
-    }));
+    return results.map((r: any) => {
+      let rawUrl = r.url || r.downloadUrl;
+      if (typeof rawUrl === 'string' && rawUrl.startsWith('/')) {
+        const base = (import.meta as any)?.env?.VITE_API_BASE ?? API_GATEWAY_BASE;
+        rawUrl = base.replace(/\/$/, '') + '/files' + rawUrl;
+      }
+      return {
+        id: r.fileId || r.id || r.filename?.split('.')[0],
+        filename: r.filename,
+        originalName: r.originalName || r.originalname || r.filename,
+        size: r.size,
+        mimetype: r.mimeType || r.mimetype,
+        path: r.path,
+        url: rawUrl,
+        uploadedAt: r.uploadedAt,
+      };
+    });
   },
 
   downloadFile: async (fileId: string) => {
-    const response = await fileApi.get(`/download/${fileId}`, {
+    const response = await fileApi.get(`/files/download/${fileId}`, {
       responseType: 'blob'
     });
     return response;
   },
 
   getFileInfo: async (fileId: string) => {
-    const response = await fileApi.get(`/file/${fileId}`);
+    const response = await fileApi.get(`/files/${fileId}`);
     const data = response.data;
     const r = data?.result || data;
     if (!r) return r;
@@ -305,13 +320,13 @@ export const fileService = {
   },
 
   deleteFile: async (fileId: string) => {
-    const response = await fileApi.delete(`/file/${fileId}`);
+    const response = await fileApi.delete(`/files/${fileId}`);
     return response.data;
   },
 
   listFiles: async (page = 0, limit = 20) => {
     // FileService exposes /list/:fileType - but keep a generic list that callers can adapt.
-    const response = await fileApi.get(`/list/documents?page=${page}&limit=${limit}`);
+    const response = await fileApi.get(`/files/list/documents?page=${page}&limit=${limit}`);
     const data = response.data;
     const result = data?.result || { files: [] };
     return {
@@ -359,3 +374,9 @@ api.interceptors.request.use((config: any) => {
 
 // Export classroom service
 export { classroomService } from '@/services/classroomApi';
+export const userService = {
+  changePassword: async (oldPassword: string, newPassword: string) => {
+    const response = await api.post('/users/change-password', { oldPassword, newPassword });
+    return response.data;
+  }
+};

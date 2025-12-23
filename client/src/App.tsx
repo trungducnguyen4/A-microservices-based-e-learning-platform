@@ -12,9 +12,16 @@ import ProtectedRoute, {
   PublicRoute
 } from "./components/ProtectedRoute";
 import Navigation from "./components/Navigation";
+import AdminLayout from "./components/AdminLayout";
 import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import Classroom from "./pages/Classroom";
+import AdminLogin from "./pages/AdminLogin";
+import AdminDashboardHome from "./pages/AdminDashboardHome";
+import AdminUsers from "./pages/AdminUsers";
+import AdminCourses from "./pages/AdminCourses";
+import AdminStatistics from "./pages/AdminStatistics";
+import AdminSettings from "./pages/AdminSettings";
 import StudentPortal from "./pages/StudentPortal";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import CreateCourse from "./pages/CreateCourse";
@@ -98,8 +105,28 @@ const AppContent = () => {
                 </ProtectedRoute>
               } />
 
-              {/* Admin-only routes */}
+              {/* Admin routes - protected by AdminRoute */}
+              <Route path="/admin/login" element={
+                <PublicRoute>
+                  <AdminLogin />
+                </PublicRoute>
+              } />
               <Route path="/admin" element={
+                <AdminRoute>
+                  <AdminLayout>
+                    <Routes>
+                      <Route path="/" element={<AdminDashboardHome />} />
+                      <Route path="/users" element={<AdminUsers />} />
+                      <Route path="/courses" element={<AdminCourses />} />
+                      <Route path="/statistics" element={<AdminStatistics />} />
+                      <Route path="/reports" element={<AdminStatistics />} />
+                      <Route path="/settings" element={<AdminSettings />} />
+                    </Routes>
+                  </AdminLayout>
+                </AdminRoute>
+              } />
+              {/* Fallback to old admin dashboard if accessed directly */}
+              <Route path="/admin-old" element={
                 <AdminRoute>
                   <AdminDashboard />
                 </AdminRoute>

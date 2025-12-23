@@ -17,4 +17,5 @@ public class AnnouncementResponse {
     private ZonedDateTime createdAt;
     private ZonedDateTime updatedAt;
     private Boolean pinned;
+    private java.util.List<String> attachments;
 }

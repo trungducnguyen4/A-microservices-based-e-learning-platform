@@ -29,6 +29,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 // Added imports for bean registration and registry post-processor
 import org.springframework.beans.BeansException;
@@ -38,14 +39,20 @@ import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProce
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.mapstruct.factory.Mappers;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 @Service
 public class UserService {
     @Autowired
-            
-    UserRepository userRepository;
+    private UserRepository userRepository;
     @Autowired
-    UserMapper userMapper;
+    private UserMapper userMapper;
+
+    // add logger used throughout the class
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
+
     // Prefer to read signing secret from environment or configuration so gateway and user-service share the same secret.
     // Resolution order: 1) JWT_SECRET env var, 2) jwt.secret property, 3) fallback default (legacy string)
     @org.springframework.beans.factory.annotation.Value("${JWT_SECRET:${jwt.secret:mysupersecretrandomstringwith32chars!}}")
@@ -66,13 +73,26 @@ public class UserService {
         return AuthResponse.builder().token(token).authenticated(true).build();
     }
     //    }
-    private String generateToken(String username) {
+    public String generateToken(String usernameOrEmail) {
         try {
             byte[] secret = jwtSecret.getBytes(StandardCharsets.UTF_8);
             JWSHeader header = new JWSHeader(JWSAlgorithm.HS256);
 
-            User user = userRepository.findByUsername(username)
-                    .orElseThrow(() -> new AppException(ErrorCode.USERNAME_NOT_EXIST));
+            // Find user by username first, then email; if not found, create a minimal record using the email
+            User user = userRepository.findByUsername(usernameOrEmail)
+                    .or(() -> userRepository.findByEmail(usernameOrEmail))
+                    .orElseGet(() -> {
+                        PasswordEncoder encoder = new BCryptPasswordEncoder();
+                        User newUser = User.builder()
+                                .email(usernameOrEmail)
+                                .username(usernameOrEmail)
+                                .fullName(usernameOrEmail)
+                                .enabled(true)
+                                .role(null)  // Explicitly set to null so user can choose role
+                                .passwordHash(encoder.encode(UUID.randomUUID().toString()))
+                                .build();
+                        return userRepository.save(newUser);
+                    });
 
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
             // use username as subject because other code expects subject to be username
@@ -188,7 +208,31 @@ public class UserService {
     }
 
     /**
-     * Allow a user to choose their role only if they don't already have one.
+     * Change current authenticated user's password.
+     * Verifies the provided old password then updates the stored password hash.
+     */
+    public void changePassword(String token, @Valid org.tduc.userservice.dto.request.ChangePasswordRequest request) {
+        try {
+            SignedJWT signedJWT = SignedJWT.parse(token);
+            String username = signedJWT.getJWTClaimsSet().getSubject();
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+            PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+            if (!passwordEncoder.matches(request.getOldPassword(), user.getPasswordHash())) {
+                throw new AppException(ErrorCode.INVALID_REQUEST);
+            }
+
+            // Update password hash
+            user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+            userRepository.save(user);
+        } catch (java.text.ParseException e) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+    }
+
+    /**
+     * Allow a user to choose/update their role.
      * The role must be one of the allowed values (STUDENT, TEACHER, ADMIN).
      */
     public UserResponse chooseRole(String token, String role) {
@@ -198,22 +242,58 @@ public class UserService {
             User user = userRepository.findByUsername(username)
                     .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-            if (user.getRole() != null && !user.getRole().isBlank()) {
-                // Role already assigned
+            log.info("chooseRole: user={}, currentRole={}, newRole={}", username, user.getRole(), role);
+
+            // Validate role value
+            String normalized = role == null ? "" : role.trim().toUpperCase();
+            if (!List.of("STUDENT", "TEACHER", "ADMIN").contains(normalized)) {
+                log.error("chooseRole: Invalid role value: {}", role);
                 throw new AppException(ErrorCode.INVALID_REQUEST);
             }
 
-            String normalized = role == null ? "" : role.trim().toUpperCase();
-            if (!List.of("STUDENT", "TEACHER", "ADMIN").contains(normalized)) {
-                throw new AppException(ErrorCode.INVALID_REQUEST);
+            // Check if user already has a role assigned
+            boolean alreadyHasRole = user.getRole() != null && !user.getRole().isBlank() && !user.getRole().equals("null");
+            if (alreadyHasRole) {
+                log.info("chooseRole: User {} already has role {}, will update to {}", username, user.getRole(), normalized);
             }
 
             user.setRole(normalized);
             User saved = userRepository.save(user);
+            log.info("chooseRole: Success - user {} assigned role {}", username, normalized);
             return userMapper.toUserResponse(saved);
         } catch (java.text.ParseException e) {
+            log.error("chooseRole: Token parse error", e);
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
+    }
+
+    /**
+     * Admin-only login endpoint.
+     * Authenticates user and verifies they have ADMIN role.
+     */
+    public AuthResponse adminLogin(AuthRequest authRequest) {
+        // Accept both username and email for admin login input
+        var user = userRepository.findByUsername(authRequest.getUsername())
+                .or(() -> userRepository.findByEmail(authRequest.getUsername()))
+                .orElseThrow(() -> new AppException(ErrorCode.USERNAME_NOT_EXIST));
+
+        // Check if user has ADMIN role
+        if (user.getRole() == null || !user.getRole().equalsIgnoreCase("ADMIN")) {
+            log.warn("adminLogin: Non-admin user {} attempted login", authRequest.getUsername());
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+        boolean passmatch = passwordEncoder.matches(authRequest.getPassword(), user.getPasswordHash());
+
+        if (!passmatch) {
+            log.warn("adminLogin: Invalid password for admin user {}", authRequest.getUsername());
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        var token = generateToken(user.getUsername());
+        log.info("adminLogin: Admin user {} logged in successfully", authRequest.getUsername());
+        return AuthResponse.builder().token(token).authenticated(true).build();
     }
 
 }

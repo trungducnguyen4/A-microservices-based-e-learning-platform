@@ -34,6 +34,11 @@ public class Announcement {
 
     private Boolean pinned = false;
 
+    @ElementCollection
+    @CollectionTable(name = "announcement_attachments", joinColumns = @JoinColumn(name = "announcement_id"))
+    @Column(name = "attachment_url", columnDefinition = "TEXT")
+    private java.util.List<String> attachments;
+
     @PrePersist
     public void prePersist() {
         if (this.id == null) this.id = UUID.randomUUID().toString();

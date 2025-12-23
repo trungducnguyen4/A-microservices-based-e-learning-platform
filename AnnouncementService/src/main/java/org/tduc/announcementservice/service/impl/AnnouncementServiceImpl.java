@@ -23,6 +23,7 @@ public class AnnouncementServiceImpl implements AnnouncementService {
                 .title(request.getTitle())
                 .content(request.getContent())
                 .courseId(request.getCourseId())
+                .attachments(request.getAttachments())
                 .createdBy(creatorId)
                 .pinned(request.getPinned() != null ? request.getPinned() : false)
                 .build();
@@ -53,6 +54,7 @@ public class AnnouncementServiceImpl implements AnnouncementService {
                 .title(a.getTitle())
                 .content(a.getContent())
                 .courseId(a.getCourseId())
+                .attachments(a.getAttachments())
                 .createdBy(a.getCreatedBy())
                 .createdAt(a.getCreatedAt())
                 .updatedAt(a.getUpdatedAt())

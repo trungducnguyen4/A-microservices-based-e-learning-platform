@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -143,6 +144,48 @@ const Profile = () => {
     setIsEditing(false);
     // Reload profile để reset về data gốc
     loadUserProfile();
+  };
+
+  // Change password dialog state
+  const [changeOpen, setChangeOpen] = useState(false);
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changing, setChanging] = useState(false);
+  const [changeError, setChangeError] = useState<string | null>(null);
+
+  const handleChangePassword = async () => {
+    setChangeError(null);
+    if (!oldPassword || !newPassword) {
+      setChangeError('Vui lòng điền đủ thông tin');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setChangeError('Mật khẩu mới và xác nhận không khớp');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setChangeError('Mật khẩu mới phải có ít nhất 6 ký tự');
+      return;
+    }
+    try {
+      setChanging(true);
+      await api.post('/users/change-password', { oldPassword, newPassword });
+      alert('Đổi mật khẩu thành công');
+      setChangeOpen(false);
+      // Reset sau khi đóng dialog
+      setTimeout(() => {
+        setOldPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setChangeError(null);
+      }, 0);
+    } catch (err: any) {
+      console.error('Change password failed', err);
+      setChangeError(err?.response?.data?.message || 'Không thể đổi mật khẩu');
+    } finally {
+      setChanging(false);
+    }
   };
 
   // Loading state
@@ -369,7 +412,41 @@ const Profile = () => {
                 <h4 className="font-medium">Đổi mật khẩu</h4>
                 <p className="text-sm text-muted-foreground">Cập nhật mật khẩu để bảo mật tài khoản</p>
               </div>
-              <Button variant="outline">Đổi mật khẩu</Button>
+              <Dialog open={changeOpen} onOpenChange={setChangeOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" onClick={() => {
+                    // Reset form ngay khi click button
+                    setOldPassword('');
+                    setNewPassword('');
+                    setConfirmPassword('');
+                    setChangeError(null);
+                  }}>Đổi mật khẩu</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Đổi mật khẩu</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label> Mật khẩu hiện tại </Label>
+                      <Input type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label> Mật khẩu mới </Label>
+                      <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label> Xác nhận mật khẩu mới </Label>
+                      <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                    </div>
+                    {changeError && <div className="text-sm text-destructive">{changeError}</div>}
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setChangeOpen(false)} disabled={changing}>Hủy</Button>
+                      <Button onClick={handleChangePassword} disabled={changing}>{changing ? 'Đang đổi...' : 'Đổi mật khẩu'}</Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
             
             <div className="flex items-center justify-between p-4 border rounded-lg">

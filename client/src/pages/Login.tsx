@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { AlertCircle, Eye, EyeOff, BookOpen } from "lucide-react";
+import { AlertCircle, Eye, EyeOff } from "lucide-react";
+import { APP_LOGO_URL, APP_NAME } from "@/lib/brand";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
@@ -18,6 +19,7 @@ const Login = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
+  const authBaseUrl = import.meta.env.VITE_AUTH_BASE_URL ?? "http://localhost:8888";
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -52,15 +54,8 @@ const Login = () => {
     }
   };
 
-  // Demo login shortcuts
-  const quickLogin = (role: 'student' | 'teacher' | 'admin') => {
-    const usernames = {
-      student: 'student',
-      teacher: 'teacher',
-      admin: 'admin'
-    };
-    setUsername(usernames[role]);
-    setPassword('password');
+  const handleGoogleLogin = () => {
+    window.location.href = `${authBaseUrl}/oauth2/authorization/google`;
   };
 
   return (
@@ -68,12 +63,10 @@ const Login = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
-              <BookOpen className="w-7 h-7 text-white" />
-            </div>
+            <img src={APP_LOGO_URL} alt={APP_NAME} className="w-12 h-12 rounded-lg object-cover" />
           </div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            EduPlatform
+            {APP_NAME}
           </h1>
           <p className="text-muted-foreground mt-2">
             Sign in to your account
@@ -142,44 +135,24 @@ const Login = () => {
               >
                 {isLoading ? "Signing in..." : "Sign in"}
               </Button>
+
+              {/* OAuth2: Google Sign-In */}
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full mt-3 flex items-center justify-center gap-2"
+                onClick={handleGoogleLogin}
+                disabled={isLoading}
+              >
+                <img
+                  src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Google_%22G%22_Logo.svg/32px-Google_%22G%22_Logo.svg.png"
+                  alt="Google"
+                  className="h-5 w-5"
+                />
+                <span>Sign in with Google</span>
+              </Button>
             </form>
 
-            {/* Demo login section */}
-            <div className="mt-6 p-4 bg-muted rounded-lg">
-              <p className="text-sm font-medium mb-3 text-center">Demo Accounts</p>
-              <div className="grid grid-cols-3 gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => quickLogin('student')}
-                  disabled={isLoading}
-                  className="text-xs"
-                >
-                  Student
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => quickLogin('teacher')}
-                  disabled={isLoading}
-                  className="text-xs"
-                >
-                  Teacher
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => quickLogin('admin')}
-                  disabled={isLoading}
-                  className="text-xs"
-                >
-                  Admin
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2 text-center">
-                Click to auto-fill credentials
-              </p>
-            </div>
 
             <div className="mt-6 text-center text-sm">
               <span className="text-muted-foreground">Don't have an account? </span>

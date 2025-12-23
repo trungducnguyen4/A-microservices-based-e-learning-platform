@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { api, homeworkService, submissionService } from "@/lib/api";
+import { api, homeworkService, submissionService, fileService } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ensureAbsoluteUrl, isImageUrl, isYouTubeUrl, youtubeEmbedUrl, displayFriendlyUrl } from "@/lib/url";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,13 +13,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  Users, 
-  BookOpen, 
-  Calendar, 
-  FileText, 
-  Plus, 
-  BarChart3, 
+import {
+  Users,
+  BookOpen,
+  Calendar,
+  FileText,
+  Plus,
+  BarChart3,
   Clock,
   CheckCircle,
   AlertCircle,
@@ -29,7 +30,7 @@ import {
   Trash2,
   Eye,
   Loader2,
-  Search
+  Search,
 } from "lucide-react";
 
 const TeacherDashboard = () => {
@@ -43,6 +44,9 @@ const TeacherDashboard = () => {
   const [annTitle, setAnnTitle] = useState<string>("");
   const [annBody, setAnnBody] = useState<string>("");
   const [annPinned, setAnnPinned] = useState<boolean>(false);
+  const [annDialogOpen, setAnnDialogOpen] = useState<boolean>(false);
+  const [attachments, setAttachments] = useState<Array<{ url: string; name?: string; type?: string }>>([]);
+  const [linkInput, setLinkInput] = useState<string>("");
   const [schedule, setSchedule] = useState<any[]>([]);
   const [totalStudents, setTotalStudents] = useState<number>(0);
   const [classesToday, setClassesToday] = useState<number>(0);
@@ -272,6 +276,7 @@ const TeacherDashboard = () => {
         id: a.id,
         title: a.title || a.subject || 'Announcement',
         body: a.body || a.message || a.content || '',
+        attachments: a.attachments || a.attachmentUrls || [],
         createdAt: a.createdAt || a.created_at || a.publishedAt || a.created || ''
       }));
       setAnnouncements(mapped);
@@ -407,11 +412,7 @@ const TeacherDashboard = () => {
                       </SelectContent>
                     </Select>
 
-                    <Dialog>
-                      {/* hidden trigger used for programmatic open during edit (does not clear state) */}
-                      <DialogTrigger asChild>
-                        <button type="button" title="open-ann-dialog" style={{ display: 'none' }} />
-                      </DialogTrigger>
+                    <Dialog open={annDialogOpen} onOpenChange={setAnnDialogOpen}>
                       <DialogTrigger asChild>
                         <Button className="bg-primary hover:bg-primary/90" onClick={() => {
                           // open create dialog (clear state)
@@ -419,6 +420,8 @@ const TeacherDashboard = () => {
                           setAnnTitle("");
                           setAnnBody("");
                           setAnnPinned(false);
+                          setAttachments([]);
+                          setAnnDialogOpen(true);
                         }}>
                           <Plus className="w-4 h-4 mr-2" />
                           New Announcement
@@ -442,15 +445,64 @@ const TeacherDashboard = () => {
                             <input type="checkbox" id="annPinned" checked={annPinned} onChange={(e) => setAnnPinned(e.target.checked)} />
                             <Label htmlFor="annPinned">Pin announcement</Label>
                           </div>
-                          <div className="flex justify-end gap-2">
-                            <Button variant="outline">Cancel</Button>
+                          <div className="space-y-2">
+                            <Label>Attachments</Label>
+                            <div className="flex items-center gap-2">
+                              <input type="text" placeholder="Paste link (image/video/file)" value={linkInput} onChange={(e) => setLinkInput(e.target.value)} className="border rounded px-2 py-1 flex-1" />
+                              <Button onClick={() => {
+                                if (!linkInput) return;
+                                const normalized = ensureAbsoluteUrl(linkInput);
+                                setAttachments(prev => [{ url: normalized, name: linkInput.split('/').pop() || linkInput }, ...prev]);
+                                setLinkInput("");
+                              }}>Add Link</Button>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <input id="ann-file" type="file" className="hidden" onChange={async (e) => {
+                                const f = e.target.files && e.target.files[0];
+                                if (!f) return;
+                                try {
+                                  const uploaded = await fileService.uploadFile(f);
+                                  const url = uploaded?.url || uploaded?.path || uploaded?.downloadUrl || uploaded?.id;
+                                  if (url) setAttachments(prev => [{ url, name: uploaded.originalName || f.name, type: f.type }, ...prev]);
+                                } catch (err) {
+                                  console.error('File upload failed', err);
+                                  alert('File upload failed');
+                                } finally {
+                                  // reset input
+                                  (e.target as HTMLInputElement).value = '';
+                                }
+                              }} />
+                              <label htmlFor="ann-file" className="btn inline-flex items-center px-3 py-1 border rounded cursor-pointer">
+                                <Upload className="w-4 h-4 mr-2" /> Upload File
+                              </label>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              {attachments.map((a, idx) => (
+                                <div key={idx} className="flex items-center justify-between bg-muted/20 p-2 rounded">
+                                  <div className="flex items-center gap-2">
+                                    {a.type?.startsWith('image') ? (
+                                      <img src={ensureAbsoluteUrl(a.url)} alt={a.name} className="w-12 h-8 object-cover rounded" />
+                                    ) : (
+                                      <FileText className="w-5 h-5" />
+                                    )}
+                                    <div className="text-sm">{a.name}</div>
+                                  </div>
+                                  <div>
+                                    <Button variant="ghost" size="sm" onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))}>Remove</Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                            <div className="flex justify-end gap-2">
+                            <Button variant="outline" onClick={() => setAnnDialogOpen(false)}>Cancel</Button>
                             <Button onClick={async () => {
                               if (!selectedCourse) {
                                 alert('Please select a course first');
                                 return;
                               }
                               try {
-                                const payload = { title: annTitle || 'Announcement', content: annBody || '', courseId: selectedCourse, pinned: annPinned };
+                                const payload = { title: annTitle || 'Announcement', content: annBody || '', courseId: selectedCourse, pinned: annPinned, attachments: attachments.map(a => a.url) };
                                 // create new announcement
                                 await api.post('/announcements', payload);
                                 // if editing, delete old announcement to simulate update (backend has no PUT)
@@ -463,6 +515,12 @@ const TeacherDashboard = () => {
                                 }
                                 // refresh
                                 await loadAnnouncementsForCourse(selectedCourse);
+                                // close dialog and clear edit state
+                                setAnnDialogOpen(false);
+                                setEditingAnnouncement(null);
+                                setAnnTitle("");
+                                setAnnBody("");
+                                setAnnPinned(false);
                               } catch (err) {
                                 console.error('Create announcement failed', err);
                                 alert('Failed to create announcement');
@@ -490,6 +548,32 @@ const TeacherDashboard = () => {
                             <div className="flex-1">
                               <h4 className="font-medium text-foreground">{a.title}</h4>
                               <p className="text-sm text-muted-foreground mt-1">{(a.body || a.content || '').substring(0, 180)}</p>
+                              {a.attachments && a.attachments.length > 0 && (
+                                <div className="mt-2 space-y-2">
+                                  {a.attachments.map((url: string, i: number) => (
+                                    <div key={i}>
+                                      {isImageUrl(url) ? (
+                                        <img src={ensureAbsoluteUrl(url)} alt={`attachment-${i}`} className="w-full max-h-48 object-cover rounded" />
+                                      ) : isYouTubeUrl(url) ? (
+                                        (() => {
+                                          const embed = youtubeEmbedUrl(url);
+                                          if (embed) {
+                                            return (
+                                              <div className="w-full aspect-video">
+                                                <iframe src={embed} title={`video-${i}`} className="w-full h-48" />
+                                              </div>
+                                            );
+                                          }
+                                          // not embeddable (no id) - render as external link showing friendly text
+                                          return <a href={ensureAbsoluteUrl(url)} target="_blank" rel="noreferrer" className="text-sm text-primary underline">{displayFriendlyUrl(url)}</a>;
+                                        })()
+                                      ) : (
+                                        <a href={ensureAbsoluteUrl(url)} target="_blank" rel="noreferrer" className="text-sm text-primary underline">{displayFriendlyUrl(url)}</a>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                               <div className="text-xs text-muted-foreground mt-2">{a.createdAt ? new Date(a.createdAt).toLocaleString() : ''}</div>
                             </div>
                             <div className="flex flex-col items-end ml-4 space-y-2">
@@ -499,8 +583,8 @@ const TeacherDashboard = () => {
                                 setAnnTitle(a.title || '');
                                 setAnnBody(a.body || a.content || '');
                                 setAnnPinned(Boolean(a.pinned));
-                                const btn = document.querySelector('button[title="open-ann-dialog"]') as HTMLButtonElement | null;
-                                if (btn) btn.click();
+                                  setAttachments(a.attachments?.map((u: string) => ({ url: u, name: u.split('/').pop() })) || []);
+                                  setAnnDialogOpen(true);
                               }}>
                                 <Edit className="w-4 h-4" />
                               </Button>
