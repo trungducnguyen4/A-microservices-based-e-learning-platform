@@ -10,8 +10,8 @@ spring:
       client:
         registration:
           google:
-            client-id: 560938395171-9o65cgu27oe1gkbhkm54kmegc73hu4h1.apps.googleusercontent.com
-            client-secret: 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
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
             scope:
               - openid
               - profile
