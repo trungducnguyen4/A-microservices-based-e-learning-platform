@@ -16,9 +16,12 @@ class RoomStore {
         roomCode: roomCode,
         createdAt: new Date(),
         createdBy: createdBy,
+        hostUserId: createdBy, // userId của người tạo phòng là host
         participants: new Map()
       });
-      console.log(`[RoomStore] Room ${roomCode} created by ${createdBy}`);
+      console.log(`[RoomStore] ✅ Room ${roomCode} created. Host userId: ${createdBy}`);
+    } else {
+      console.log(`[RoomStore] Room ${roomCode} already exists. Host: ${this.rooms.get(roomCode).hostUserId}`);
     }
     return this.rooms.get(roomCode);
   }
@@ -46,18 +49,24 @@ class RoomStore {
     
     // Tự động tạo room nếu chưa tồn tại
     if (!room) {
-      console.log(`[RoomStore] Auto-creating room ${roomCode} for participant ${participant.identity}`);
-      room = this.createRoom(roomCode, participant.identity);
+      const creatorId = participant.userId || participant.identity;
+      console.log(`[RoomStore] Auto-creating room ${roomCode}. Creator: ${participant.name} (userId: ${creatorId})`);
+      room = this.createRoom(roomCode, creatorId);
     }
+
+    // Check if this user is the host
+    const isHost = room.hostUserId && room.hostUserId === participant.userId;
 
     // Add hoặc update participant
     room.participants.set(participant.identity, {
       identity: participant.identity,
       name: participant.name,
-      joinedAt: participant.joinedAt || new Date()
+      userId: participant.userId,
+      joinedAt: participant.joinedAt || new Date(),
+      isHost: isHost
     });
 
-    console.log(`[RoomStore] Participant ${participant.name} added to room ${roomCode}`);
+    console.log(`[RoomStore] 👥 Added ${participant.name} to ${roomCode}. ${isHost ? '🎭 HOST' : '👤 Guest'} (hostUserId: ${room.hostUserId}, userId: ${participant.userId})`);
     return true;
   }
 
@@ -70,9 +79,20 @@ class RoomStore {
       return false;
     }
 
+    const participant = room.participants.get(identity);
     const deleted = room.participants.delete(identity);
     if (deleted) {
       console.log(`[RoomStore] Participant ${identity} removed from room ${roomCode}`);
+      
+      // Nếu host rời phòng, chuyển host cho người khác
+      if (participant && room.hostUserId === participant.userId && room.participants.size > 0) {
+        const nextParticipant = room.participants.values().next().value;
+        if (nextParticipant) {
+          room.hostUserId = nextParticipant.userId;
+          nextParticipant.isHost = true;
+          console.log(`[RoomStore] 🔄 Host transferred to ${nextParticipant.name} (userId: ${nextParticipant.userId})`);
+        }
+      }
     }
     return deleted;
   }

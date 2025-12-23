@@ -59,6 +59,41 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
+- LiveKit - Real-time video/audio
+- Groq API - Speech-to-Text transcription
+
+## Speech-to-Text Feature
+
+This project includes a live lecture transcription feature using Groq's Whisper API.
+
+### Setup Groq API
+
+1. Create an account at [Groq Console](https://console.groq.com/)
+2. Generate an API key from [API Keys page](https://console.groq.com/keys)
+3. Add the key to your `.env` file:
+
+```env
+VITE_GROQ_API_KEY=your_groq_api_key_here
+```
+
+### How it works
+
+- **Only for hosts**: The recording button appears in the classroom header for room hosts
+- **10-minute limit**: Recordings automatically stop after 10 minutes to conserve API quota
+- **Real-time transcription**: Audio is processed in 30-second chunks for near real-time results
+- **Vietnamese support**: Configured for Vietnamese language by default (can be changed in `useTranscription.ts`)
+- **Export**: Download the full transcript as a text file
+
+### Usage
+
+1. Join a classroom as host
+2. Unmute your microphone
+3. Click "Record Lecture" button in the header
+4. Speak naturally - the transcript will appear in the panel
+5. Click "Stop" or wait for auto-stop after 10 minutes
+6. Export the transcript using the "Export" button
+
+**Note**: Microphone must be enabled to start recording.
 
 ## How can I deploy this project?
 

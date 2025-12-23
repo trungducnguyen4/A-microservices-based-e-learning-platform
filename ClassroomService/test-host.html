@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Host Feature</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .host-badge {
+            display: inline-block;
+            background: #007bff;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎭 Test Host Feature</h1>
+
+    <div class="section">
+        <h3>Step 1: Create Room (as Host)</h3>
+        <button onclick="createRoom()">Create Room</button>
+        <div id="createResult" class="result"></div>
+    </div>
+
+    <div class="section">
+        <h3>Step 2: Get Token (as Host)</h3>
+        <button onclick="getHostToken()">Get Token for Host</button>
+        <div id="hostTokenResult" class="result"></div>
+    </div>
+
+    <div class="section">
+        <h3>Step 3: Get Token (as Guest)</h3>
+        <button onclick="getGuestToken()">Get Token for Guest</button>
+        <div id="guestTokenResult" class="result"></div>
+    </div>
+
+    <div class="section">
+        <h3>Step 4: Check Room Info</h3>
+        <button onclick="checkRoom()">Check Room</button>
+        <div id="checkResult" class="result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8082';
+        let roomCode = 'TEST-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+        const hostUserId = 'host123';
+        const guestUserId = 'guest456';
+
+        async function createRoom() {
+            const result = document.getElementById('createResult');
+            result.textContent = 'Creating room...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/meeting/create`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        roomCode: roomCode,
+                        userId: hostUserId
+                    })
+                });
+                
+                const data = await response.json();
+                result.textContent = `✅ Room created:\n${JSON.stringify(data, null, 2)}\n\nRoom Code: ${roomCode}\nHost User ID: ${hostUserId}`;
+            } catch (error) {
+                result.textContent = `❌ Error: ${error.message}`;
+            }
+        }
+
+        async function getHostToken() {
+            const result = document.getElementById('hostTokenResult');
+            result.textContent = 'Getting token for host...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/getToken?room=${roomCode}&user=John Doe&userId=${hostUserId}&role=teacher`);
+                const data = await response.json();
+                
+                const isHost = data.isHost;
+                result.innerHTML = `${isHost ? '✅ HOST' : '❌ NOT HOST'}\n${JSON.stringify(data, null, 2)}`;
+                
+                if (isHost) {
+                    result.innerHTML += '\n\n🎉 Host badge should appear!';
+                }
+            } catch (error) {
+                result.textContent = `❌ Error: ${error.message}`;
+            }
+        }
+
+        async function getGuestToken() {
+            const result = document.getElementById('guestTokenResult');
+            result.textContent = 'Getting token for guest...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/getToken?room=${roomCode}&user=Jane Smith&userId=${guestUserId}&role=student`);
+                const data = await response.json();
+                
+                const isHost = data.isHost;
+                result.innerHTML = `${isHost ? '❌ SHOULD NOT BE HOST' : '✅ GUEST (correct)'}\n${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                result.textContent = `❌ Error: ${error.message}`;
+            }
+        }
+
+        async function checkRoom() {
+            const result = document.getElementById('checkResult');
+            result.textContent = 'Checking room...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/meeting/check/${roomCode}`);
+                const data = await response.json();
+                result.textContent = `Room info:\n${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                result.textContent = `❌ Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

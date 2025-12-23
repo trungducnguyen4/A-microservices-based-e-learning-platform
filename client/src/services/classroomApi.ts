@@ -59,19 +59,17 @@ export const classroomService = {
    * Check if a room exists
    */
   checkRoom: async (roomCode: string) => {
-    const response = await classroomApi.get('/checkRoom', {
-      params: { room: roomCode }
-    });
+    const response = await classroomApi.get(`/api/meeting/check/${roomCode}`);
     return response.data;
   },
 
   /**
    * Create a new room
    */
-  createRoom: async (roomName: string, maxParticipants: number = 50) => {
-    const response = await classroomApi.post('/rooms', {
-      roomName,
-      maxParticipants
+  createRoom: async (roomCode: string, userId: string) => {
+    const response = await classroomApi.post('/api/meeting/create', {
+      roomCode,
+      userId
     });
     return response.data;
   },
@@ -90,7 +88,19 @@ export const classroomService = {
   healthCheck: async () => {
     const response = await classroomApi.get('/health');
     return response.data;
-  }
+  },
+
+  /**
+   * Notify that a participant has left the room
+   * Returns whether the room is now empty
+   */
+  notifyParticipantLeft: async (roomCode: string, identity: string) => {
+    const response = await classroomApi.post('/api/meeting/participant-left', {
+      roomCode,
+      identity,
+    });
+    return response.data;
+  },
 };
 
 export default classroomService;

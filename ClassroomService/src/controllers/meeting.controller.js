@@ -84,6 +84,11 @@ class MeetingController {
               roomCode: room.roomCode,
               createdAt: room.createdAt,
               participantCount: room.participants.size,
+              hostUserId: room.hostUserId,
+              hostName: (() => {
+                const hostParticipant = Array.from(room.participants.values()).find(p => p.userId === room.hostUserId);
+                return hostParticipant?.name || null;
+              })(),
             }
           : null,
       });
@@ -105,13 +110,18 @@ class MeetingController {
     try {
       const rooms = roomService.getAllRooms();
 
-      const roomList = Array.from(rooms.values()).map((room) => ({
-        roomCode: room.roomCode,
-        createdBy: room.createdBy,
-        createdAt: room.createdAt,
-        participantCount: room.participants.size,
-        participants: Array.from(room.participants.values()),
-      }));
+      const roomList = Array.from(rooms.values()).map((room) => {
+        const hostParticipant = Array.from(room.participants.values()).find(p => p.userId === room.hostUserId);
+        return {
+          roomCode: room.roomCode,
+          createdBy: room.createdBy,
+          createdAt: room.createdAt,
+          participantCount: room.participants.size,
+          hostUserId: room.hostUserId,
+          hostName: hostParticipant?.name || null,
+          participants: Array.from(room.participants.values()),
+        };
+      });
 
       res.json({
         success: true,
@@ -197,15 +207,81 @@ class MeetingController {
         userName
       );
 
+      // Check if this user is the host
+      const room = roomService.getRoom(roomCode);
+      const isHost = room && room.hostUserId === userId;
+
+      console.log(`[MeetingController] 🎫 Token for ${userName} (userId: ${userId})`);
+      console.log(`[MeetingController] Room: ${roomCode}, Host: ${room?.hostUserId}, isHost: ${isHost}`);
+
       res.json({
         success: true,
-        data: tokenData,
+        data: {
+          ...tokenData,
+          isHost,
+        },
       });
     } catch (error) {
       console.error('[MeetingController] Error getting token:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to generate token',
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Notify that a participant has left
+   * POST /api/meeting/participant-left
+   * Used by frontend to cleanup room data when last participant leaves
+   */
+  async participantLeft(req, res) {
+    try {
+      const { roomCode, identity } = req.body;
+
+      if (!roomCode) {
+        return res.status(400).json({
+          success: false,
+          message: 'Room code is required',
+        });
+      }
+
+      if (!identity) {
+        return res.status(400).json({
+          success: false,
+          message: 'Participant identity is required',
+        });
+      }
+
+      // Remove participant from room
+      const removed = roomService.removeParticipant(roomCode, identity);
+      
+      if (!removed) {
+        console.log(`[MeetingController] Participant ${identity} not found in room ${roomCode}`);
+      }
+
+      // Check if room is now empty
+      const room = roomService.getRoom(roomCode);
+      const isEmpty = !room || room.participants.size === 0;
+
+      if (isEmpty && room) {
+        console.log(`[MeetingController] Room ${roomCode} is now empty - can cleanup client data`);
+      }
+
+      res.json({
+        success: true,
+        data: {
+          roomCode,
+          isEmpty,
+          remainingParticipants: room ? room.participants.size : 0,
+        },
+      });
+    } catch (error) {
+      console.error('[MeetingController] Error handling participant left:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to process participant leaving',
         error: error.message,
       });
     }

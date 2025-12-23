@@ -66,7 +66,10 @@ const PreJoinForm = ({ onJoin }: PreJoinFormProps) => {
 
   const loadDevices = async () => {
     try {
-      await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      // Request permission - then stop tracks immediately
+      const permissionStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      permissionStream.getTracks().forEach(track => track.stop());
+      
       const devices = await navigator.mediaDevices.enumerateDevices();
       
       const audioInputs = devices.filter(d => d.kind === 'audioinput');

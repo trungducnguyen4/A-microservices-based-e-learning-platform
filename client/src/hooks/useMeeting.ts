@@ -11,6 +11,7 @@ import {
   validateRoomCodeFormat, 
   cleanRoomCode 
 } from '@/services/meetingService';
+import { classroomService } from '@/services/classroomApi';
 
 export interface UseMeetingReturn {
   // State
@@ -53,10 +54,27 @@ export const useMeeting = (): UseMeetingReturn => {
   /**
    * Confirm và redirect vào classroom
    */
-  const handleConfirmCreateMeeting = () => {
+  const handleConfirmCreateMeeting = async () => {
     setIsCreating(true);
     setShowConfirmDialog(false);
-    // Replace history để khi back không còn trong stack
+    
+    try {
+      // Get user info from localStorage
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : null;
+      const userId = user?.id || user?.email || `user_${Date.now()}`;
+      
+      console.log('[useMeeting] Creating room:', pendingRoomCode, 'for userId:', userId);
+      
+      // Create room với userId của người tạo
+      await classroomService.createRoom(pendingRoomCode, userId);
+      console.log('[useMeeting] ✅ Room created successfully as host');
+    } catch (error) {
+      console.log('[useMeeting] Room creation error (will auto-create):', error);
+      // Ignore error - backend sẽ auto-create nếu cần
+    }
+    
+    // Navigate to classroom
     navigate(`/classroom?room=${pendingRoomCode}`, { replace: true });
   };
 

@@ -85,6 +85,11 @@ app.get('/getToken', async (req, res) => {
     );
 
     console.log(`[/getToken] Token generated successfully for ${tokenData.name}`);
+    
+    // Check host status
+    const room = roomService.getRoom(roomCode);
+    const isHost = room && room.hostUserId === userId;
+    console.log(`[/getToken] 🎭 Host check - Room host: ${room?.hostUserId}, User: ${userId}, isHost: ${isHost}`);
 
     res.json({
       url: livekitConfig.url,
@@ -96,7 +101,8 @@ app.get('/getToken', async (req, res) => {
       // Thêm các field như code cũ
       userInfo: tokenData.userId ? {
         id: tokenData.userId,
-      } : null
+      } : null,
+      isHost: isHost
     });
   } catch (error) {
     console.error('[Legacy /getToken] Error:', error);

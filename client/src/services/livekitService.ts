@@ -14,6 +14,7 @@ export interface TokenResponse {
   url: string;
   displayName: string;
   userInfo?: any;
+  isHost?: boolean;
 }
 
 export interface GetTokenParams {

@@ -38,4 +38,11 @@ router.delete('/room/:roomCode', (req, res) => meetingController.deleteRoom(req,
  */
 router.post('/token', (req, res) => meetingController.getToken(req, res));
 
+/**
+ * @route POST /api/meeting/participant-left
+ * @desc Notify that a participant has left the room
+ * @access Public
+ */
+router.post('/participant-left', (req, res) => meetingController.participantLeft(req, res));
+
 module.exports = router;

@@ -17,8 +17,15 @@ export function useMediaDevices() {
   useEffect(() => {
     async function loadDevices() {
       try {
-        // Request permissions first
-        await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+        // Request permissions first - then IMMEDIATELY stop tracks
+        console.log('[useMediaDevices] Requesting permission...');
+        const permissionStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+        
+        // CRITICAL: Stop all tracks immediately after getting permission
+        permissionStream.getTracks().forEach(track => {
+          console.log(`[useMediaDevices] Stopping permission ${track.kind} track`);
+          track.stop();
+        });
         
         const devices = await navigator.mediaDevices.enumerateDevices();
         

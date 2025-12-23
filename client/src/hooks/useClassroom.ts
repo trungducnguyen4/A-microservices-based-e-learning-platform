@@ -16,6 +16,8 @@ import {
 import { getLivekitToken } from '@/services/livekitService';
 import { AudioProcessor } from '@/utils/audioProcessor';
 import type { ChatMessage } from './useChat';
+import { classroomService } from '@/services/classroomApi';
+import { clearRoomData, markRoomAsJoined, clearRoomSession } from '@/utils/roomPersistence';
 
 export interface UseClassroomParams {
   roomName: string;
@@ -40,10 +42,16 @@ export interface UseClassroomReturn {
   audioLevel: number;
   handRaised: boolean;
   isScreenSharing: boolean;
+  isLocalUserHost: boolean;
+  hostUserId: string | null;
+  pinnedParticipantIdentity: string | null;
+  isMuted: boolean;
+  isVideoOn: boolean;
   
   // Refs
   localVideoRef: React.RefObject<HTMLDivElement>;
   remoteVideosRef: React.RefObject<HTMLDivElement>;
+  pinnedVideoRef: React.RefObject<HTMLDivElement>;
   
   // Actions
   toggleMute: () => Promise<void>;
@@ -53,6 +61,8 @@ export interface UseClassroomReturn {
   leaveRoom: () => void;
   setIsMuted: (muted: boolean) => void;
   setIsVideoOn: (on: boolean) => void;
+  togglePinParticipant: (identity: string) => void;
+  unpinParticipant: () => void;
 }
 
 export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => {
@@ -71,6 +81,11 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
   const [audioLevel, setAudioLevel] = useState(0);
   const [handRaised, setHandRaised] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [isLocalUserHost, setIsLocalUserHost] = useState(false);
+  const [hostUserId, setHostUserId] = useState<string | null>(null);
+  const hostUserIdRef = useRef<string | null>(null);
+  const [pinnedParticipantIdentity, setPinnedParticipantIdentity] = useState<string | null>(null);
+  const [raisedHands, setRaisedHands] = useState<Set<string>>(new Set());
   
   // Media state
   const [isMuted, setIsMuted] = useState(params.isMuted);
@@ -79,38 +94,400 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
   // Refs
   const localVideoRef = useRef<HTMLDivElement>(null);
   const remoteVideosRef = useRef<HTMLDivElement>(null);
+  const pinnedVideoRef = useRef<HTMLDivElement>(null);
   const localTracksRef = useRef<LocalTrack[]>([]);
   const audioProcessorRef = useRef<AudioProcessor>(new AudioProcessor());
 
+  // Keep latest hostUserId accessible to event handlers (avoid stale closure)
+  useEffect(() => {
+    hostUserIdRef.current = hostUserId;
+  }, [hostUserId]);
+
   /**
-   * Render remote participants videos
+   * Render remote participants videos and screen shares
    */
   const renderRemoteParticipants = (room: Room) => {
     if (!remoteVideosRef.current) return;
     
     remoteVideosRef.current.innerHTML = '';
+
+    const currentHostUserId = hostUserIdRef.current;
     
     room.remoteParticipants.forEach(participant => {
-      participant.trackPublications.forEach(pub => {
-        if (pub.track && pub.track.kind === 'video') {
-          const el = pub.track.attach();
-          el.style.width = "100%";
-          el.style.height = "100%";
-          el.style.objectFit = "cover";
-          
-          const wrapper = document.createElement("div");
-          wrapper.className = "relative aspect-video bg-muted rounded-lg overflow-hidden";
-          wrapper.appendChild(el);
-          
-          const nameLabel = document.createElement("div");
-          nameLabel.className = "absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded";
-          nameLabel.textContent = participant.identity;
-          wrapper.appendChild(nameLabel);
-          
-          remoteVideosRef.current?.appendChild(wrapper);
+      // Check for screen share track first
+      let hasScreenShare = false;
+      let screenShareElement: HTMLVideoElement | null = null;
+      
+      participant.videoTrackPublications.forEach(pub => {
+        // Screen share tracks have source === 'screen_share'
+        if (pub.source === 'screen_share' && pub.track && pub.isSubscribed && !pub.isMuted) {
+          hasScreenShare = true;
+          screenShareElement = pub.track.attach() as HTMLVideoElement;
         }
       });
+      
+      // If user is sharing screen, create a separate card for screen share
+      if (hasScreenShare && screenShareElement) {
+        const screenWrapper = document.createElement("div");
+        screenWrapper.className = "relative aspect-video bg-muted rounded-lg overflow-hidden";
+        screenWrapper.style.position = "relative";
+        
+        screenShareElement.style.width = "100%";
+        screenShareElement.style.height = "100%";
+        screenShareElement.style.objectFit = "contain";
+        screenWrapper.appendChild(screenShareElement);
+        
+        // PIN button for screen share
+        const pinButton = document.createElement("button");
+        pinButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17v5"></path><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"></path></svg>`;
+        pinButton.style.position = "absolute";
+        pinButton.style.top = "8px";
+        pinButton.style.right = "8px";
+        pinButton.style.background = "rgba(0, 0, 0, 0.7)";
+        pinButton.style.color = "white";
+        pinButton.style.padding = "6px";
+        pinButton.style.borderRadius = "6px";
+        pinButton.style.cursor = "pointer";
+        pinButton.style.opacity = "0";
+        pinButton.style.transition = "opacity 0.2s";
+        pinButton.style.border = "none";
+        pinButton.style.zIndex = "20";
+        pinButton.title = "Pin screen share";
+        pinButton.onclick = (e) => {
+          e.stopPropagation();
+          setPinnedParticipantIdentity(`${participant.identity}-screen`);
+        };
+        
+        screenWrapper.onmouseenter = () => { pinButton.style.opacity = "1"; };
+        screenWrapper.onmouseleave = () => { pinButton.style.opacity = "0"; };
+        screenWrapper.appendChild(pinButton);
+        
+        // Screen share label with monitor icon
+        const screenLabel = document.createElement("div");
+        screenLabel.style.position = "absolute";
+        screenLabel.style.bottom = "8px";
+        screenLabel.style.left = "8px";
+        screenLabel.style.maxWidth = "calc(100% - 16px)";
+        screenLabel.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
+        screenLabel.style.color = "white";
+        screenLabel.style.fontSize = "12px";
+        screenLabel.style.padding = "6px 10px";
+        screenLabel.style.borderRadius = "6px";
+        screenLabel.style.display = "flex";
+        screenLabel.style.alignItems = "center";
+        screenLabel.style.gap = "6px";
+        screenLabel.style.zIndex = "10";
+        screenLabel.style.backdropFilter = "blur(4px)";
+        
+        // Monitor icon + text
+        screenLabel.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${participant.identity}'s screen</span>`;
+        
+        screenWrapper.appendChild(screenLabel);
+        remoteVideosRef.current?.appendChild(screenWrapper);
+      }
+      
+      // Now render the regular video/camera feed (separate card)
+      const wrapper = document.createElement("div");
+      wrapper.className = "relative aspect-video bg-muted rounded-lg overflow-hidden";
+      wrapper.style.position = "relative";
+      wrapper.style.backgroundColor = "#000"; // Black background như Google Meet
+      wrapper.style.display = "flex";
+      wrapper.style.alignItems = "center";
+      wrapper.style.justifyContent = "center";
+      
+      // Check if participant has active camera video track
+      let hasActiveVideo = false;
+      let videoElement: HTMLVideoElement | null = null;
+      
+      participant.videoTrackPublications.forEach(pub => {
+        // Only camera tracks (exclude screen share)
+        if (pub.source === 'camera' && pub.track && pub.track.kind === 'video') {
+          const trackEnabled = pub.track.mediaStreamTrack?.enabled ?? false;
+          const isSubscribed = pub.isSubscribed;
+          const isMuted = pub.isMuted;
+          
+          console.log(`[Video Check] ${participant.identity}: enabled=${trackEnabled}, subscribed=${isSubscribed}, pubMuted=${isMuted}`);
+          
+          if (isSubscribed && !isMuted && trackEnabled) {
+            hasActiveVideo = true;
+            videoElement = pub.track.attach() as HTMLVideoElement;
+          }
+        }
+      });
+      
+      if (hasActiveVideo && videoElement) {
+        // Participant has video - render it with proper aspect ratio
+        videoElement.style.width = "auto";
+        videoElement.style.height = "auto";
+        videoElement.style.maxWidth = "100%";
+        videoElement.style.maxHeight = "100%";
+        videoElement.style.objectFit = "contain"; // Giữ tỷ lệ khung hình
+        videoElement.style.transform = "scaleX(-1)"; // Mirror flip for natural look
+        videoElement.style.position = "absolute";
+        videoElement.style.top = "50%";
+        videoElement.style.left = "50%";
+        videoElement.style.transform = "translate(-50%, -50%) scaleX(-1)"; // Center and mirror
+        wrapper.appendChild(videoElement);
+      } else {
+        // No video - show avatar placeholder
+        const placeholder = document.createElement("div");
+        placeholder.style.position = "absolute";
+        placeholder.style.inset = "0";
+        placeholder.style.display = "flex";
+        placeholder.style.alignItems = "center";
+        placeholder.style.justifyContent = "center";
+        placeholder.style.background = "linear-gradient(135deg, rgb(71, 85, 105) 0%, rgb(51, 65, 85) 100%)";
+        
+        const avatarCircle = document.createElement("div");
+        avatarCircle.style.width = "64px";
+        avatarCircle.style.height = "64px";
+        avatarCircle.style.borderRadius = "50%";
+        avatarCircle.style.backgroundColor = "rgb(99, 102, 241)";
+        avatarCircle.style.display = "flex";
+        avatarCircle.style.alignItems = "center";
+        avatarCircle.style.justifyContent = "center";
+        avatarCircle.style.fontSize = "28px";
+        avatarCircle.style.fontWeight = "600";
+        avatarCircle.style.color = "white";
+        avatarCircle.style.textTransform = "uppercase";
+        
+        // Get first letter of participant name
+        const firstLetter = participant.identity ? participant.identity.charAt(0).toUpperCase() : "?";
+        avatarCircle.textContent = firstLetter;
+        
+        placeholder.appendChild(avatarCircle);
+        wrapper.appendChild(placeholder);
+      }
+      
+      // Check if this participant is the host
+      let isHost = false;
+      let participantUserId = null;
+      try {
+        const metadata = participant.metadata ? JSON.parse(participant.metadata) : {};
+        participantUserId = metadata.userId;
+        // Check bằng userId trong metadata
+        isHost = participantUserId === currentHostUserId;
+        console.log(`[Render] Participant ${participant.identity}: userId=${participantUserId}, hostUserId=${currentHostUserId}, isHost=${isHost}`);
+      } catch (e) {
+        console.warn('Error parsing participant metadata:', e);
+      }
+      
+      // PIN button (hiển thị khi hover)
+      const pinButton = document.createElement("button");
+      pinButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17v5"></path><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"></path></svg>`;
+      pinButton.style.position = "absolute";
+      pinButton.style.top = "8px";
+      pinButton.style.right = "8px";
+      pinButton.style.background = "rgba(0, 0, 0, 0.7)";
+      pinButton.style.color = "white";
+      pinButton.style.padding = "6px";
+      pinButton.style.borderRadius = "6px";
+      pinButton.style.cursor = "pointer";
+      pinButton.style.opacity = "0";
+      pinButton.style.transition = "opacity 0.2s";
+      pinButton.style.border = "none";
+      pinButton.style.zIndex = "20";
+      pinButton.title = "Pin video";
+      pinButton.onclick = (e) => {
+        e.stopPropagation();
+        // Pin camera video with identifier
+        setPinnedParticipantIdentity(`${participant.identity}-camera`);
+      };
+      
+      // Show/hide pin button on hover
+      wrapper.onmouseenter = () => {
+        pinButton.style.opacity = "1";
+      };
+      wrapper.onmouseleave = () => {
+        pinButton.style.opacity = "0";
+      };
+      
+      wrapper.appendChild(pinButton);
+      
+      // Check if participant has hand raised
+      const participantIdentity = participant.identity;
+      const hasHandRaised = raisedHands.has(participantIdentity);
+      
+      // Tạo hand raised icon nếu có
+      if (hasHandRaised) {
+        const handIcon = document.createElement("div");
+        handIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"/><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>`;
+        handIcon.style.position = "absolute";
+        handIcon.style.top = "8px";
+        handIcon.style.left = "8px";
+        handIcon.style.backgroundColor = "rgba(251, 191, 36, 0.95)";
+        handIcon.style.color = "white";
+        handIcon.style.padding = "6px";
+        handIcon.style.borderRadius = "50%";
+        handIcon.style.display = "flex";
+        handIcon.style.alignItems = "center";
+        handIcon.style.justifyContent = "center";
+        handIcon.style.zIndex = "15";
+        handIcon.style.animation = "bounce 1s infinite";
+        handIcon.title = "Hand raised";
+        wrapper.appendChild(handIcon);
+      }
+      
+      // Tạo name label container
+      const nameLabel = document.createElement("div");
+      nameLabel.style.position = "absolute";
+      nameLabel.style.bottom = "8px";
+      nameLabel.style.left = "8px";
+      nameLabel.style.maxWidth = "calc(100% - 16px)";
+      nameLabel.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
+      nameLabel.style.color = "white";
+      nameLabel.style.fontSize = "12px";
+      nameLabel.style.padding = "6px 10px";
+      nameLabel.style.borderRadius = "6px";
+      nameLabel.style.display = "flex";
+      nameLabel.style.alignItems = "center";
+      nameLabel.style.gap = "6px";
+      nameLabel.style.zIndex = "10";
+      nameLabel.style.backdropFilter = "blur(4px)";
+      
+      // Text content với Host inline
+      const nameText = isHost ? `${participant.identity} (Host)` : participant.identity;
+      nameLabel.textContent = nameText;
+      nameLabel.style.whiteSpace = "nowrap";
+      nameLabel.style.overflow = "hidden";
+      nameLabel.style.textOverflow = "ellipsis";
+      
+      if (isHost) {
+        console.log(`[Render] ✅ Added HOST label for ${participant.identity}`);
+      }
+      
+      wrapper.appendChild(nameLabel);
+      
+      remoteVideosRef.current?.appendChild(wrapper);
     });
+  };
+
+  /**
+   * Render pinned participant video or screen share
+   */
+  const renderPinnedParticipant = (room: Room, participantIdentity: string) => {
+    if (!pinnedVideoRef.current) return;
+    
+    // Clear existing content
+    pinnedVideoRef.current.innerHTML = "";
+    
+    // Parse identity - format: "identity-camera" or "identity-screen"
+    const isScreenShare = participantIdentity.endsWith('-screen');
+    const isCameraView = participantIdentity.endsWith('-camera');
+    const actualIdentity = participantIdentity.replace(/-camera$|-screen$/, '');
+    
+    const participant = Array.from(room.remoteParticipants.values()).find(
+      p => p.identity === actualIdentity
+    );
+    
+    if (!participant) return;
+    
+    let trackToRender: any = null;
+    let isPinningScreen = false;
+    
+    // Find the appropriate track based on what user pinned
+    participant.videoTrackPublications.forEach((publication) => {
+      if (isScreenShare && publication.source === 'screen_share') {
+        trackToRender = publication.track;
+        isPinningScreen = true;
+      } else if ((isCameraView || !isScreenShare) && publication.source === 'camera') {
+        trackToRender = publication.track;
+        isPinningScreen = false;
+      }
+    });
+    
+    // Fallback: if specific type not found, use any video track
+    if (!trackToRender) {
+      participant.videoTrackPublications.forEach((publication) => {
+        if (publication.track && !trackToRender) {
+          trackToRender = publication.track;
+          isPinningScreen = publication.source === 'screen_share';
+        }
+      });
+    }
+    
+    if (trackToRender) {
+      const videoElement = trackToRender.attach() as HTMLVideoElement;
+      videoElement.style.width = "100%";
+      videoElement.style.height = "100%";
+      videoElement.style.objectFit = isPinningScreen ? "contain" : "contain";
+      videoElement.style.transform = isPinningScreen ? "none" : "scaleX(-1)"; // Mirror only for camera
+      
+      const wrapper = document.createElement("div");
+      wrapper.className = "relative bg-gray-900 rounded-lg h-full w-full overflow-hidden";
+      wrapper.appendChild(videoElement);
+      
+      // UNPIN button
+      const unpinButton = document.createElement("button");
+      unpinButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17v5"></path><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"></path></svg>`;
+      unpinButton.style.position = "absolute";
+      unpinButton.style.top = "12px";
+      unpinButton.style.right = "12px";
+      unpinButton.style.background = "rgba(59, 130, 246, 0.9)";
+      unpinButton.style.color = "white";
+      unpinButton.style.padding = "8px";
+      unpinButton.style.borderRadius = "8px";
+      unpinButton.style.cursor = "pointer";
+      unpinButton.style.border = "none";
+      unpinButton.style.display = "flex";
+      unpinButton.style.alignItems = "center";
+      unpinButton.style.gap = "4px";
+      unpinButton.style.zIndex = "20";
+      unpinButton.title = "Unpin";
+      unpinButton.onclick = () => {
+        setPinnedParticipantIdentity(null);
+      };
+      
+      wrapper.appendChild(unpinButton);
+      
+      // Participant name with badges
+      const nameLabel = document.createElement("div");
+      nameLabel.style.position = "absolute";
+      nameLabel.style.bottom = "16px";
+      nameLabel.style.left = "16px";
+      nameLabel.style.backgroundColor = "rgba(0, 0, 0, 0.75)";
+      nameLabel.style.backdropFilter = "blur(4px)";
+      nameLabel.style.color = "white";
+      nameLabel.style.padding = "8px 14px";
+      nameLabel.style.borderRadius = "8px";
+      nameLabel.style.fontSize = "15px";
+      nameLabel.style.zIndex = "10";
+      nameLabel.style.fontWeight = "500";
+      
+      // Check if this participant is host
+      let isHost = false;
+      try {
+        const participantMetadata = participant.metadata ? JSON.parse(participant.metadata) : {};
+        const participantUserId = participantMetadata.userId;
+        const currentHostUserId = hostUserIdRef.current;
+        isHost = participantUserId && currentHostUserId && participantUserId === currentHostUserId;
+      } catch (e) {
+        console.warn('Error checking host status for pinned participant:', e);
+      }
+      
+      // Create text with inline badges
+      let labelText = "";
+      if (isPinningScreen) {
+        labelText = isHost 
+          ? `${participant.identity}'s screen (Pinned, Host)` 
+          : `${participant.identity}'s screen (Pinned)`;
+      } else {
+        labelText = isHost 
+          ? `${participant.identity} (Pinned, Host)` 
+          : `${participant.identity} (Pinned)`;
+      }
+      
+      // Add monitor icon if screen share
+      if (isPinningScreen) {
+        nameLabel.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg><span style="margin-left: 4px;">${labelText}</span>`;
+      } else {
+        nameLabel.textContent = labelText;
+      }
+      
+      wrapper.appendChild(nameLabel);
+      
+      pinnedVideoRef.current?.appendChild(wrapper);
+    }
   };
 
   /**
@@ -137,12 +514,37 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
         setError(null);
         
         // Get token
-        const { token, url, displayName } = await getLivekitToken({
+        const { token, url, displayName, isHost } = await getLivekitToken({
           room: params.roomName,
           user: params.userName,
           userId: params.userId,
           role: params.userRole,
         });
+
+        // Set host information
+        if (isHost) {
+          setIsLocalUserHost(true);
+          setHostUserId(params.userId || null);
+          console.log('[useClassroom] 🎭 Current user is the HOST');
+        } else {
+          console.log('[useClassroom] 👤 Current user is a guest');
+        }
+
+        // QUAN TRỌNG: Lấy thông tin room để biết ai là host
+        try {
+          const classroomService = (await import('@/services/classroomApi')).classroomService;
+          const roomCheckResponse = await classroomService.checkRoom(params.roomName);
+          
+          if (roomCheckResponse && roomCheckResponse.exists && roomCheckResponse.data) {
+            const roomHostUserId = roomCheckResponse.data.hostUserId;
+            if (roomHostUserId) {
+              setHostUserId(roomHostUserId);
+              console.log('[useClassroom] 📋 Room host userId:', roomHostUserId);
+            }
+          }
+        } catch (error) {
+          console.warn('[useClassroom] Could not fetch room info:', error);
+        }
 
         const r = new Room({
           adaptiveStream: true,
@@ -180,6 +582,10 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
         currentRoom = r;
         setIsConnected(true);
 
+        // ✅ Mark room as joined successfully (for skip PreJoin on refresh)
+        markRoomAsJoined(params.roomName);
+        console.log('[useClassroom] 🎯 Room marked as joined');
+
         // Update participants
         const remoteParticipants = Array.from(r.remoteParticipants.values());
         setParticipants(remoteParticipants);
@@ -207,13 +613,24 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
         // Render local video
         if (localVideoRef.current) {
           localVideoRef.current.innerHTML = '';
+          
+          // Set container to fill space with centered content
+          localVideoRef.current.style.display = 'flex';
+          localVideoRef.current.style.alignItems = 'center';
+          localVideoRef.current.style.justifyContent = 'center';
+          localVideoRef.current.style.backgroundColor = '#000';
+          localVideoRef.current.style.overflow = 'hidden';
+          
           tracks.forEach(track => {
             if (track.kind === 'video') {
               const el = track.attach();
-              el.style.width = "100%";
-              el.style.height = "100%";
-              el.style.objectFit = "cover";
-              el.style.transform = "scaleX(-1)";
+              // Video giữ aspect ratio, không bị cắt hoặc stretch
+              el.style.width = "auto";
+              el.style.height = "auto";
+              el.style.maxWidth = "100%";
+              el.style.maxHeight = "100%";
+              el.style.objectFit = "contain"; // Giữ tỷ lệ khung hình
+              el.style.transform = "scaleX(-1)"; // Mirror flip
               localVideoRef.current?.appendChild(el);
             }
           });
@@ -235,6 +652,22 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
           setParticipants(prev => prev.filter(p => p.identity !== participant.identity));
         });
 
+        r.on(RoomEvent.TrackPublished, (publication, participant) => {
+          if (participant.isLocal) return;
+          console.log("📤 Track published:", publication.kind, publication.source, "from", participant.identity);
+          renderRemoteParticipants(r);
+        });
+
+        r.on(RoomEvent.TrackUnpublished, (publication, participant) => {
+          if (participant.isLocal) return;
+          console.log("📤 Track unpublished:", publication.kind, publication.source, "from", participant.identity);
+          // If unpinned track is screen share, unpin it
+          if (publication.source === 'screen_share' && pinnedParticipantIdentity === `${participant.identity}-screen`) {
+            setPinnedParticipantIdentity(null);
+          }
+          renderRemoteParticipants(r);
+        });
+
         r.on(RoomEvent.TrackSubscribed, (track, pub, participant) => {
           if (participant.isLocal) return;
           console.log("📹 Track subscribed:", track.kind, "from", participant.identity);
@@ -247,7 +680,20 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
           renderRemoteParticipants(r);
         });
 
-        // Data received handler
+        r.on(RoomEvent.TrackMuted, (publication, participant) => {
+          if (participant.isLocal) return;
+          console.log("🔇 Track muted:", publication.kind, "from", participant.identity);
+          renderRemoteParticipants(r);
+        });
+
+        r.on(RoomEvent.TrackUnmuted, (publication, participant) => {
+          if (participant.isLocal) return;
+          console.log("🔊 Track unmuted:", publication.kind, "from", participant.identity);
+          renderRemoteParticipants(r);
+        });
+
+        // Data received handler for hand-raise events ONLY
+        // Note: Chat messages are handled by useChat hook's DataReceived listener
         r.on(RoomEvent.DataReceived, (payload: Uint8Array, participant) => {
           const decoder = new TextDecoder();
           const data = decoder.decode(payload);
@@ -255,24 +701,23 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
           try {
             const parsed = JSON.parse(data);
             
+            // Only handle hand-raise events here
+            // Chat messages are handled by useChat hook to avoid duplicate processing
             if (parsed.type === 'hand-raise') {
-              // Handle via callback if provided
-              if ((r as any).__addChatMessage) {
-                const notification: ChatMessage = {
-                  id: Date.now().toString(),
-                  sender: "System",
-                  senderId: "system",
-                  message: `${parsed.userName} ${parsed.raised ? 'raised' : 'lowered'} their hand`,
-                  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                };
-                (r as any).__addChatMessage(notification);
-              }
-            } else if (parsed.message) {
-              // Chat message
-              if ((r as any).__addChatMessage) {
-                (r as any).__addChatMessage(parsed);
+              const participantIdentity = parsed.userId || participant?.identity;
+              if (participantIdentity) {
+                setRaisedHands(prev => {
+                  const newSet = new Set(prev);
+                  if (parsed.raised) {
+                    newSet.add(participantIdentity);
+                  } else {
+                    newSet.delete(participantIdentity);
+                  }
+                  return newSet;
+                });
               }
             }
+            // Chat messages are NOT processed here - useChat handles them
           } catch (error) {
             console.error("Error parsing data:", error);
           }
@@ -300,6 +745,26 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
     return () => {
       if (currentRoom) {
         console.log("🧹 Cleaning up room connection");
+        
+        // Notify backend that we're leaving
+        const roomName = currentRoom.name;
+        const identity = currentRoom.localParticipant.identity;
+        
+        classroomService.notifyParticipantLeft(roomName, identity)
+          .then((result) => {
+            console.log(`[useClassroom] Notified backend - Room empty: ${result.data.isEmpty}, Remaining: ${result.data.remainingParticipants}`);
+            
+            // If room is now empty, clear local room data AND session
+            if (result.data.isEmpty) {
+              console.log(`[useClassroom] 🗑️ Room is empty, clearing local data and session`);
+              clearRoomData(roomName);
+              clearRoomSession(roomName);
+            }
+          })
+          .catch((error) => {
+            console.error('[useClassroom] Error notifying participant left:', error);
+          });
+        
         currentRoom.disconnect();
         setIsConnected(false);
       }
@@ -310,12 +775,35 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
   }, [params.roomName, params.userName, params.userId]);
 
   /**
+   * Re-render remote participants khi hostUserId hoặc raisedHands thay đổi
+   */
+  useEffect(() => {
+    if (room) {
+      console.log('[useClassroom] Re-rendering participants');
+      renderRemoteParticipants(room);
+    }
+  }, [hostUserId, room, raisedHands]);
+
+  /**
+   * Re-render pinned participant khi pinnedParticipantIdentity thay đổi
+   */
+  useEffect(() => {
+    if (room && pinnedParticipantIdentity) {
+      console.log('[useClassroom] Pinning participant:', pinnedParticipantIdentity);
+      renderPinnedParticipant(room, pinnedParticipantIdentity);
+    } else if (pinnedVideoRef.current) {
+      pinnedVideoRef.current.innerHTML = "";
+    }
+  }, [pinnedParticipantIdentity, room]);
+
+  /**
    * Toggle mute
    */
   const toggleMute = async () => {
     if (!room?.localParticipant) return;
     
     const newMutedState = !isMuted;
+    console.log('[toggleMute] Changing from', isMuted, 'to', newMutedState);
     setIsMuted(newMutedState);
     
     if (newMutedState) {
@@ -352,6 +840,7 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
     if (!room?.localParticipant) return;
     
     const newVideoState = !isVideoOn;
+    console.log('[toggleVideo] Changing from', isVideoOn, 'to', newVideoState);
     setIsVideoOn(newVideoState);
     
     if (!newVideoState) {
@@ -381,10 +870,21 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
         
         if (localVideoRef.current) {
           localVideoRef.current.innerHTML = '';
+          
+          // Set container style
+          localVideoRef.current.style.display = 'flex';
+          localVideoRef.current.style.alignItems = 'center';
+          localVideoRef.current.style.justifyContent = 'center';
+          localVideoRef.current.style.backgroundColor = '#000';
+          localVideoRef.current.style.overflow = 'hidden';
+          
           const el = videoTrack.attach();
-          el.style.width = "100%";
-          el.style.height = "100%";
-          el.style.objectFit = "cover";
+          // Video giữ aspect ratio như Google Meet
+          el.style.width = "auto";
+          el.style.height = "auto";
+          el.style.maxWidth = "100%";
+          el.style.maxHeight = "100%";
+          el.style.objectFit = "contain";
           el.style.transform = "scaleX(-1)";
           localVideoRef.current.appendChild(el);
         }
@@ -421,6 +921,17 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
       const newState = !handRaised;
       setHandRaised(newState);
       
+      // Update local raised hands set
+      setRaisedHands(prev => {
+        const newSet = new Set(prev);
+        if (newState) {
+          newSet.add(room.localParticipant.identity);
+        } else {
+          newSet.delete(room.localParticipant.identity);
+        }
+        return newSet;
+      });
+      
       const message = {
         type: 'hand-raise',
         userId: room.localParticipant.identity,
@@ -431,6 +942,8 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
       const encoder = new TextEncoder();
       const data = encoder.encode(JSON.stringify(message));
       room.localParticipant.publishData(data, { reliable: true });
+      
+      console.log(`[Hand Raise] ${newState ? 'Raised' : 'Lowered'} hand`);
     }
   };
 
@@ -447,6 +960,24 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
     navigate('/meet', { replace: true });
   };
 
+  /**
+   * Toggle pin participant
+   */
+  const togglePinParticipant = (identity: string) => {
+    if (pinnedParticipantIdentity === identity) {
+      setPinnedParticipantIdentity(null);
+    } else {
+      setPinnedParticipantIdentity(identity);
+    }
+  };
+
+  /**
+   * Unpin participant
+   */
+  const unpinParticipant = () => {
+    setPinnedParticipantIdentity(null);
+  };
+
   return {
     room,
     participants,
@@ -458,8 +989,14 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
     audioLevel,
     handRaised,
     isScreenSharing,
+    isLocalUserHost,
+    hostUserId,
+    pinnedParticipantIdentity,
+    isMuted,
+    isVideoOn,
     localVideoRef,
     remoteVideosRef,
+    pinnedVideoRef,
     toggleMute,
     toggleVideo,
     toggleScreenShare,
@@ -467,5 +1004,7 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
     leaveRoom,
     setIsMuted,
     setIsVideoOn,
-  };
+    togglePinParticipant,
+    unpinParticipant,
+  } as UseClassroomReturn;
 };
