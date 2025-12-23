@@ -16,6 +16,8 @@ public class AnnouncementCreationRequest {
 
     @NotBlank
     private String courseId;
-
     private Boolean pinned = false;
+
+    // List of attachment URLs (images, videos, files, links)
+    private java.util.List<String> attachments;
 }

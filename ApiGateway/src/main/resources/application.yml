@@ -6,6 +6,31 @@ spring:
   cloud:
     compatibility-verifier:
       enabled: false
+    gateway:
+      globalcors:
+        add-to-simple-url-handler-mapping: true
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:8083"
+              - "http://localhost:5173"
+              - "http://localhost:8080"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+            allowedHeaders:
+              - Authorization
+              - Cache-Control
+              - Content-Type
+            allowCredentials: true
+
+# Ensure default port is 8888 even without a profile
+server:
+  port: 8888
 
 ---
 # Development Profile
@@ -21,6 +46,14 @@ spring:
           uri: ${USER_SERVICE_URL:http://localhost:8080}
           predicates:
             - Path=/api/users/**
+        - id: oauth2-authorization
+          uri: ${USER_SERVICE_URL:http://localhost:8080}
+          predicates:
+            - Path=/oauth2/authorization/**
+        - id: oauth2-callback
+          uri: ${USER_SERVICE_URL:http://localhost:8080}
+          predicates:
+            - Path=/login/oauth2/code/**
         - id: schedule-service
           uri: ${SCHEDULE_SERVICE_URL:http://localhost:8082}
           predicates:
@@ -37,6 +70,12 @@ spring:
           uri: ${ANNOUNCEMENT_SERVICE_URL:http://localhost:8090}
           predicates:
             - Path=/api/announcements/**
+        - id: file-service
+          uri: ${FILE_SERVICE_URL:http://localhost:5000}
+          predicates:
+            - Path=/api/files/**
+          filters:
+            - StripPrefix=2
           # Do not strip path: user-service expects /api/users/... as configured in UserService
       # (global CORS or more routes can be added here)
   data:
@@ -81,6 +120,14 @@ spring:
           uri: ${USER_SERVICE_URL:http://user-service:8080}
           predicates:
             - Path=/api/users/**
+        - id: oauth2-authorization
+          uri: ${USER_SERVICE_URL:http://user-service:8080}
+          predicates:
+            - Path=/oauth2/authorization/**
+        - id: oauth2-callback
+          uri: ${USER_SERVICE_URL:http://user-service:8080}
+          predicates:
+            - Path=/login/oauth2/code/**
       
         - id: schedule-service
           uri: ${SCHEDULE_SERVICE_URL:http://schedule-service:8082}
@@ -98,6 +145,12 @@ spring:
           uri: ${ANNOUNCEMENT_SERVICE_URL:http://announcement-service:8090}
           predicates:
             - Path=/api/announcements/**
+        - id: file-service
+          uri: ${FILE_SERVICE_URL:http://file-service:5000}
+          predicates:
+            - Path=/api/files/**
+          filters:
+            - StripPrefix=2
       # (additional routes and global cors can be added here)
   data:
     redis:

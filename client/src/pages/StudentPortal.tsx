@@ -12,7 +12,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import axios from "axios";
-import { api } from "@/lib/api";
+import { api, homeworkService } from "@/lib/api";
+import { ensureAbsoluteUrl, isImageUrl, isYouTubeUrl, youtubeEmbedUrl, displayFriendlyUrl } from "@/lib/url";
 import { 
   BookOpen, 
   Calendar as CalendarIcon, 
@@ -32,6 +33,7 @@ import {
 
 const StudentPortal = () => {
   const [date, setDate] = useState<Date | undefined>(new Date());
+  const [hoveredDate, setHoveredDate] = useState<Date | undefined>(undefined);
   const [userInfo, setUserInfo] = useState<{
     username?: string;
     email?: string;
@@ -41,6 +43,11 @@ const StudentPortal = () => {
   const [loading, setLoading] = useState(true);
   const [coursesLoading, setCoursesLoading] = useState(false);
   const [enrolledCourses, setEnrolledCourses] = useState<any[]>([]);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [upcomingClasses, setUpcomingClasses] = useState<any[]>([]);
+  const [studentSchedule, setStudentSchedule] = useState<any[]>([]);
+  const [studentOccurrences, setStudentOccurrences] = useState<any[]>([]);
   const [joinCourseCode, setJoinCourseCode] = useState("");
   const [joinDialogOpen, setJoinDialogOpen] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
@@ -134,6 +141,213 @@ const StudentPortal = () => {
     fetchEnrollments();
   }, [userInfo]);
 
+  // Load upcoming classes for the student from backend schedules
+  useEffect(() => {
+    const loadUpcoming = async () => {
+      try {
+        const resp = await api.get(`/schedules/my-schedule`);
+        const raw = resp.data?.result || resp.data || [];
+        const list = Array.isArray(raw) ? raw : (Array.isArray(raw?.result) ? raw.result : []);
+
+        const now = new Date().getTime();
+        const fmtTime = (iso?: string) => (iso ? new Date(iso).toLocaleString() : "");
+        const computeDuration = (start?: string, end?: string) => {
+          if (!start || !end) return "";
+          const mins = Math.max(0, Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000));
+          return mins ? `${mins} min` : "";
+        };
+
+        // keep full schedule for hover preview
+        const full = list.map((s: any) => ({
+          id: s.id || s.scheduleId || s.courseId,
+          courseId: s.courseId,
+          course: s.courseName || s.title || "Class",
+          topic: s.topic || s.title || "",
+          instructor: s.teacherName || s.teacherId || "",
+          startTime: s.startTime,
+          endTime: s.endTime,
+          recurrenceRule: s.recurrenceRule || s.rrule || s.recurrence,
+          type: s.type || "Live Session",
+        }));
+
+        setStudentSchedule(full);
+
+        // Helpers copied from CourseDetail to compute weekly occurrences
+        const parseWeeklyRRule = (rule?: string) => {
+          if (!rule) return { freq: '', byDays: [] as number[] };
+          const parts = String(rule).split(';').map(p => p.trim());
+          let freq = '';
+          let byDays: number[] = [];
+          for (const p of parts) {
+            const [k, v] = p.split('=');
+            if (k.toUpperCase() === 'FREQ') freq = v?.toUpperCase() || '';
+            if (k.toUpperCase() === 'BYDAY') {
+              const map: Record<string, number> = { SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 };
+              byDays = (v || '')
+                .split(',')
+                .map(s => s.trim().toUpperCase())
+                .map(s => map[s])
+                .filter((d): d is number => d !== undefined);
+            }
+          }
+          return { freq, byDays };
+        };
+
+        const startOfWeek = (date: Date) => { const d = new Date(date); const day = d.getDay(); d.setDate(d.getDate() - day); d.setHours(0,0,0,0); return d; };
+        const endOfWeek = (date: Date) => { const s = startOfWeek(date); const e = new Date(s); e.setDate(e.getDate()+6); e.setHours(23,59,59,999); return e; };
+        const computeOccurrencesInRange = (startISO?: string, endISO?: string, rule?: string, from?: Date, to?: Date) => {
+          if (!startISO || !from || !to) return [] as any[];
+          const start = new Date(startISO);
+          const end = endISO ? new Date(endISO) : null;
+          const { freq, byDays } = parseWeeklyRRule(rule);
+          const sessions: any[] = [];
+          if (freq !== 'WEEKLY' || byDays.length === 0) {
+            if (start >= from && start <= to) {
+              sessions.push({ dt: new Date(start) });
+            }
+            return sessions;
+          }
+          let cursor = new Date(from);
+          while (cursor <= to) {
+            const weekStart = startOfWeek(cursor);
+            for (const d of byDays) {
+              const dt = new Date(weekStart);
+              dt.setDate(weekStart.getDate()+d);
+              dt.setHours(start.getHours(), start.getMinutes(), 0, 0);
+              if (dt >= start && (!end || dt <= end) && dt >= from && dt <= to) {
+                sessions.push({ dt });
+              }
+            }
+            cursor.setDate(cursor.getDate()+7);
+            if (end && cursor > end) break;
+          }
+          return sessions.sort((a,b)=>a.dt.getTime()-b.dt.getTime());
+        };
+
+        // Build occurrences horizon for next 12 weeks, then pick next 5 overall
+        const from = startOfWeek(new Date());
+        const to = new Date(from); to.setDate(to.getDate()+7*12);
+        const allOccurrences: any[] = [];
+        for (const s of full) {
+          const occs = computeOccurrencesInRange(s.startTime, s.endTime, s.recurrenceRule, from, to).map((o:any)=>({
+            id: `${s.id}-occ-${o.dt.getTime()}`,
+            courseId: s.courseId,
+            course: s.course,
+            topic: s.topic,
+            instructor: s.instructor,
+            startTime: o.dt.toISOString(),
+            endTime: s.endTime,
+            duration: computeDuration(s.startTime, s.endTime),
+            type: s.type,
+          }));
+          allOccurrences.push(...occs);
+        }
+
+        // store for calendar preview
+        setStudentOccurrences(allOccurrences);
+
+        const upcoming = allOccurrences
+          .filter((o:any)=> new Date(o.startTime).getTime() >= now)
+          .sort((a:any,b:any)=> new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+          .slice(0,5)
+          .map((o:any)=>({
+            id: o.id,
+            courseId: o.courseId,
+            course: o.course,
+            topic: o.topic,
+            instructor: o.instructor,
+            time: fmtTime(o.startTime),
+            duration: o.duration,
+            type: o.type,
+          }));
+
+        setUpcomingClasses(upcoming);
+      } catch (err) {
+        console.info("Upcoming classes load failed", (err as any)?.message || err);
+        setUpcomingClasses([]);
+      }
+    };
+
+    loadUpcoming();
+  }, [userInfo]);
+
+  // Load announcements for enrolled courses
+  useEffect(() => {
+    const loadAnnouncements = async () => {
+      try {
+        if (!enrolledCourses || enrolledCourses.length === 0) {
+          setAnnouncements([]);
+          return;
+        }
+
+        const promises = enrolledCourses.map((c: any) => api.get(`/announcements/course/${c.id}`).then(r => r.data?.result || r.data || []).catch(() => []));
+        const results = await Promise.all(promises);
+        // build a quick lookup of enrolled course titles by id
+        const courseMap: Record<string, string> = {};
+        enrolledCourses.forEach((c: any) => {
+          if (c.id) courseMap[String(c.id)] = c.title || c.name || c.title || '';
+        });
+
+        // flatten and normalize, also include courseTitle resolved from enrolled courses when possible
+        const flat = results.flat().map((a: any) => {
+          const courseId = a.courseId || a.course || a.courseId || null;
+          const courseTitle = courseId ? (courseMap[String(courseId)] || a.courseName || a.title || '') : '';
+          return {
+            id: a.id,
+            courseId,
+            courseTitle,
+            title: a.title || a.subject || 'Announcement',
+            body: a.content || a.body || a.message || '',
+            attachments: a.attachments || a.attachmentUrls || [],
+            createdAt: a.createdAt || a.created_at || a.publishedAt || a.created || null
+          };
+        });
+        // sort by createdAt desc
+        flat.sort((x: any, y: any) => {
+          const dx = x.createdAt ? new Date(x.createdAt).getTime() : 0;
+          const dy = y.createdAt ? new Date(y.createdAt).getTime() : 0;
+          return dy - dx;
+        });
+        setAnnouncements(flat);
+      } catch (err) {
+        console.error('Failed to load announcements for student', err);
+        setAnnouncements([]);
+      }
+    };
+
+    loadAnnouncements();
+  }, [enrolledCourses]);
+
+  // Load student assignments from HomeworkService
+  useEffect(() => {
+    const loadStudentAssignments = async () => {
+      try {
+        if (!userInfo?.id && !authUser?.id) return;
+        const sid = String(userInfo?.id || authUser?.id);
+        const resp = await homeworkService.getStudentHomework(sid);
+        const raw = resp?.result || resp?.data || resp || [];
+        const list = Array.isArray(raw) ? raw : (Array.isArray(raw?.content) ? raw.content : []);
+
+        const mapped = list.map((h: any) => ({
+          id: h.id,
+          title: h.title || h.name || 'Untitled',
+          course: h.courseTitle || h.courseName || h.course || '',
+          dueDate: h.dueDate || h.due_date || h.due || '',
+          status: (h.status || h.submissionStatus || 'pending').toString().toLowerCase(),
+          grade: h.grade || h.score || null,
+          feedback: h.feedback || h.comment || null,
+        }));
+
+        setAssignments(mapped);
+      } catch (err) {
+        console.info('Failed to load student assignments', (err as any)?.message || err);
+        setAssignments([]);
+      }
+    };
+
+    loadStudentAssignments();
+  }, [userInfo, authUser]);
+
   const handleJoinCourse = async () => {
     if (!joinCourseCode.trim()) return;
     
@@ -184,65 +398,7 @@ const StudentPortal = () => {
   // Use fetched enrolled courses, fallback to empty array while loading
   // `enrolledCourses` state is populated by effect above
 
-  const upcomingClasses = [
-    {
-      id: 1,
-      course: "Advanced React Development",
-      topic: "Advanced Hooks Patterns",
-      instructor: "John Doe",
-      time: "Today, 2:00 PM",
-      duration: "90 min",
-      type: "Live Session"
-    },
-    {
-      id: 2,
-      course: "Python for Data Science",
-      topic: "Machine Learning Basics",
-      instructor: "Jane Smith",
-      time: "Tomorrow, 10:00 AM",
-      duration: "120 min",
-      type: "Workshop"
-    },
-    {
-      id: 3,
-      course: "UX/UI Design",
-      topic: "Project Review",
-      instructor: "Mike Johnson",
-      time: "Friday, 4:00 PM",
-      duration: "60 min",
-      type: "Review Session"
-    },
-  ];
-
-  const assignments = [
-    {
-      id: 1,
-      title: "Build a Todo App with React",
-      course: "Advanced React Development",
-      dueDate: "Dec 28, 2024",
-      status: "submitted",
-      grade: "A",
-      feedback: "Excellent work! Great use of custom hooks."
-    },
-    {
-      id: 2,
-      title: "Data Analysis Project",
-      course: "Python for Data Science",
-      dueDate: "Jan 5, 2025",
-      status: "pending",
-      grade: null,
-      feedback: null
-    },
-    {
-      id: 3,
-      title: "Mobile App Wireframe",
-      course: "UX/UI Design",
-      dueDate: "Jan 10, 2025",
-      status: "in-progress",
-      grade: null,
-      feedback: null
-    },
-  ];
+  // upcomingClasses now loaded from backend above
 
   const achievements = [
     { id: 1, title: "First Course Completed", icon: Award, color: "text-yellow-500" },
@@ -311,7 +467,7 @@ const StudentPortal = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Assignments Due</p>
-                <p className="text-2xl font-bold">2</p>
+                <p className="text-2xl font-bold">{assignments.filter(a => a.status !== 'submitted').length}</p>
               </div>
               <FileText className="w-8 h-8 text-yellow-500" />
             </div>
@@ -436,13 +592,69 @@ const StudentPortal = () => {
             </CardContent>
           </Card>
 
+          {/* Announcements */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Play className="w-5 h-5 mr-2 text-primary" />
+                Announcements
+              </CardTitle>
+              <CardDescription>Latest announcements from your courses</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {announcements.length === 0 ? (
+                <div className="text-muted-foreground">No recent announcements.</div>
+              ) : (
+                announcements.map((a) => (
+                  <div key={a.id} className="border rounded p-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h4 className="font-medium text-foreground">{a.title}</h4>
+                        <p className="text-sm text-muted-foreground mt-1">{(a.body || '').substring(0, 240)}</p>
+                        {a.attachments && a.attachments.length > 0 && (
+                          <div className="mt-2 space-y-2">
+                            {a.attachments.map((url: string, i: number) => (
+                              <div key={i}>
+                                {isImageUrl(url) ? (
+                                  <img src={ensureAbsoluteUrl(url)} alt={`attachment-${i}`} className="w-full max-h-48 object-cover rounded" />
+                                ) : isYouTubeUrl(url) ? (
+                                  (() => {
+                                    const embed = youtubeEmbedUrl(url);
+                                    if (embed) {
+                                      return (
+                                        <div className="w-full aspect-video">
+                                          <iframe src={embed} title={`video-${i}`} className="w-full h-48" />
+                                        </div>
+                                      );
+                                    }
+                                    return <a href={ensureAbsoluteUrl(url)} target="_blank" rel="noreferrer" className="text-sm text-primary underline">{displayFriendlyUrl(url)}</a>;
+                                  })()
+                                ) : (
+                                  <a href={ensureAbsoluteUrl(url)} target="_blank" rel="noreferrer" className="text-sm text-primary underline">{displayFriendlyUrl(url)}</a>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {a.courseTitle && (
+                          <div className="text-xs text-muted-foreground mt-2">From: <strong>{a.courseTitle}</strong></div>
+                        )}
+                        <div className="text-xs text-muted-foreground mt-1">{a.createdAt ? new Date(a.createdAt).toLocaleString() : ''}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
           {/* Assignments */}
-          <Tabs defaultValue="pending" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="pending">Pending Assignments</TabsTrigger>
+          <Tabs defaultValue="pending">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="pending">Pending</TabsTrigger>
               <TabsTrigger value="completed">Completed</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="pending">
               <Card>
                 <CardHeader>
@@ -459,11 +671,10 @@ const StudentPortal = () => {
                           <h4 className="font-medium">{assignment.title}</h4>
                           <p className="text-sm text-muted-foreground">{assignment.course}</p>
                           <div className="flex items-center space-x-4 mt-2">
-                            <div className="flex items-center text-sm">
-                              <Clock className="w-4 h-4 mr-1 text-yellow-500" />
-                              Due: {assignment.dueDate}
-                            </div>
                             {getStatusBadge(assignment.status)}
+                            {assignment.dueDate && (
+                              <Badge variant="outline">Due: {new Date(assignment.dueDate).toLocaleDateString()}</Badge>
+                            )}
                           </div>
                         </div>
                         <Button size="sm" onClick={() => navigate(`/student/assignment/${assignment.id}`)}>
@@ -476,7 +687,7 @@ const StudentPortal = () => {
                 </CardContent>
               </Card>
             </TabsContent>
-            
+
             <TabsContent value="completed">
               <Card>
                 <CardHeader>
@@ -533,9 +744,41 @@ const StudentPortal = () => {
               <Calendar
                 mode="single"
                 selected={date}
-                onSelect={setDate}
+                onSelect={(d) => { setDate(d); setHoveredDate(d || undefined); }}
+                onDayMouseEnter={(day: Date) => setHoveredDate(day)}
+                onDayMouseLeave={() => setHoveredDate(undefined)}
                 className="rounded-md border"
               />
+              {hoveredDate && (
+                <div className="mt-3 text-xs border rounded p-2 bg-muted/30">
+                  {(() => {
+                    const keyOf = (d: Date) => `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+                    const keyOfIso = (iso?: string) => {
+                      if (!iso) return '';
+                      const d = new Date(iso);
+                      return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+                    };
+                    const targetKey = keyOf(hoveredDate);
+                    const items = studentOccurrences.filter((o: any) => o.startTime && keyOfIso(o.startTime) === targetKey).map((o:any)=>({ course: o.course, startTime: o.startTime, endTime: o.endTime }));
+                    if (!items.length) return <div className="text-muted-foreground">No classes</div>;
+                    const fmtRange = (s: any) => {
+                      const st = s.startTime ? new Date(s.startTime).toLocaleTimeString() : "";
+                      const et = s.endTime ? new Date(s.endTime).toLocaleTimeString() : "";
+                      return [st, et].filter(Boolean).join(" - ");
+                    };
+                    return (
+                      <div className="space-y-1">
+                        {items.map((s: any) => (
+                          <div key={`${s.id}-${s.startTime}`} className="flex justify-between">
+                            <span className="font-medium">{s.course}</span>
+                            <span className="text-muted-foreground">{fmtRange(s)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -561,7 +804,7 @@ const StudentPortal = () => {
                       {class_.type}
                     </Badge>
                   </div>
-                  <Button size="sm" className="w-full mt-2" variant="outline">
+                  <Button size="sm" className="w-full mt-2" variant="outline" onClick={() => class_.courseId && navigate(`/course/${class_.courseId}`)}>
                     <Video className="w-3 h-3 mr-1" />
                     Join
                   </Button>

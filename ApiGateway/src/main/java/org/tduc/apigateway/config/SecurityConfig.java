@@ -7,9 +7,7 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.reactive.CorsWebFilter;
-import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
+// CORS is configured centrally in `CorsConfig`; do not define another CorsWebFilter here.
 
 @Configuration
 @EnableWebFluxSecurity
@@ -40,16 +38,4 @@ public class SecurityConfig {
         return http.build();
     }
 
-        @Bean
-        public CorsWebFilter corsWebFilter() {
-                CorsConfiguration config = new CorsConfiguration();
-                config.setAllowedOrigins(java.util.List.of("http://localhost:8083"));
-                config.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-                config.setAllowedHeaders(java.util.List.of("*"));
-                config.setAllowCredentials(true);
-
-                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-                source.registerCorsConfiguration("/**", config);
-                return new CorsWebFilter(source) ;
-        }
 }

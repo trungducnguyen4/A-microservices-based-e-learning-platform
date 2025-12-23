@@ -18,6 +18,7 @@ import {
   Settings
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { APP_NAME } from "@/lib/brand";
 import { useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -46,7 +47,7 @@ const Dashboard = () => {
           {/* Hero Section */}
           <div className="text-center mb-16">
             <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-6">
-              Welcome to EduPlatform
+              Welcome to {APP_NAME}
             </h1>
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
               A comprehensive e-learning platform for students, teachers, and administrators. 
@@ -108,7 +109,7 @@ const Dashboard = () => {
           <div className="text-center">
             <h2 className="text-3xl font-bold mb-4">Ready to get started?</h2>
             <p className="text-lg text-muted-foreground mb-8">
-              Join thousands of educators and students already using EduPlatform
+              Join thousands of educators and students already using {APP_NAME}
             </p>
             <Button asChild size="lg">
               <Link to="/login">Start Learning Today</Link>

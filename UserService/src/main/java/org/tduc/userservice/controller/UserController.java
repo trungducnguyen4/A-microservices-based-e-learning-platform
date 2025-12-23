@@ -11,6 +11,8 @@ import org.tduc.userservice.dto.request.*;
 import org.tduc.userservice.dto.response.AuthResponse;
 import org.tduc.userservice.dto.response.IntrospectResponse;
 import org.tduc.userservice.dto.response.UserResponse;
+import org.tduc.userservice.exception.AppException;
+import org.tduc.userservice.exception.ErrorCode;
 import org.tduc.userservice.model.User;
 import org.tduc.userservice.service.UserService;
 
@@ -136,6 +138,18 @@ public class UserController {
         return ApiResponse.<IntrospectResponse>builder().result(result).build();
     }
 
+    @PostMapping("/change-password")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<Void> changePassword(@RequestBody org.tduc.userservice.dto.request.ChangePasswordRequest body,
+                                            @RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        userService.changePassword(token, body);
+        ApiResponse<Void> response = new ApiResponse<>();
+        response.setCode(HttpStatus.OK.value());
+        response.setResult(null);
+        return response;
+    }
+
     @PutMapping("/users/role")
     @PreAuthorize("hasAuthority('ADMIN')") // chỉ admin mới thay đổi role
     public ApiResponse<UserResponse> updateRole(@RequestBody Map<String, String> body, @RequestHeader("Authorization") String authHeader) {
@@ -164,13 +178,66 @@ public class UserController {
      */
     @PostMapping("/choose-role")
     @PermitAll
-    public ApiResponse<UserResponse> chooseRole(@RequestBody Map<String, String> body,
-                                                @RequestHeader("Authorization") String authHeader) {
+    public ApiResponse<UserResponse> chooseRole(@RequestBody(required = false) Map<String, String> body,
+                                                @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        log.info("choose-role endpoint called");
+        
+        if (authHeader == null || authHeader.isBlank()) {
+            log.error("choose-role: Missing Authorization header");
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+        
+        if (body == null || body.isEmpty()) {
+            log.error("choose-role: Request body is null or empty");
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+        
         String role = body.get("role");
+        if (role == null || role.isBlank()) {
+            log.error("choose-role: Role field is missing or empty");
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+        
+        log.info("choose-role: Processing role={}", role);
         String token = authHeader.replace("Bearer ", "");
         UserResponse updated = userService.chooseRole(token, role);
         ApiResponse<UserResponse> response = new ApiResponse<>();
         response.setResult(updated);
+        log.info("choose-role: Success for user {}", updated.getUsername());
         return response;
     }
+
+    /**
+     * Admin-only login endpoint.
+     * Restricts access to users with ADMIN role.
+     * Adds structured logs for troubleshooting (success and failure).
+     */
+    @PostMapping("/auth/admin-login")
+    @PermitAll
+    public ApiResponse<AuthResponse> adminLogin(@RequestBody AuthRequest authRequest,
+                                                jakarta.servlet.http.HttpServletRequest request) {
+        String username = authRequest.getUsername();
+        String clientIp = request.getRemoteAddr();
+        log.info("adminLogin attempt user={} ip={}", username, clientIp);
+        try {
+            AuthResponse result = userService.adminLogin(authRequest);
+            ApiResponse<AuthResponse> response = new ApiResponse<>();
+            response.setCode(HttpStatus.OK.value());
+            response.setResult(result);
+            log.info("adminLogin success user={} ip={} tokenPrefix={}...", username, clientIp,
+                    result.getToken() != null && result.getToken().length() >= 10
+                            ? result.getToken().substring(0, 10)
+                            : "<none>");
+            return response;
+        } catch (org.tduc.userservice.exception.AppException ex) {
+            log.warn("adminLogin failed user={} ip={} code={} message={}"
+                    , username, clientIp, ex.getErrorCode(), ex.getMessage());
+            throw ex;
+        } catch (Exception ex) {
+            log.error("adminLogin error user={} ip={} message={}"
+                    , username, clientIp, ex.getMessage(), ex);
+            throw ex;
+        }
+    }
 }
+

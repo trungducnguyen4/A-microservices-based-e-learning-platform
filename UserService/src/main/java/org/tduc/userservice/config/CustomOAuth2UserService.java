@@ -40,6 +40,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                     .fullName(fullName)
                     .username(email)
                     .enabled(true)
+                    .role(null)  // Explicitly set to null so user can choose their role
                     .passwordHash(hashed)
                     .build();
             return userRepository.save(user);
