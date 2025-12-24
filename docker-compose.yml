@@ -1,32 +1,10 @@
 services:
-  # Database Services
-  # MySQL service commented out - using XAMPP MySQL instead
-  # mysql:
-  #   image: mysql:8.0
-  #   container_name: e-learning-mysql
-  #   restart: unless-stopped
-  #   environment:
-  #     MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-}
-  #     MYSQL_USER: ${DB_USER:-root}
-  #     MYSQL_PASSWORD: ${DB_PASSWORD:-}
-  #   ports:
-  #     - "3306:3306"
-  #   volumes:
-  #     - mysql_data:/var/lib/mysql
-  #     - ./docker/mysql/init:/docker-entrypoint-initdb.d
-  #   healthcheck:
-  #     test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-  #     timeout: 20s
-  #     retries: 10
-  #   networks:
-  #     - e-learning-network
-
+  # Redis for caching/sessions (runs on EC2)
   redis:
     image: redis:7-alpine
     container_name: e-learning-redis
     restart: unless-stopped
-    ports:
-      - "6379:6379"
+    # Port not exposed to host - only accessible via Docker network
     volumes:
       - redis_data:/data
     # Removed custom redis.conf due to permission issues
@@ -58,7 +36,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8888/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -75,26 +53,19 @@ services:
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      SPRING_DATASOURCE_URL: jdbc:mysql://host.docker.internal:3306/user_db
-      SPRING_DATASOURCE_USERNAME: ${DB_USER:-root}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-}
-      # Covering all possible Redis property names in Spring Boot
+      SPRING_DATASOURCE_URL: jdbc:mysql://${DB_HOST}:${DB_PORT:-3306}/${DB_NAME_USER}?useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-admin}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
-      # Added hostname for Lettuce Redis driver
-      LETTUCE_REDIS_HOST: redis
-      LETTUCE_REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET:-your-very-secure-jwt-secret-key-here}
       SERVER_PORT: 8080
-    ports:
-      - "8080:8080"
+    # Port not exposed - accessed via API Gateway only
     depends_on:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -110,24 +81,23 @@ services:
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      SPRING_DATASOURCE_URL: jdbc:mysql://host.docker.internal:3306/homework_db
-      SPRING_DATASOURCE_USERNAME: ${DB_USER:-root}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-}
+      SPRING_DATASOURCE_URL: jdbc:mysql://${DB_HOST}:${DB_PORT:-3306}/${DB_NAME_HOMEWORK}?useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-admin}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET:-your-very-secure-jwt-secret-key-here}
       SERVER_PORT: 8081
       USER_SERVICE_URL: http://user-service:8080
       FILE_SERVICE_URL: http://file-service:3001
-    ports:
-      - "8081:8081"
+    # Port not exposed - accessed via API Gateway only
     depends_on:
       redis:
         condition: service_healthy
       user-service:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -143,23 +113,22 @@ services:
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      SPRING_DATASOURCE_URL: jdbc:mysql://host.docker.internal:3306/schedule_db
-      SPRING_DATASOURCE_USERNAME: ${DB_USER:-root}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-}
+      SPRING_DATASOURCE_URL: jdbc:mysql://${DB_HOST}:${DB_PORT:-3306}/${DB_NAME_SCHEDULE}?useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-admin}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET:-your-very-secure-jwt-secret-key-here}
       SERVER_PORT: 8082
       USER_SERVICE_URL: http://user-service:8080
-    ports:
-      - "8082:8082"
+    # Port not exposed - accessed via API Gateway only
     depends_on:
       redis:
         condition: service_healthy
       user-service:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8082/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -177,17 +146,16 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_NAME: ${DB_NAME:-e_learning}
-      DB_USER: ${DB_USER:-elearning}
-      DB_PASSWORD: ${DB_PASSWORD:-password}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME_CLASSROOM:-e_learning}
+      DB_USER: ${DB_USER:-admin}
+      DB_PASSWORD: ${DB_PASSWORD}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET:-your-very-secure-jwt-secret-key-here}
       USER_SERVICE_URL: http://user-service:8080
-    ports:
-      - "3000:3000"
+    # Port not exposed - accessed via API Gateway only
     depends_on:
       redis:
         condition: service_healthy
@@ -211,18 +179,17 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_NAME: ${DB_NAME:-e_learning}
-      DB_USER: ${DB_USER:-elearning}
-      DB_PASSWORD: ${DB_PASSWORD:-password}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME_FILE:-e_learning}
+      DB_USER: ${DB_USER:-admin}
+      DB_PASSWORD: ${DB_PASSWORD}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET:-your-very-secure-jwt-secret-key-here}
       UPLOAD_PATH: /app/uploads
       MAX_FILE_SIZE: 10485760
-    ports:
-      - "3001:3001"
+    # Port not exposed - accessed via API Gateway only
     depends_on:
       redis:
         condition: service_healthy
@@ -248,7 +215,7 @@ services:
       NODE_ENV: production
     ports:
       - "80:80"
-      - "443:443"
+      # - "443:443"  # Uncomment after SSL cert is configured
     depends_on:
       api-gateway:
         condition: service_healthy
@@ -262,8 +229,6 @@ services:
       - e-learning-network
 
 volumes:
-  mysql_data:
-    driver: local
   redis_data:
     driver: local
   file_uploads:
