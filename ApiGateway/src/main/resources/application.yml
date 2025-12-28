@@ -46,6 +46,10 @@ spring:
           uri: ${USER_SERVICE_URL:http://localhost:8080}
           predicates:
             - Path=/api/users/**
+        - id: admin-service
+          uri: ${ADMIN_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/api/admin/**
         - id: oauth2-authorization
           uri: ${USER_SERVICE_URL:http://localhost:8080}
           predicates:
@@ -120,6 +124,10 @@ spring:
           uri: ${USER_SERVICE_URL:http://user-service:8080}
           predicates:
             - Path=/api/users/**
+        - id: admin-service
+          uri: ${ADMIN_SERVICE_URL:http://admin-service:8084}
+          predicates:
+            - Path=/api/admin/**
         - id: oauth2-authorization
           uri: ${USER_SERVICE_URL:http://user-service:8080}
           predicates:

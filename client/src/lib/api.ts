@@ -5,6 +5,7 @@ import axios from 'axios';
 const API_GATEWAY_BASE = (import.meta as any)?.env?.VITE_API_BASE ?? 'http://localhost:8888/api';
 const HOMEWORK_API_BASE = API_GATEWAY_BASE;
 const FILE_API_BASE = API_GATEWAY_BASE;
+const ADMIN_API_BASE = API_GATEWAY_BASE;
 
 // Create axios instances
 export const homeworkApi = axios.create({
@@ -18,6 +19,13 @@ export const fileApi = axios.create({
   baseURL: FILE_API_BASE,
   headers: {
     'Content-Type': 'multipart/form-data',
+  },
+});
+
+export const adminApi = axios.create({
+  baseURL: ADMIN_API_BASE,
+  headers: {
+    'Content-Type': 'application/json',
   },
 });
 
@@ -39,6 +47,7 @@ const addAuthInterceptor = (apiInstance: any) => {
 
 addAuthInterceptor(homeworkApi);
 addAuthInterceptor(fileApi);
+addAuthInterceptor(adminApi);
 
 // Homework API Types
 export interface HomeworkCreationRequest {
@@ -378,5 +387,26 @@ export const userService = {
   changePassword: async (oldPassword: string, newPassword: string) => {
     const response = await api.post('/users/change-password', { oldPassword, newPassword });
     return response.data;
+  }
+};
+
+export const adminService = {
+  health: async () => {
+    const response = await adminApi.get('/admin/health');
+    return response.data;
+  },
+  me: async () => {
+    const response = await adminApi.get('/admin/me');
+    return response.data?.result || response.data;
+  },
+  summary: async () => {
+    const response = await adminApi.get('/admin/summary');
+    return response.data?.result || response.data;
+  },
+  listUsers: async () => {
+    // Uses UserService endpoint guarded by ADMIN role
+    const response = await api.get('/users/users');
+    // This endpoint returns a raw list (not wrapped), so handle both shapes
+    return Array.isArray(response.data) ? response.data : response.data?.result || [];
   }
 };
