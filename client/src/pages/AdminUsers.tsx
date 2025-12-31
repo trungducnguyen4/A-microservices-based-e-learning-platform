@@ -41,29 +41,24 @@ const AdminUsers = () => {
     const fetchUsers = async () => {
       try {
         setLoading(true);
-        // Mock data - trong thực tế sẽ gọi API
-        const mockUsers: User[] = [
-          {
-            id: "1",
-            username: "john_doe",
-            email: "john@example.com",
-            fullName: "John Doe",
-            role: "TEACHER",
-            status: "ACTIVE",
-                  const resp = await adminService.listUsers();
-                  const mapped: User[] = (resp || []).map((u: any) => ({
-                    id: u.id ?? u.userId ?? u.username,
-                    username: u.username ?? u.email ?? "unknown",
-                    email: u.email ?? "",
-                    fullName: u.fullName ?? u.name ?? u.username ?? "",
-                    role: (u.role ?? "").toString().toUpperCase(),
-                    status: u.status ?? "ACTIVE",
-                    createdAt: u.createdAt ?? "",
-                    lastLogin: u.lastLogin,
-                    enrolledCourses: u.enrolledCourses,
-                  }));
-
-                  setUsers(mapped);
+        const resp = await adminService.listUsers();
+        const mapped: User[] = (resp || []).map((u: any) => ({
+          id: u.id ?? u.userId ?? u.username,
+          username: u.username ?? u.email ?? "unknown",
+          email: u.email ?? "",
+          fullName: u.fullName ?? u.name ?? u.username ?? "",
+          role: (u.role ?? "").toString().toUpperCase(),
+          status: u.status ?? "ACTIVE",
+          createdAt: u.createdAt ?? "",
+          lastLogin: u.lastLogin,
+          enrolledCourses: u.enrolledCourses,
+        }));
+        setUsers(mapped);
+        setLoading(false);
+      } catch (err) {
+        console.error("Failed to load users:", err);
+        setError("Failed to load users");
+        setLoading(false);
       }
     };
 
@@ -72,7 +67,6 @@ const AdminUsers = () => {
 
   const filteredUsers = users.filter((user) => {
     const matchesSearch =
-                  setError("Failed to load users");
       user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.fullName.toLowerCase().includes(searchTerm.toLowerCase());
