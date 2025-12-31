@@ -1,21 +1,5 @@
 services:
-  # MySQL Database (Local Development)
-  mysql:
-    image: mysql:8.0
-    container_name: e-learning-mysql
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword123}
-      MYSQL_USER: ${DB_USER:-admin}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-admin123}
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-    networks:
-      - e-learning-network
-
-  # Redis for caching/sessions
+  # Redis for caching/sessions (runs on EC2)
   redis:
     image: redis:7-alpine
     container_name: e-learning-redis
@@ -214,8 +198,6 @@ services:
       - e-learning-network
 
 volumes:
-  mysql_data:
-    driver: local
   redis_data:
     driver: local
   file_uploads:

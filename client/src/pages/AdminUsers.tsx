@@ -54,10 +54,10 @@ const AdminUsers = () => {
           enrolledCourses: u.enrolledCourses,
         }));
         setUsers(mapped);
-        setLoading(false);
       } catch (err) {
         console.error("Failed to load users:", err);
         setError("Failed to load users");
+      } finally {
         setLoading(false);
       }
     };
