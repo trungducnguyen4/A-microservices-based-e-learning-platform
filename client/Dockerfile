@@ -7,12 +7,13 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies (including dev dependencies needed for build)
-RUN npm ci
+RUN npm ci --prefer-offline --no-audit
 
 # Copy source code
 COPY . .
 
-# Build the application
+# Build the application with optimized settings
+ENV NODE_OPTIONS="--max-old-space-size=3072"
 RUN npm run build
 
 # Production stage
