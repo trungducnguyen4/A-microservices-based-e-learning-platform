@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { adminService } from "@/lib/api";
+import { api } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +30,6 @@ interface User {
 const AdminUsers = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState<string | null>(null);
   const [pageSize, setPageSize] = useState(10);
@@ -41,22 +40,72 @@ const AdminUsers = () => {
     const fetchUsers = async () => {
       try {
         setLoading(true);
-        const resp = await adminService.listUsers();
-        const mapped: User[] = (resp || []).map((u: any) => ({
-          id: u.id ?? u.userId ?? u.username,
-          username: u.username ?? u.email ?? "unknown",
-          email: u.email ?? "",
-          fullName: u.fullName ?? u.name ?? u.username ?? "",
-          role: (u.role ?? "").toString().toUpperCase(),
-          status: u.status ?? "ACTIVE",
-          createdAt: u.createdAt ?? "",
-          lastLogin: u.lastLogin,
-          enrolledCourses: u.enrolledCourses,
-        }));
-        setUsers(mapped);
+        // Mock data - trong thực tế sẽ gọi API
+        const mockUsers: User[] = [
+          {
+            id: "1",
+            username: "john_doe",
+            email: "john@example.com",
+            fullName: "John Doe",
+            role: "TEACHER",
+            status: "ACTIVE",
+            createdAt: "2025-01-15",
+            lastLogin: "2025-12-22",
+            enrolledCourses: 8,
+          },
+          {
+            id: "2",
+            username: "jane_smith",
+            email: "jane@example.com",
+            fullName: "Jane Smith",
+            role: "STUDENT",
+            status: "ACTIVE",
+            createdAt: "2025-02-10",
+            lastLogin: "2025-12-21",
+            enrolledCourses: 5,
+          },
+          {
+            id: "3",
+            username: "mike_admin",
+            email: "mike@example.com",
+            fullName: "Mike Johnson",
+            role: "ADMIN",
+            status: "ACTIVE",
+            createdAt: "2025-01-01",
+            lastLogin: "2025-12-22",
+          },
+          {
+            id: "4",
+            username: "sarah_teacher",
+            email: "sarah@example.com",
+            fullName: "Sarah Wilson",
+            role: "TEACHER",
+            status: "INACTIVE",
+            createdAt: "2025-03-20",
+            lastLogin: "2025-12-10",
+            enrolledCourses: 3,
+          },
+          {
+            id: "5",
+            username: "tom_student",
+            email: "tom@example.com",
+            fullName: "Tom Brown",
+            role: "STUDENT",
+            status: "ACTIVE",
+            createdAt: "2025-04-05",
+            lastLogin: "2025-12-22",
+            enrolledCourses: 7,
+          },
+        ];
+
+        setUsers(mockUsers);
       } catch (err) {
-        console.error("Failed to load users:", err);
-        setError("Failed to load users");
+        console.error("Error fetching users:", err);
+        toast({
+          title: "Error",
+          description: "Failed to load users",
+          variant: "destructive",
+        });
       } finally {
         setLoading(false);
       }
@@ -126,11 +175,6 @@ const AdminUsers = () => {
           Add New User
         </Button>
       </div>
-      {error && (
-        <div className="bg-red-900/30 border border-red-800 text-red-200 px-4 py-3 rounded">
-          {error}
-        </div>
-      )}
 
       {/* Filters */}
       <Card className="bg-slate-800 border-slate-700">

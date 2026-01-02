@@ -23,12 +23,11 @@ const AdminLogin = () => {
     setLoading(true);
 
     try {
-      // Use relative path to go through Vite proxy
-      const API_BASE = (import.meta as any)?.env?.VITE_API_BASE ?? '/api';
+      const API_BASE = (import.meta as any)?.env?.VITE_API_BASE ?? 'http://localhost:8888';
       const payload = { username, password };
 
       const response = await axios.post(
-        `${API_BASE}/users/auth/admin-login`,
+        `${API_BASE}/api/users/auth/admin-login`,
         payload,
         { headers: { 'Content-Type': 'application/json' } }
       );

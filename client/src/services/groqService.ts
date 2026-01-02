@@ -79,12 +79,3 @@ export const transcribeAudio = async (
 export const isGroqConfigured = (): boolean => {
   return !!GROQ_API_KEY && GROQ_API_KEY.length > 0;
 };
-
-/**
- * Transcription segment type - exported for use in transcript helpers
- */
-export interface TranscriptionSegment {
-  id: string;
-  text: string;
-  timestamp: string;
-}

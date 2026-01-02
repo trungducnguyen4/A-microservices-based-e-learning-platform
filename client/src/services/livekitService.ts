@@ -6,7 +6,7 @@
 import { classroomService } from './classroomApi';
 
 // Use API Gateway instead of direct connection
-const API_GATEWAY_BASE = import.meta.env.VITE_API_BASE || '/api';
+const API_GATEWAY_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8888/api';
 const CLASSROOM_SERVICE_URL = `${API_GATEWAY_BASE}/classrooms`;
 
 export interface TokenResponse {

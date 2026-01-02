@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMediaDevices } from "@/hooks/useMediaDevices";
-import { useMediaPermissions } from "@/hooks/useMediaPermissions";
 import { useAudioLevel } from "@/hooks/useAudioLevel";
 import { useMediaPreview } from "@/hooks/useMediaPreview";
 import { hasJoinedRoom, saveRoomSession } from "@/utils/roomPersistence";
@@ -30,17 +29,8 @@ const PreJoinScreen = () => {
   const [searchParams] = useSearchParams();
   
   const [roomCode, setRoomCode] = useState("");
-  
-  // Load initial state from localStorage (persisted from previous session)
-  const [isCameraOn, setIsCameraOn] = useState(() => {
-    const saved = localStorage.getItem('livekit-camera-enabled');
-    return saved ? JSON.parse(saved) : true;
-  });
-  const [isMicOn, setIsMicOn] = useState(() => {
-    const saved = localStorage.getItem('livekit-mic-enabled');
-    return saved ? JSON.parse(saved) : true;
-  });
-  
+  const [isCameraOn, setIsCameraOn] = useState(true);
+  const [isMicOn, setIsMicOn] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   
@@ -56,14 +46,6 @@ const PreJoinScreen = () => {
     setSelectedVideoDevice,
     setSelectedAudioOutput,
   } = useMediaDevices();
-
-  // Media permissions hook - để check quyền camera/mic
-  const {
-    hasCameraPermission,
-    hasMicrophonePermission,
-    isCameraDenied,
-    isMicrophoneDenied,
-  } = useMediaPermissions();
 
   // Use hooks for audio level monitoring
   const { audioLevel, startMonitoring, stopMonitoring } = useAudioLevel();
@@ -146,8 +128,8 @@ const PreJoinScreen = () => {
     setIsJoining(true);
     
     // Save preferences - quan trọng: lưu state hiện tại
-    localStorage.setItem("livekit-camera-enabled", JSON.stringify(isCameraOn));
-    localStorage.setItem("livekit-mic-enabled", JSON.stringify(isMicOn));
+    localStorage.setItem("livekit-camera-enabled", String(isCameraOn));
+    localStorage.setItem("livekit-mic-enabled", String(isMicOn));
     localStorage.setItem("livekit-selected-audio", selectedAudioDevice);
     localStorage.setItem("livekit-selected-video", selectedVideoDevice);
     
@@ -202,13 +184,11 @@ const PreJoinScreen = () => {
         {/* Video Preview Section */}
         <div className="w-full max-w-2xl lg:max-w-xl xl:max-w-2xl flex flex-col gap-3 sm:gap-4">
           {/* Video Card with controls overlay */}
-          <Card className="relative overflow-hidden aspect-video shadow-xl rounded-xl sm:rounded-2xl">
-            {/* Video container - always rendered, ref always attached */}
-            <div ref={videoRef} className="w-full h-full bg-gray-900" />
-            
-            {/* Placeholder overlay - shown only when camera is off */}
-            {!isCameraOn && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-white bg-gradient-to-br from-gray-800 to-gray-900">
+          <Card className="relative overflow-hidden bg-gray-900 aspect-video shadow-xl rounded-xl sm:rounded-2xl">
+            {isCameraOn ? (
+              <div ref={videoRef} className="w-full h-full" />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center text-white bg-gradient-to-br from-gray-800 to-gray-900">
                 <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-700 rounded-full flex items-center justify-center mb-3 sm:mb-4">
                   <VideoOff className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" />
                 </div>
@@ -219,37 +199,21 @@ const PreJoinScreen = () => {
             {/* Control Bar - Inside video card */}
             <div className="absolute bottom-3 sm:bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-2 sm:gap-3 bg-black/70 backdrop-blur-md px-3 sm:px-5 py-2 sm:py-2.5 rounded-full shadow-lg">
               <Button
-                variant={isMicOn && !isMicrophoneDenied ? "secondary" : "destructive"}
+                variant={isMicOn ? "secondary" : "destructive"}
                 size="icon"
-                className={`rounded-full h-10 w-10 sm:h-11 sm:w-11 ${
-                  isMicrophoneDenied ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
+                className="rounded-full h-10 w-10 sm:h-11 sm:w-11"
                 onClick={toggleMic}
-                disabled={isMicrophoneDenied}
-                title={
-                  isMicrophoneDenied
-                    ? "Microphone access denied. Please allow microphone access in your browser settings."
-                    : isMicOn ? "Mute microphone" : "Unmute microphone"
-                }
               >
-                {isMicOn && !isMicrophoneDenied ? <Mic className="h-4 w-4 sm:h-5 sm:w-5" /> : <MicOff className="h-4 w-4 sm:h-5 sm:w-5" />}
+                {isMicOn ? <Mic className="h-4 w-4 sm:h-5 sm:w-5" /> : <MicOff className="h-4 w-4 sm:h-5 sm:w-5" />}
               </Button>
 
               <Button
-                variant={isCameraOn && !isCameraDenied ? "secondary" : "destructive"}
+                variant={isCameraOn ? "secondary" : "destructive"}
                 size="icon"
-                className={`rounded-full h-10 w-10 sm:h-11 sm:w-11 ${
-                  isCameraDenied ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
+                className="rounded-full h-10 w-10 sm:h-11 sm:w-11"
                 onClick={toggleCamera}
-                disabled={isCameraDenied}
-                title={
-                  isCameraDenied
-                    ? "Camera access denied. Please allow camera access in your browser settings."
-                    : isCameraOn ? "Turn off camera" : "Turn on camera"
-                }
               >
-                {isCameraOn && !isCameraDenied ? <Video className="h-4 w-4 sm:h-5 sm:w-5" /> : <VideoOff className="h-4 w-4 sm:h-5 sm:w-5" />}
+                {isCameraOn ? <Video className="h-4 w-4 sm:h-5 sm:w-5" /> : <VideoOff className="h-4 w-4 sm:h-5 sm:w-5" />}
               </Button>
             </div>
 
@@ -375,87 +339,62 @@ const DeviceSettings = ({
   setSelectedAudioDevice,
   setSelectedVideoDevice,
   setSelectedAudioOutput,
-}: DeviceSettingsProps) => {
-  // Filter out devices with empty deviceId to prevent Radix UI Select error
-  const validAudioDevices = audioDevices.filter(d => d.deviceId && d.deviceId.trim() !== '');
-  const validVideoDevices = videoDevices.filter(d => d.deviceId && d.deviceId.trim() !== '');
-  const validAudioOutputDevices = audioOutputDevices.filter(d => d.deviceId && d.deviceId.trim() !== '');
-
-  return (
-    <div className="space-y-2 sm:space-y-3 bg-card rounded-xl p-3 sm:p-4 border shadow-md">
-      <div className="flex items-center gap-2 sm:gap-3">
-        <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
-          <Mic className="w-4 h-4 text-muted-foreground" />
-        </div>
-        <Select value={selectedAudioDevice} onValueChange={setSelectedAudioDevice}>
-          <SelectTrigger className="flex-1 text-sm">
-            <SelectValue placeholder="Select microphone" />
-          </SelectTrigger>
-          <SelectContent>
-            {validAudioDevices.length > 0 ? (
-              validAudioDevices.map((device) => (
-                <SelectItem key={device.deviceId} value={device.deviceId}>
-                  {device.label || `Microphone ${device.deviceId.slice(0, 5)}`}
-                </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="no-device" disabled>
-                No microphone found
-              </SelectItem>
-            )}
-          </SelectContent>
-        </Select>
+}: DeviceSettingsProps) => (
+  <div className="space-y-2 sm:space-y-3 bg-card rounded-xl p-3 sm:p-4 border shadow-md">
+    <div className="flex items-center gap-2 sm:gap-3">
+      <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
+        <Mic className="w-4 h-4 text-muted-foreground" />
       </div>
-
-      <div className="flex items-center gap-2 sm:gap-3">
-        <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
-          <Video className="w-4 h-4 text-muted-foreground" />
-        </div>
-        <Select value={selectedVideoDevice} onValueChange={setSelectedVideoDevice}>
-          <SelectTrigger className="flex-1 text-sm">
-            <SelectValue placeholder="Select camera" />
-          </SelectTrigger>
-          <SelectContent>
-            {validVideoDevices.length > 0 ? (
-              validVideoDevices.map((device) => (
-                <SelectItem key={device.deviceId} value={device.deviceId}>
-                  {device.label || `Camera ${device.deviceId.slice(0, 5)}`}
-                </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="no-device" disabled>
-                No camera found
-              </SelectItem>
-            )}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="flex items-center gap-2 sm:gap-3">
-        <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
-          <Volume2 className="w-4 h-4 text-muted-foreground" />
-        </div>
-        <Select value={selectedAudioOutput} onValueChange={setSelectedAudioOutput}>
-          <SelectTrigger className="flex-1 text-sm">
-            <SelectValue placeholder="Select speaker" />
-          </SelectTrigger>
-          <SelectContent>
-            {validAudioOutputDevices.length > 0 ? (
-              validAudioOutputDevices.map((device) => (
-                <SelectItem key={device.deviceId} value={device.deviceId}>
-                  {device.label || `Speaker ${device.deviceId.slice(0, 5)}`}
-                </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="no-device" disabled>
-                No speaker found
-              </SelectItem>
-            )}
-          </SelectContent>
-        </Select>
-      </div>
+      <Select value={selectedAudioDevice} onValueChange={setSelectedAudioDevice}>
+        <SelectTrigger className="flex-1 text-sm">
+          <SelectValue placeholder="Select microphone" />
+        </SelectTrigger>
+        <SelectContent>
+          {audioDevices.map((device) => (
+            <SelectItem key={device.deviceId} value={device.deviceId}>
+              {device.label || `Microphone ${device.deviceId.slice(0, 5)}`}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
-  );
-};
+
+    <div className="flex items-center gap-2 sm:gap-3">
+      <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
+        <Video className="w-4 h-4 text-muted-foreground" />
+      </div>
+      <Select value={selectedVideoDevice} onValueChange={setSelectedVideoDevice}>
+        <SelectTrigger className="flex-1 text-sm">
+          <SelectValue placeholder="Select camera" />
+        </SelectTrigger>
+        <SelectContent>
+          {videoDevices.map((device) => (
+            <SelectItem key={device.deviceId} value={device.deviceId}>
+              {device.label || `Camera ${device.deviceId.slice(0, 5)}`}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+
+    <div className="flex items-center gap-2 sm:gap-3">
+      <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
+        <Volume2 className="w-4 h-4 text-muted-foreground" />
+      </div>
+      <Select value={selectedAudioOutput} onValueChange={setSelectedAudioOutput}>
+        <SelectTrigger className="flex-1 text-sm">
+          <SelectValue placeholder="Select speaker" />
+        </SelectTrigger>
+        <SelectContent>
+          {audioOutputDevices.map((device) => (
+            <SelectItem key={device.deviceId} value={device.deviceId}>
+              {device.label || `Speaker ${device.deviceId.slice(0, 5)}`}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  </div>
+);
 
 export default PreJoinScreen;

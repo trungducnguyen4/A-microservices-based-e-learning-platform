@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { adminService } from "@/lib/api";
+import { api } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -40,30 +40,58 @@ const AdminDashboardHome = () => {
     const fetchStats = async () => {
       try {
         setLoading(true);
-        const summary = await adminService.summary();
-
-        // Map minimal summary payload to dashboard view; optional fields default to safe values
-        const built: DashboardStats = {
-          totalUsers: summary?.totalUsers ?? 0,
-          activeUsers: summary?.activeUsers ?? summary?.totalUsers ?? 0,
-          totalCourses: summary?.totalCourses ?? 0,
-          activeCourses: summary?.activeCourses ?? summary?.totalCourses ?? 0,
-          totalEnrollments: summary?.totalEnrollments ?? 0,
-          completionRate: summary?.completionRate ?? 0,
-          totalRevenue: summary?.totalRevenue ?? 0,
-          monthlyRevenue: summary?.monthlyRevenue ?? 0,
-          courseTrend: summary?.courseTrend ?? [],
-          userTrend: summary?.userTrend ?? [],
-          courseDistribution: summary?.courseDistribution ?? [],
-          topInstructors: summary?.topInstructors ?? [],
-          recentActivities: summary?.recentActivities ?? [],
+        // Mock data - trong thực tế sẽ gọi API
+        const mockStats: DashboardStats = {
+          totalUsers: 2547,
+          activeUsers: 1823,
+          totalCourses: 48,
+          activeCourses: 42,
+          totalEnrollments: 8934,
+          completionRate: 87.3,
+          totalRevenue: 42590,
+          monthlyRevenue: 3850,
+          courseTrend: [
+            { month: "Jan", courses: 8 },
+            { month: "Feb", courses: 12 },
+            { month: "Mar", courses: 15 },
+            { month: "Apr", courses: 18 },
+            { month: "May", courses: 22 },
+            { month: "Jun", courses: 28 },
+          ],
+          userTrend: [
+            { month: "Jan", users: 320 },
+            { month: "Feb", users: 456 },
+            { month: "Mar", users: 589 },
+            { month: "Apr", users: 723 },
+            { month: "May", users: 1023 },
+            { month: "Jun", users: 1823 },
+          ],
+          courseDistribution: [
+            { name: "Programming", value: 18 },
+            { name: "Design", value: 12 },
+            { name: "Business", value: 10 },
+            { name: "Languages", value: 8 },
+          ],
+          topInstructors: [
+            { name: "John Doe", courses: 8, students: 340, rating: 4.8 },
+            { name: "Jane Smith", courses: 6, students: 280, rating: 4.7 },
+            { name: "Mike Johnson", courses: 7, students: 310, rating: 4.6 },
+            { name: "Sarah Wilson", courses: 5, students: 220, rating: 4.9 },
+          ],
+          recentActivities: [
+            { id: "1", type: "enrollment", description: "New student enrolled in React Basics", timestamp: "2 hours ago" },
+            { id: "2", type: "course", description: "New course published: Advanced TypeScript", timestamp: "5 hours ago" },
+            { id: "3", type: "submission", description: "Assignment submitted by 45 students", timestamp: "1 day ago" },
+            { id: "4", type: "user", description: "New instructor registered", timestamp: "2 days ago" },
+            { id: "5", type: "completion", description: "50 students completed their courses", timestamp: "3 days ago" },
+          ],
         };
 
-        setStats(built);
+        setStats(mockStats);
         setError(null);
       } catch (err) {
         console.error("Error fetching stats:", err);
-        setError("Failed to load statistics from AdminService");
+        setError("Failed to load statistics");
       } finally {
         setLoading(false);
       }

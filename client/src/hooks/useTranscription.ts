@@ -8,11 +8,9 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { Room } from 'livekit-client';
 import { transcribeAudio, isGroqConfigured } from '@/services/groqService';
 import { getRoomData, updateRoomData, initializeRoomData } from '@/utils/roomPersistence';
-import { saveTranscriptSegments, getTranscripts } from '@/services/transcriptService';
 
 const MAX_RECORDING_TIME = 10 * 60 * 1000; // 10 minutes in milliseconds
 const CHUNK_DURATION = 30 * 1000; // Send to API every 30 seconds
-const SAVE_TO_DB_INTERVAL = 60 * 1000; // Lưu vào DB mỗi 60 giây
 
 export interface TranscriptionSegment {
   id: string;
@@ -47,10 +45,7 @@ export const useTranscription = (room: Room | null, roomCode: string | null): Us
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const chunkTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const saveToDbTimerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
-  const lastSavedIndexRef = useRef<number>(-1); // Track last saved segment index
-  const saveDebounceTimerRef = useRef<NodeJS.Timeout | null>(null); // Debounce timer for transcript changes
 
   const isConfigured = isGroqConfigured();
   const remainingTime = MAX_RECORDING_TIME - totalUsedTime;
@@ -69,24 +64,6 @@ export const useTranscription = (room: Room | null, roomCode: string | null): Us
       setTranscript(roomData.transcript);
       console.log(`[Transcription] Loaded room data - Used: ${Math.floor(roomData.totalUsedTime / 60000)}m, Transcript: ${roomData.transcript.length} segments`);
     }
-
-    // Load từ database (để đồng bộ khi đổi thiết bị)
-    getTranscripts(roomCode)
-      .then((response) => {
-        if (response.success && response.data.length > 0) {
-          const dbTranscripts = response.data.map((seg) => ({
-            id: `segment_${seg.index}`,
-            text: seg.text,
-            timestamp: seg.timestamp,
-          }));
-          setTranscript(dbTranscripts);
-          lastSavedIndexRef.current = response.data.length - 1;
-          console.log(`[Transcription] 📥 Loaded ${dbTranscripts.length} segments from database`);
-        }
-      })
-      .catch((err) => {
-        console.error('[Transcription] Failed to load from database:', err);
-      });
   }, [roomCode]);
 
   /**
@@ -100,69 +77,6 @@ export const useTranscription = (room: Room | null, roomCode: string | null): Us
       transcript,
     });
   }, [roomCode, totalUsedTime, transcript]);
-
-  /**
-   * Lưu transcript vào database định kỳ (mỗi 60 giây)
-   */
-  const saveTranscriptToDb = useCallback(async () => {
-    if (!roomCode || transcript.length === 0) return;
-
-    // Chỉ lưu các segment mới (chưa được lưu)
-    const newSegments = transcript.slice(lastSavedIndexRef.current + 1);
-    
-    if (newSegments.length === 0) {
-      return;
-    }
-
-    try {
-      await saveTranscriptSegments(roomCode, newSegments);
-      lastSavedIndexRef.current = transcript.length - 1;
-      console.log(`[Transcription] 💾 Saved ${newSegments.length} new segments to database`);
-    } catch (err) {
-      console.error('[Transcription] Failed to save to database:', err);
-    }
-  }, [roomCode, transcript]);
-
-  /**
-   * Auto-save khi recording
-   */
-  useEffect(() => {
-    if (isRecording && roomCode) {
-      // Lưu vào DB mỗi 60 giây khi đang recording
-      saveToDbTimerRef.current = setInterval(() => {
-        saveTranscriptToDb();
-      }, SAVE_TO_DB_INTERVAL);
-
-      return () => {
-        if (saveToDbTimerRef.current) {
-          clearInterval(saveToDbTimerRef.current);
-        }
-      };
-    }
-  }, [isRecording, roomCode, saveTranscriptToDb]);
-
-  /**
-   * Auto-save khi transcript thay đổi (debounced 5 giây)
-   */
-  useEffect(() => {
-    if (!roomCode || transcript.length === 0) return;
-
-    // Clear existing debounce timer
-    if (saveDebounceTimerRef.current) {
-      clearTimeout(saveDebounceTimerRef.current);
-    }
-
-    // Set new debounce timer - lưu sau 5 giây không có thay đổi
-    saveDebounceTimerRef.current = setTimeout(() => {
-      saveTranscriptToDb();
-    }, 5000);
-
-    return () => {
-      if (saveDebounceTimerRef.current) {
-        clearTimeout(saveDebounceTimerRef.current);
-      }
-    };
-  }, [transcript, roomCode, saveTranscriptToDb]);
 
   /**
    * Process audio chunks and send to Groq
@@ -304,11 +218,6 @@ export const useTranscription = (room: Room | null, roomCode: string | null): Us
       chunkTimerRef.current = null;
     }
 
-    if (saveToDbTimerRef.current) {
-      clearInterval(saveToDbTimerRef.current);
-      saveToDbTimerRef.current = null;
-    }
-
     // Stop media recorder
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
@@ -325,14 +234,8 @@ export const useTranscription = (room: Room | null, roomCode: string | null): Us
 
     setIsRecording(false);
     setRecordingTime(0);
-
-    // Lưu transcript cuối cùng vào DB khi stop
-    if (roomCode && transcript.length > 0) {
-      saveTranscriptToDb();
-    }
-
     console.log('[Transcription] Recording stopped. Total used:', Math.floor((totalUsedTime + currentElapsed) / 60000), 'minutes');
-  }, [isRecording, processAudioChunk, totalUsedTime, roomCode, transcript, saveTranscriptToDb]);
+  }, [isRecording, processAudioChunk, totalUsedTime]);
 
   /**
    * Clear transcript (but keep totalUsedTime)
