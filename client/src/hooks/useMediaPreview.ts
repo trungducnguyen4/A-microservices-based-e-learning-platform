@@ -82,13 +82,15 @@ export function useMediaPreview(options: UseMediaPreviewOptions) {
       audioTrackRef.current = null;
     }
     
-    // Clear video element if camera is off
+    // ✅ CRITICAL: Always clear video element when camera is off
     if (!isCameraOn && videoRef.current) {
       const videoElement = videoRef.current.querySelector('video');
       if (videoElement) {
+        console.log('[useMediaPreview] Camera OFF - removing video element');
         videoElement.srcObject = null;
         videoElement.remove();
       }
+      videoRef.current.innerHTML = ''; // Clear any remaining content
     }
     
     // If both camera and mic are off, don't request anything
@@ -151,8 +153,17 @@ export function useMediaPreview(options: UseMediaPreviewOptions) {
           console.log('[useMediaPreview] Audio track passed to callback');
         }
       }
-    } catch (error) {
-      console.error('[useMediaPreview] Failed to start media preview:', error);
+    } catch (error: any) {
+      // Handle permission denied gracefully
+      if (error.name === 'NotAllowedError' || error.message?.includes('Permission denied')) {
+        console.warn('[useMediaPreview] ⚠️ Media permission denied - user needs to allow access');
+        // Cleanup video element
+        if (videoRef.current) {
+          videoRef.current.innerHTML = '';
+        }
+      } else {
+        console.error('[useMediaPreview] Failed to start media preview:', error);
+      }
     }
   }, [options, cleanup]);
 
