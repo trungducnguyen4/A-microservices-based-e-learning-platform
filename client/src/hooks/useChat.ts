@@ -49,9 +49,43 @@ export const useChat = (room: Room | null, userName: string): UseChatReturn => {
   }, [chatMessages]);
 
   /**
-   * Send chat message via LiveKit data channel
+   * Load messages from database when joining room
    */
-  const sendMessage = () => {
+  useEffect(() => {
+    if (!room) return;
+
+    const loadMessages = async () => {
+      try {
+        const { classroomService } = await import('@/services/classroomApi');
+        const response = await classroomService.getMessages(room.name);
+        
+        if (response.success && response.data) {
+          const dbMessages: ChatMessage[] = response.data.map((msg: any) => ({
+            id: msg.id,
+            sender: msg.senderName,
+            senderId: msg.senderUserId || 'unknown',
+            message: msg.content,
+            timestamp: new Date(msg.createdAt).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit'
+            }),
+          }));
+          
+          setChatMessages(dbMessages);
+          console.log(`[useChat] 📥 Loaded ${dbMessages.length} messages from database`);
+        }
+      } catch (error) {
+        console.error('[useChat] ❌ Failed to load messages from DB:', error);
+      }
+    };
+
+    loadMessages();
+  }, [room]);
+
+  /**
+   * Send chat message via LiveKit data channel AND save to DB
+   */
+  const sendMessage = async () => {
     if (chatMessage.trim() && room) {
       const message: ChatMessage = {
         id: generateMessageId(),
@@ -69,6 +103,20 @@ export const useChat = (room: Room | null, userName: string): UseChatReturn => {
       // Add to local chat
       setChatMessages(prev => [...prev, message]);
       setChatMessage("");
+
+      // ✅ Save to database
+      try {
+        const { classroomService } = await import('@/services/classroomApi');
+        await classroomService.sendMessage(
+          room.name,
+          null, // userId - có thể lấy từ context nếu cần
+          userName,
+          message.message
+        );
+        console.log('[useChat] 💾 Message saved to database');
+      } catch (error) {
+        console.error('[useChat] ❌ Failed to save message to DB:', error);
+      }
     }
   };
 

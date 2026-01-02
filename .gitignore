@@ -43,3 +43,4 @@ Thumbs.db
 # Ignore environment files
 .env
 **/.env
+.pem

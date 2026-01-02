@@ -46,6 +46,10 @@ spring:
           uri: ${USER_SERVICE_URL:http://localhost:8080}
           predicates:
             - Path=/api/users/**
+        - id: admin-service
+          uri: ${ADMIN_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/api/admin/**
         - id: oauth2-authorization
           uri: ${USER_SERVICE_URL:http://localhost:8080}
           predicates:
@@ -70,6 +74,12 @@ spring:
           uri: ${ANNOUNCEMENT_SERVICE_URL:http://localhost:8090}
           predicates:
             - Path=/api/announcements/**
+        - id: classroom-service
+          uri: ${CLASSROOM_SERVICE_URL:http://localhost:4000}
+          predicates:
+            - Path=/api/classrooms/**
+          filters:
+            - RewritePath=/api/classrooms/(?<segment>.*), /$\{segment}
         - id: file-service
           uri: ${FILE_SERVICE_URL:http://localhost:5000}
           predicates:
@@ -120,6 +130,10 @@ spring:
           uri: ${USER_SERVICE_URL:http://user-service:8080}
           predicates:
             - Path=/api/users/**
+        - id: admin-service
+          uri: ${ADMIN_SERVICE_URL:http://admin-service:8084}
+          predicates:
+            - Path=/api/admin/**
         - id: oauth2-authorization
           uri: ${USER_SERVICE_URL:http://user-service:8080}
           predicates:

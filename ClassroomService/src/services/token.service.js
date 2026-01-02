@@ -84,7 +84,7 @@ class TokenService {
     const tokenData = await this.createAccessToken(roomCode, userId, userName);
 
     // Add participant to room với userId để check host
-    roomService.addParticipant(roomCode, {
+    await roomService.addParticipant(roomCode, {
       identity: tokenData.identity,
       name: tokenData.name,
       userId: tokenData.userId || userId, // Đảm bảo luôn có userId

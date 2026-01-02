@@ -19,7 +19,7 @@ const Login = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
-  const authBaseUrl = import.meta.env.VITE_AUTH_BASE_URL ?? "http://localhost:8888";
+  const authBaseUrl = import.meta.env.VITE_AUTH_BASE_URL ?? "";
 
   // Redirect if already authenticated
   useEffect(() => {
