@@ -47,7 +47,6 @@ export interface UseClassroomReturn {
   pinnedParticipantIdentity: string | null;
   isMuted: boolean;
   isVideoOn: boolean;
-  raisedHands: Set<string>; // Export for ParticipantList
   
   // Refs
   localVideoRef: React.RefObject<HTMLDivElement>;
@@ -64,7 +63,6 @@ export interface UseClassroomReturn {
   setIsVideoOn: (on: boolean) => void;
   togglePinParticipant: (identity: string) => void;
   unpinParticipant: () => void;
-  kickParticipant: (targetIdentity: string) => Promise<void>;
 }
 
 export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => {
@@ -296,65 +294,15 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
         setPinnedParticipantIdentity(`${participant.identity}-camera`);
       };
       
+      // Show/hide pin button on hover
+      wrapper.onmouseenter = () => {
+        pinButton.style.opacity = "1";
+      };
+      wrapper.onmouseleave = () => {
+        pinButton.style.opacity = "0";
+      };
+      
       wrapper.appendChild(pinButton);
-
-      // KICK button (chỉ hiển thị cho host và khi hover)
-      // Không cho kick host
-      const isLocalHost = params.userId === currentHostUserId;
-      if (isLocalHost && !isHost) {
-        const kickButton = document.createElement("button");
-        kickButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>`;
-        kickButton.style.position = "absolute";
-        kickButton.style.top = "8px";
-        kickButton.style.right = "40px"; // Bên trái nút pin
-        kickButton.style.background = "rgba(239, 68, 68, 0.9)"; // Red color
-        kickButton.style.color = "white";
-        kickButton.style.padding = "6px";
-        kickButton.style.borderRadius = "6px";
-        kickButton.style.cursor = "pointer";
-        kickButton.style.opacity = "0";
-        kickButton.style.transition = "opacity 0.2s";
-        kickButton.style.border = "none";
-        kickButton.style.zIndex = "20";
-        kickButton.title = "Kick participant";
-        kickButton.onclick = async (e) => {
-          e.stopPropagation();
-          
-          // Confirm before kicking
-          if (confirm(`Kick ${participant.identity} from the room?`)) {
-            try {
-              await classroomService.kickParticipant(
-                params.roomName,
-                params.userId!,
-                participant.identity
-              );
-              console.log(`[Render] ✅ Kicked ${participant.identity}`);
-            } catch (error) {
-              console.error("[Render] Failed to kick participant:", error);
-            }
-          }
-        };
-        
-        wrapper.appendChild(kickButton);
-        
-        // Show/hide both buttons on hover
-        wrapper.onmouseenter = () => {
-          pinButton.style.opacity = "1";
-          kickButton.style.opacity = "1";
-        };
-        wrapper.onmouseleave = () => {
-          pinButton.style.opacity = "0";
-          kickButton.style.opacity = "0";
-        };
-      } else {
-        // Only pin button for non-host or when looking at host
-        wrapper.onmouseenter = () => {
-          pinButton.style.opacity = "1";
-        };
-        wrapper.onmouseleave = () => {
-          pinButton.style.opacity = "0";
-        };
-      }
       
       // Check if participant has hand raised
       const participantIdentity = participant.identity;
@@ -573,8 +521,16 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
           role: params.userRole,
         });
 
-        // ✅ IMPORTANT: Get definitive host info from backend FIRST
-        // Don't rely on token's isHost - get it from room data (source of truth)
+        // Set host information
+        if (isHost) {
+          setIsLocalUserHost(true);
+          setHostUserId(params.userId || null);
+          console.log('[useClassroom] 🎭 Current user is the HOST');
+        } else {
+          console.log('[useClassroom] 👤 Current user is a guest');
+        }
+
+        // QUAN TRỌNG: Lấy thông tin room để biết ai là host
         try {
           const classroomService = (await import('@/services/classroomApi')).classroomService;
           const roomCheckResponse = await classroomService.checkRoom(params.roomName);
@@ -582,17 +538,8 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
           if (roomCheckResponse && roomCheckResponse.exists && roomCheckResponse.data) {
             const roomHostUserId = roomCheckResponse.data.hostUserId;
             if (roomHostUserId) {
-              // ✅ Set host userId from room data (this is the SOURCE OF TRUTH)
               setHostUserId(roomHostUserId);
-              
-              // Check if current user is host by comparing userId
-              const isCurrentUserHost = roomHostUserId === params.userId;
-              setIsLocalUserHost(isCurrentUserHost);
-              
-              console.log('[useClassroom] 🔑 HOST INFO (from backend):');
-              console.log('  - Room host_user_id:', roomHostUserId);
-              console.log('  - Current user ID:', params.userId);
-              console.log('  - Is current user host?', isCurrentUserHost ? '🎭 YES (HOST)' : '👤 NO (guest)');
+              console.log('[useClassroom] 📋 Room host userId:', roomHostUserId);
             }
           }
         } catch (error) {
@@ -618,35 +565,9 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
           reconnectAttempts = 0;
         });
         
-        r.on(RoomEvent.Disconnected, (reason?: any) => {
-          console.log("❌ Disconnected from room", reason ? `Reason: ${reason}` : '');
+        r.on(RoomEvent.Disconnected, () => {
+          console.log("❌ Disconnected from room");
           setIsConnected(false);
-          
-          // Check if disconnected due to being kicked
-          // LiveKit DisconnectReason enum:
-          // - 4 = PARTICIPANT_REMOVED (kicked by host)
-          // - Also check string format for compatibility
-          const reasonNum = typeof reason === 'number' ? reason : parseInt(String(reason || '0'));
-          const reasonStr = String(reason || '').toLowerCase();
-          
-          if (reasonNum === 4 || reasonStr.includes('removed') || reasonStr.includes('kicked')) {
-            console.log("🚫 You were kicked from the room");
-            setError("You have been removed from the room by the host");
-            
-            // Clear room data immediately
-            clearRoomSession(params.roomName);
-            
-            // Disconnect and cleanup
-            if (currentRoom) {
-              currentRoom.disconnect();
-            }
-            
-            // Navigate immediately
-            navigate('/meet', { replace: true });
-            return;
-          }
-          
-          // Normal disconnect - try to reconnect
           if (reconnectAttempts < maxReconnectAttempts) {
             reconnectAttempts++;
             setTimeout(() => joinRoom(), 2000);
@@ -669,42 +590,25 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
         const remoteParticipants = Array.from(r.remoteParticipants.values());
         setParticipants(remoteParticipants);
 
-        // Publish local tracks - with permission error handling
-        let tracks: LocalTrack[] = []; // Define outside try-catch to avoid ReferenceError
-        try {
-          tracks = await createLocalTracks({ 
-            audio: {
-              deviceId: params.selectedAudioDevice || undefined,
-            }, 
-            video: isVideoOn ? {
-              deviceId: params.selectedVideoDevice || undefined,
-            } : false 
-          });
+        // Publish local tracks
+        const tracks = await createLocalTracks({ 
+          audio: {
+            deviceId: params.selectedAudioDevice || undefined,
+          }, 
+          video: isVideoOn ? {
+            deviceId: params.selectedVideoDevice || undefined,
+          } : false 
+        });
+        
+        localTracksRef.current = tracks;
+        
+        tracks.forEach(track => {
+          r.localParticipant.publishTrack(track);
           
-          localTracksRef.current = tracks;
-          
-          tracks.forEach(track => {
-            r.localParticipant.publishTrack(track);
-            
-            if (track.kind === 'audio') {
-              setupAudioMeter(track.mediaStreamTrack);
-            }
-          });
-        } catch (trackError: any) {
-          // Handle permission denied gracefully
-          if (trackError.name === 'NotAllowedError' || trackError.message?.includes('Permission denied')) {
-            console.warn('[useClassroom] ⚠️ Media permissions denied. Joining room without media tracks.');
-            // Set both to off since we don't have permission
-            setIsMuted(true);
-            setIsVideoOn(false);
-            tracks = []; // Empty array
-            // Don't show error - user intentionally denied permissions
-          } else {
-            console.error('[useClassroom] Error creating local tracks:', trackError);
-            tracks = []; // Empty array
-            // For other errors, log but continue
+          if (track.kind === 'audio') {
+            setupAudioMeter(track.mediaStreamTrack);
           }
-        }
+        });
 
         // Render local video
         if (localVideoRef.current) {
@@ -714,32 +618,22 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
           localVideoRef.current.style.display = 'flex';
           localVideoRef.current.style.alignItems = 'center';
           localVideoRef.current.style.justifyContent = 'center';
+          localVideoRef.current.style.backgroundColor = '#000';
           localVideoRef.current.style.overflow = 'hidden';
           
-          // Check if we have video track
-          const hasVideoTrack = tracks.length > 0 && tracks.some(t => t.kind === 'video');
-          
-          if (hasVideoTrack) {
-            // Camera is on - set black background
-            localVideoRef.current.style.backgroundColor = '#000';
-            
-            tracks.forEach(track => {
-              if (track.kind === 'video') {
-                const el = track.attach();
-                // Video giữ aspect ratio, không bị cắt hoặc stretch
-                el.style.width = "auto";
-                el.style.height = "auto";
-                el.style.maxWidth = "100%";
-                el.style.maxHeight = "100%";
-                el.style.objectFit = "contain"; // Giữ tỷ lệ khung hình
-                el.style.transform = "scaleX(-1)"; // Mirror flip
-                localVideoRef.current?.appendChild(el);
-              }
-            });
-          } else {
-            // Camera is off - set transparent background so placeholder shows through
-            localVideoRef.current.style.backgroundColor = 'transparent';
-          }
+          tracks.forEach(track => {
+            if (track.kind === 'video') {
+              const el = track.attach();
+              // Video giữ aspect ratio, không bị cắt hoặc stretch
+              el.style.width = "auto";
+              el.style.height = "auto";
+              el.style.maxWidth = "100%";
+              el.style.maxHeight = "100%";
+              el.style.objectFit = "contain"; // Giữ tỷ lệ khung hình
+              el.style.transform = "scaleX(-1)"; // Mirror flip
+              localVideoRef.current?.appendChild(el);
+            }
+          });
         }
 
         r.localParticipant.setMicrophoneEnabled(!isMuted);
@@ -912,9 +806,6 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
     console.log('[toggleMute] Changing from', isMuted, 'to', newMutedState);
     setIsMuted(newMutedState);
     
-    // Save to localStorage for persistence
-    localStorage.setItem('livekit-mic-enabled', JSON.stringify(!newMutedState));
-    
     if (newMutedState) {
       const audioTrack = localTracksRef.current.find(t => t.kind === 'audio');
       if (audioTrack) {
@@ -928,27 +819,16 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
       }
       audioProcessorRef.current.cleanup();
     } else {
-      try {
-        const newTracks = await createLocalTracks({
-          audio: { deviceId: params.selectedAudioDevice || undefined },
-          video: false,
-        });
-        
-        const audioTrack = newTracks.find(t => t.kind === 'audio');
-        if (audioTrack) {
-          await room.localParticipant.publishTrack(audioTrack);
-          localTracksRef.current.push(audioTrack);
-          setupAudioMeter(audioTrack.mediaStreamTrack);
-        }
-      } catch (error: any) {
-        // Handle permission denied
-        if (error.name === 'NotAllowedError' || error.message?.includes('Permission denied')) {
-          console.warn('[toggleMute] ⚠️ Microphone permission denied');
-          setIsMuted(true); // Revert to muted state
-        } else {
-          console.error('[toggleMute] Error creating audio track:', error);
-          setIsMuted(true); // Revert on error
-        }
+      const newTracks = await createLocalTracks({
+        audio: { deviceId: params.selectedAudioDevice || undefined },
+        video: false,
+      });
+      
+      const audioTrack = newTracks.find(t => t.kind === 'audio');
+      if (audioTrack) {
+        await room.localParticipant.publishTrack(audioTrack);
+        localTracksRef.current.push(audioTrack);
+        setupAudioMeter(audioTrack.mediaStreamTrack);
       }
     }
   };
@@ -963,9 +843,6 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
     console.log('[toggleVideo] Changing from', isVideoOn, 'to', newVideoState);
     setIsVideoOn(newVideoState);
     
-    // Save to localStorage for persistence
-    localStorage.setItem('livekit-camera-enabled', JSON.stringify(newVideoState));
-    
     if (!newVideoState) {
       const videoTrack = localTracksRef.current.find(t => t.kind === 'video');
       if (videoTrack) {
@@ -979,50 +856,37 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
       }
       if (localVideoRef.current) {
         localVideoRef.current.innerHTML = '';
-        // Reset background to transparent when camera is off
-        localVideoRef.current.style.backgroundColor = 'transparent';
       }
     } else {
-      try {
-        const newTracks = await createLocalTracks({
-          audio: false,
-          video: { deviceId: params.selectedVideoDevice || undefined },
-        });
+      const newTracks = await createLocalTracks({
+        audio: false,
+        video: { deviceId: params.selectedVideoDevice || undefined },
+      });
+      
+      const videoTrack = newTracks.find(t => t.kind === 'video');
+      if (videoTrack) {
+        await room.localParticipant.publishTrack(videoTrack);
+        localTracksRef.current.push(videoTrack);
         
-        const videoTrack = newTracks.find(t => t.kind === 'video');
-        if (videoTrack) {
-          await room.localParticipant.publishTrack(videoTrack);
-          localTracksRef.current.push(videoTrack);
+        if (localVideoRef.current) {
+          localVideoRef.current.innerHTML = '';
           
-          if (localVideoRef.current) {
-            localVideoRef.current.innerHTML = '';
-            
-            // Set container style
-            localVideoRef.current.style.display = 'flex';
-            localVideoRef.current.style.alignItems = 'center';
-            localVideoRef.current.style.justifyContent = 'center';
-            localVideoRef.current.style.backgroundColor = '#000';
-            localVideoRef.current.style.overflow = 'hidden';
-            
-            const el = videoTrack.attach();
-            // Video giữ aspect ratio như Google Meet
-            el.style.width = "auto";
-            el.style.height = "auto";
-            el.style.maxWidth = "100%";
-            el.style.maxHeight = "100%";
-            el.style.objectFit = "contain";
-            el.style.transform = "scaleX(-1)";
-            localVideoRef.current.appendChild(el);
-          }
-        }
-      } catch (error: any) {
-        // Handle permission denied
-        if (error.name === 'NotAllowedError' || error.message?.includes('Permission denied')) {
-          console.warn('[toggleVideo] ⚠️ Camera permission denied');
-          setIsVideoOn(false); // Revert to off state
-        } else {
-          console.error('[toggleVideo] Error creating video track:', error);
-          setIsVideoOn(false); // Revert on error
+          // Set container style
+          localVideoRef.current.style.display = 'flex';
+          localVideoRef.current.style.alignItems = 'center';
+          localVideoRef.current.style.justifyContent = 'center';
+          localVideoRef.current.style.backgroundColor = '#000';
+          localVideoRef.current.style.overflow = 'hidden';
+          
+          const el = videoTrack.attach();
+          // Video giữ aspect ratio như Google Meet
+          el.style.width = "auto";
+          el.style.height = "auto";
+          el.style.maxWidth = "100%";
+          el.style.maxHeight = "100%";
+          el.style.objectFit = "contain";
+          el.style.transform = "scaleX(-1)";
+          localVideoRef.current.appendChild(el);
         }
       }
     }
@@ -1114,52 +978,6 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
     setPinnedParticipantIdentity(null);
   };
 
-  /**
-   * Kick participant from room (HOST ONLY)
-   */
-  const kickParticipant = async (targetIdentity: string) => {
-    if (!isLocalUserHost) {
-      setError("Only the host can kick participants");
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
-
-    if (!params.userId) {
-      setError("User ID not available");
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
-
-    try {
-      console.log(`[useClassroom] 🚫 Kicking participant: ${targetIdentity}`);
-      
-      const result = await classroomService.kickParticipant(
-        params.roomName,
-        params.userId,
-        targetIdentity
-      );
-
-      if (result.success) {
-        console.log(`[useClassroom] ✅ Successfully kicked ${targetIdentity}`);
-        
-        // Update participants list immediately
-        setParticipants(prev => prev.filter(p => p.identity !== targetIdentity));
-        
-        // If pinned participant was kicked, unpin
-        if (pinnedParticipantIdentity === targetIdentity || 
-            pinnedParticipantIdentity === `${targetIdentity}-camera` ||
-            pinnedParticipantIdentity === `${targetIdentity}-screen`) {
-          setPinnedParticipantIdentity(null);
-        }
-      }
-    } catch (error: any) {
-      console.error("[useClassroom] Error kicking participant:", error);
-      const errorMsg = error.response?.data?.message || "Failed to kick participant";
-      setError(errorMsg);
-      setTimeout(() => setError(null), 5000);
-    }
-  };
-
   return {
     room,
     participants,
@@ -1176,7 +994,6 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
     pinnedParticipantIdentity,
     isMuted,
     isVideoOn,
-    raisedHands,
     localVideoRef,
     remoteVideosRef,
     pinnedVideoRef,
@@ -1189,6 +1006,5 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
     setIsVideoOn,
     togglePinParticipant,
     unpinParticipant,
-    kickParticipant,
   } as UseClassroomReturn;
 };

@@ -20,9 +20,6 @@ RUN ./mvnw clean package -DskipTests
 # Production stage
 FROM eclipse-temurin:21-jre-alpine
 
-# Basic tools for health checks
-RUN apk add --no-cache curl
-
 # Add non-root user
 RUN addgroup -g 1001 -S appgroup && \
     adduser -u 1001 -S appuser -G appgroup
@@ -41,7 +38,7 @@ USER appuser
 
 # Add health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD curl -f http://localhost:8081/actuator/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8081/actuator/health || exit 1
 
 # Expose port
 EXPOSE 8081
