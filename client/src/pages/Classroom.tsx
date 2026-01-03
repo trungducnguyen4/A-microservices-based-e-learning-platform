@@ -169,10 +169,13 @@ const Classroom = () => {
   const {
     audioDevices,
     videoDevices,
+    audioOutputDevices,
     selectedAudioDevice,
     selectedVideoDevice,
+    selectedAudioOutput,
     setSelectedAudioDevice,
     setSelectedVideoDevice,
+    setSelectedAudioOutput,
   } = useMediaDevices();
   
   // Media permissions hook - để check quyền camera/mic
@@ -335,6 +338,31 @@ const Classroom = () => {
   useEffect(() => {
     console.log('[Classroom] Media state changed - isMuted:', isMuted, 'isVideoOn:', isVideoOn);
   }, [isMuted, isVideoOn]);
+
+  // Apply audio output device when changed
+  useEffect(() => {
+    if (!selectedAudioOutput) return;
+    
+    async function applyAudioOutput() {
+      try {
+        // KHÔNG lưu speaker vào localStorage - sẽ reset mỗi lần reload
+        // localStorage.setItem('livekit-selected-output', selectedAudioOutput);
+        
+        // Apply to all audio elements in the page
+        const audioElements = document.querySelectorAll('audio');
+        for (const audio of audioElements) {
+          if (typeof audio.setSinkId === 'function') {
+            await audio.setSinkId(selectedAudioOutput);
+            console.log('[Classroom] Audio output device changed to:', selectedAudioOutput);
+          }
+        }
+      } catch (error) {
+        console.error('[Classroom] Failed to set audio output:', error);
+      }
+    }
+    
+    applyAudioOutput();
+  }, [selectedAudioOutput]);
 
   // Store beforeunload handler ref to remove it before leaving
   const beforeUnloadHandlerRef = useRef<((e: BeforeUnloadEvent) => void) | null>(null);
@@ -642,6 +670,24 @@ const Classroom = () => {
                       {videoDevices.map((device) => (
                         <SelectItem key={device.deviceId} value={device.deviceId}>
                           {getDeviceLabel(device, 'Camera')}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-3">
+                  <Label htmlFor="speaker-select" className="text-sm font-semibold flex items-center gap-2">
+                    <Volume2 className="w-4 h-4" />
+                    Speaker (Audio Output)
+                  </Label>
+                  <Select value={selectedAudioOutput} onValueChange={setSelectedAudioOutput}>
+                    <SelectTrigger id="speaker-select" className="h-11">
+                      <SelectValue placeholder="Select speaker" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {audioOutputDevices.map((device) => (
+                        <SelectItem key={device.deviceId} value={device.deviceId}>
+                          {getDeviceLabel(device, 'Speaker')}
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -116,6 +116,42 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
     const currentHostUserId = hostUserIdRef.current;
     
     room.remoteParticipants.forEach(participant => {
+      console.log(`[renderRemoteParticipants] 🎭 Rendering ${participant.identity}`);
+      
+      // ✅ ATTACH AUDIO TRACKS - Critical for hearing remote participants!
+      // Attach to a SEPARATE container so audio doesn't get cleared on re-render
+      participant.audioTrackPublications.forEach(pub => {
+        if (pub.track && pub.isSubscribed && !pub.isMuted) {
+          console.log(`[renderRemoteParticipants] 🔊 Attaching audio for ${participant.identity}`);
+          
+          // Check if audio element already exists for this participant
+          const existingAudioId = `audio-${participant.identity}`;
+          let audioElement = document.getElementById(existingAudioId) as HTMLAudioElement;
+          
+          if (!audioElement) {
+            // Create new audio element
+            audioElement = pub.track.attach() as HTMLAudioElement;
+            audioElement.id = existingAudioId;
+            audioElement.style.display = 'none';
+            // Append to document body to persist across re-renders
+            document.body.appendChild(audioElement);
+            console.log(`[renderRemoteParticipants] ✅ Created new audio element for ${participant.identity}`);
+          } else {
+            console.log(`[renderRemoteParticipants] ♻️ Reusing existing audio element for ${participant.identity}`);
+          }
+        } else {
+          console.log(`[renderRemoteParticipants] 🔇 Audio NOT attached for ${participant.identity} - subscribed: ${pub.isSubscribed}, muted: ${pub.isMuted}, track: ${!!pub.track}`);
+          
+          // Remove audio element if it exists but track is not available
+          const existingAudioId = `audio-${participant.identity}`;
+          const audioElement = document.getElementById(existingAudioId);
+          if (audioElement) {
+            audioElement.remove();
+            console.log(`[renderRemoteParticipants] 🗑️ Removed audio element for ${participant.identity}`);
+          }
+        }
+      });
+      
       // Check for screen share track first
       let hasScreenShare = false;
       let screenShareElement: HTMLVideoElement | null = null;
@@ -397,9 +433,36 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
       nameLabel.style.zIndex = "10";
       nameLabel.style.backdropFilter = "blur(4px)";
       
-      // Text content với Host inline
-      const nameText = isHost ? `${participant.identity} (Host)` : participant.identity;
-      nameLabel.textContent = nameText;
+      // 🤖 Check if participant is a bot
+      let isBot = false;
+      try {
+        if (participant.metadata) {
+          const metadata = JSON.parse(participant.metadata);
+          isBot = metadata.isBot === true;
+        }
+      } catch (e) {
+        // Ignore parsing errors
+      }
+      
+      // Text content với Host inline và BOT badge
+      let nameHTML = participant.identity;
+      
+      if (isBot) {
+        // Add bot emoji before name
+        nameHTML = `🤖 ${nameHTML}`;
+      }
+      
+      if (isHost) {
+        nameHTML += ` (Host)`;
+      }
+      
+      if (isBot) {
+        // Add BOT badge
+        nameHTML += ` <span style="background-color: rgba(107, 114, 128, 0.9); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; margin-left: 4px;">BOT</span>`;
+        console.log(`[Render] 🤖 Added BOT label for ${participant.identity}`);
+      }
+      
+      nameLabel.innerHTML = nameHTML;
       nameLabel.style.whiteSpace = "nowrap";
       nameLabel.style.overflow = "hidden";
       nameLabel.style.textOverflow = "ellipsis";
@@ -538,7 +601,19 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
       
       wrapper.appendChild(nameLabel);
       
+      // ✅ ATTACH AUDIO for pinned participant
+      participant.audioTrackPublications.forEach(pub => {
+        if (pub.track && pub.isSubscribed && !pub.isMuted) {
+          console.log(`[renderPinnedParticipant] 🔊 Attaching audio for pinned ${participant.identity}`);
+          const audioElement = pub.track.attach();
+          audioElement.style.display = 'none';
+          wrapper.appendChild(audioElement);
+        }
+      });
+      
       pinnedVideoRef.current?.appendChild(wrapper);
+    } else if (pinnedVideoRef.current) {
+      pinnedVideoRef.current.innerHTML = "";
     }
   };
 
@@ -672,24 +747,28 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
         // Publish local tracks - with permission error handling
         let tracks: LocalTrack[] = []; // Define outside try-catch to avoid ReferenceError
         try {
+          console.log('[useClassroom] 🎬 Creating local tracks - isMuted:', isMuted, 'isVideoOn:', isVideoOn);
           tracks = await createLocalTracks({ 
-            audio: {
+            audio: !isMuted ? {
               deviceId: params.selectedAudioDevice || undefined,
-            }, 
+            } : false, 
             video: isVideoOn ? {
               deviceId: params.selectedVideoDevice || undefined,
             } : false 
           });
           
+          console.log('[useClassroom] ✅ Created', tracks.length, 'tracks:', tracks.map(t => t.kind).join(', '));
           localTracksRef.current = tracks;
           
-          tracks.forEach(track => {
-            r.localParticipant.publishTrack(track);
+          for (const track of tracks) {
+            console.log('[useClassroom] 📤 Publishing', track.kind, 'track...');
+            await r.localParticipant.publishTrack(track);
             
             if (track.kind === 'audio') {
               setupAudioMeter(track.mediaStreamTrack);
+              console.log('[useClassroom] 🎤 Audio track published with meter setup');
             }
-          });
+          }
         } catch (trackError: any) {
           // Handle permission denied gracefully
           if (trackError.name === 'NotAllowedError' || trackError.message?.includes('Permission denied')) {
@@ -756,6 +835,14 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
         r.on(RoomEvent.ParticipantDisconnected, (participant) => {
           console.log("🚪 Participant left:", participant.identity);
           setParticipants(prev => prev.filter(p => p.identity !== participant.identity));
+          
+          // Clean up audio element for disconnected participant
+          const audioElementId = `audio-${participant.identity}`;
+          const audioElement = document.getElementById(audioElementId);
+          if (audioElement) {
+            audioElement.remove();
+            console.log(`[ParticipantDisconnected] 🗑️ Cleaned up audio for ${participant.identity}`);
+          }
         });
 
         r.on(RoomEvent.TrackPublished, (publication, participant) => {
@@ -877,6 +964,18 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
       localTracksRef.current.forEach(track => track.stop());
       localTracksRef.current = [];
       audioProcessorRef.current.cleanup();
+      
+      // Clean up all remote audio elements
+      if (currentRoom) {
+        currentRoom.remoteParticipants.forEach(participant => {
+          const audioElementId = `audio-${participant.identity}`;
+          const audioElement = document.getElementById(audioElementId);
+          if (audioElement) {
+            audioElement.remove();
+            console.log(`[Cleanup] 🗑️ Removed audio element for ${participant.identity}`);
+          }
+        });
+      }
     };
   }, [params.roomName, params.userName, params.userId]);
 
@@ -909,15 +1008,17 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
     if (!room?.localParticipant) return;
     
     const newMutedState = !isMuted;
-    console.log('[toggleMute] Changing from', isMuted, 'to', newMutedState);
+    console.log('[toggleMute] 🎤 Changing from', isMuted, 'to', newMutedState);
     setIsMuted(newMutedState);
     
     // Save to localStorage for persistence
     localStorage.setItem('livekit-mic-enabled', JSON.stringify(!newMutedState));
     
     if (newMutedState) {
+      // MUTING - unpublish and stop track
       const audioTrack = localTracksRef.current.find(t => t.kind === 'audio');
       if (audioTrack) {
+        console.log('[toggleMute] 🔇 Unpublishing audio track');
         audioTrack.stop();
         const mediaTrack = audioTrack.mediaStreamTrack;
         if (mediaTrack && mediaTrack.readyState === 'live') {
@@ -925,9 +1026,14 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
         }
         await room.localParticipant.unpublishTrack(audioTrack);
         localTracksRef.current = localTracksRef.current.filter(t => t !== audioTrack);
+        console.log('[toggleMute] ✅ Audio track unpublished');
+      } else {
+        console.log('[toggleMute] ⚠️ No audio track found to unpublish');
       }
       audioProcessorRef.current.cleanup();
     } else {
+      // UNMUTING - create and publish new track
+      console.log('[toggleMute] 🔊 Creating new audio track...');
       try {
         const newTracks = await createLocalTracks({
           audio: { deviceId: params.selectedAudioDevice || undefined },
@@ -936,9 +1042,14 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
         
         const audioTrack = newTracks.find(t => t.kind === 'audio');
         if (audioTrack) {
+          console.log('[toggleMute] 📤 Publishing audio track...');
           await room.localParticipant.publishTrack(audioTrack);
           localTracksRef.current.push(audioTrack);
           setupAudioMeter(audioTrack.mediaStreamTrack);
+          console.log('[toggleMute] ✅ Audio track published successfully');
+        } else {
+          console.error('[toggleMute] ❌ No audio track created');
+          setIsMuted(true);
         }
       } catch (error: any) {
         // Handle permission denied
@@ -946,7 +1057,7 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
           console.warn('[toggleMute] ⚠️ Microphone permission denied');
           setIsMuted(true); // Revert to muted state
         } else {
-          console.error('[toggleMute] Error creating audio track:', error);
+          console.error('[toggleMute] ❌ Error creating audio track:', error);
           setIsMuted(true); // Revert on error
         }
       }
