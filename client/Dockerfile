@@ -6,13 +6,18 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies (including dev dependencies needed for build)
-RUN npm ci --prefer-offline --no-audit
+# Clear npm cache and install dependencies with force resolution
+RUN npm cache clean --force && \
+    npm install --legacy-peer-deps --no-audit && \
+    npm rebuild esbuild
 
-# Copy source code
+# Copy all source files
 COPY . .
 
-# Build the application with optimized settings
+# Debug: Verify index.html type before build
+RUN ls -la index.html && \
+    if [ -f index.html ]; then echo "✓ index.html is a FILE"; else echo "✗ index.html is NOT a file"; exit 1; fi
+
 ENV NODE_OPTIONS="--max-old-space-size=3072"
 RUN npm run build
 

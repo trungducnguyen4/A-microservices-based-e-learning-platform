@@ -2,7 +2,6 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import fs from "fs";
-import { componentTagger } from "lovable-tagger";
 
 export default defineConfig(({ mode }) => {
   const isDev = mode === "development";
@@ -38,12 +37,19 @@ export default defineConfig(({ mode }) => {
       //   : undefined,
     },
 
-    plugins: [react(), isDev && componentTagger()].filter(Boolean),
+    plugins: [react()].filter(Boolean),
 
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
       },
+    },
+
+    build: {
+      outDir: "dist",
+      emptyOutDir: true,
+      minify: "esbuild", // Dùng esbuild thay vì terser (nhanh hơn và built-in)
+      target: "esnext",
     },
   };
 });
