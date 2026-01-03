@@ -19,8 +19,12 @@ public class CorsConfig {
         config.setAllowedOriginPatterns(Arrays.asList(
             "http://localhost:*", 
             "http://127.0.0.1:*",
-            "http://3.107.5.21",
-            "http://3.107.5.21:*"
+            "http://3.26.171.51",
+            "http://3.26.171.51:*",
+            "http://academihub.site",
+            "http://academihub.site:*",
+            "https://academihub.site",
+            "https://academihub.site:*"
         ));
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"));
         config.setAllowedHeaders(Arrays.asList("*"));
