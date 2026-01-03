@@ -4,7 +4,7 @@ export const ensureAbsoluteUrl = (url?: string) => {
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
   if (trimmed.startsWith('/')) {
     // Prefer Vite-provided API base, otherwise default to gateway
-    const base = (import.meta as any)?.env?.VITE_API_BASE ?? 'http://localhost:8888/api';
+    const base = (import.meta as any)?.env?.VITE_API_BASE ?? '/api';
     return base.replace(/\/$/, '') + '/files' + trimmed;
   }
   // if no scheme and not a path, assume https

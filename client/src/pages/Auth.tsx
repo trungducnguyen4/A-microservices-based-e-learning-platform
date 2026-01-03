@@ -6,7 +6,7 @@ const Auth = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
-  const authBaseUrl = import.meta.env.VITE_AUTH_BASE_URL ?? "http://localhost:8888";
+  const authBaseUrl = import.meta.env.VITE_AUTH_BASE_URL ?? "";
   const handleGoogleLogin = () => {
     window.location.href = `${authBaseUrl}/oauth2/authorization/google`;
   };

@@ -2,6 +2,30 @@
 
 ClassroomService là một microservice Node.js/Express quản lý các phòng học trực tuyến (Meeting Rooms) với tích hợp LiveKit cho video conferencing.
 
+## 🎯 New Features (Student Project Optimization) ✅
+
+### 1. **Chat Messages Persistence**
+- Lưu tin nhắn vào MySQL `room_messages`
+- Lấy lịch sử chat cho mỗi phòng
+- Tự động xóa messages cũ khi cleanup
+
+### 2. **Host-Only End Room**
+- Chỉ host (giáo viên) mới được end phòng
+- Kiểm tra quyền trước khi cho phép kết thúc
+- Trả về 403 Forbidden nếu không phải host
+
+### 3. **Data Cleanup & Retention**
+- Admin API để dọn dẹp data cũ
+- Retention policy: xóa data từ phòng đã ended > N ngày
+- Stats API để monitor storage
+
+### 📚 Documentation
+- **Quick Tests:** [Test script](test-api.bat) - Chạy `.\test-api.bat`
+- **Full API Guide:** [API_GUIDE.md](API_GUIDE.md) - Complete endpoint docs
+- **Database Setup:** [README_DB_XAMPP.md](README_DB_XAMPP.md) - XAMPP/phpMyAdmin
+
+---
+
 ## 📁 Cấu trúc thư mục
 
 ```
@@ -165,6 +189,71 @@ Content-Type: application/json
   }
 }
 ```
+
+#### 6. End Room (HOST ONLY)
+```http
+POST /api/meeting/end/:roomCode
+Content-Type: application/json
+
+{
+  "userId": "user123"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Room ended successfully"
+}
+```
+
+**Errors:**
+- `404` - Room not found
+- `403` - Only host can end the room
+- `400` - Room already ended
+
+#### 7. Kick Participant (HOST ONLY) 🆕
+```http
+POST /api/meeting/kick-participant
+Content-Type: application/json
+
+{
+  "roomCode": "abc-defg-hij",
+  "hostUserId": "user123",
+  "targetIdentity": "John Doe"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Participant kicked successfully",
+  "data": {
+    "success": true,
+    "kickedParticipant": {
+      "identity": "John Doe",
+      "displayName": "John Doe",
+      "userId": "456"
+    },
+    "livekitDisconnected": true
+  }
+}
+```
+
+**Errors:**
+- `400` - Missing required fields
+- `403` - Only host can kick participants
+- `404` - Room not found / Participant not found
+- `400` - Cannot kick the host
+
+**Features:**
+- ✅ Only host can kick participants
+- ✅ Cannot kick the host
+- ✅ Uses LiveKit API to disconnect participant
+- ✅ Logs event to database
+- ✅ Participant receives disconnect notification
 
 ### Legacy Endpoints (Backward Compatibility)
 

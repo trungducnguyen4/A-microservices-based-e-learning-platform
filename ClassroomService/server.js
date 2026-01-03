@@ -8,6 +8,8 @@ const livekitConfig = require('./src/config/livekit.config');
 
 // Import routes
 const meetingRoutes = require('./src/routes/meeting.routes');
+const adminRoutes = require('./src/routes/admin.routes');
+const transcriptRoutes = require('./src/routes/transcript.routes');
 
 // Import middlewares
 const requestLogger = require('./src/middlewares/requestLogger');
@@ -53,17 +55,29 @@ app.use(express.json());
 app.use(requestLogger);
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    livekitConfigured: livekitConfig.validateConfig(),
-    timestamp: new Date().toISOString(),
-    activeRooms: roomService.getAllRooms().size,
-  });
+app.get('/health', async (req, res) => {
+  try {
+    const rooms = await roomService.getAllRooms();
+    res.json({
+      status: 'ok',
+      livekitConfigured: livekitConfig.validateConfig(),
+      timestamp: new Date().toISOString(),
+      activeRooms: rooms.size,
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      livekitConfigured: livekitConfig.validateConfig(),
+      timestamp: new Date().toISOString(),
+      error: error.message,
+    });
+  }
 });
 
 // API Routes
 app.use('/api/meeting', meetingRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/transcript', transcriptRoutes);
 
 // Legacy endpoint for backward compatibility
 app.get('/getToken', async (req, res) => {
@@ -87,7 +101,7 @@ app.get('/getToken', async (req, res) => {
     console.log(`[/getToken] Token generated successfully for ${tokenData.name}`);
     
     // Check host status
-    const room = roomService.getRoom(roomCode);
+    const room = await roomService.getRoom(roomCode);
     const isHost = room && room.hostUserId === userId;
     console.log(`[/getToken] 🎭 Host check - Room host: ${room?.hostUserId}, User: ${userId}, isHost: ${isHost}`);
 
@@ -123,8 +137,8 @@ app.get('/checkRoom', async (req, res) => {
       });
     }
 
-    const exists = roomService.hasRoom(roomCode);
-    const room = exists ? roomService.getRoom(roomCode) : null;
+    const exists = await roomService.hasRoom(roomCode);
+    const room = exists ? await roomService.getRoom(roomCode) : null;
 
     res.json({
       exists,
@@ -147,8 +161,18 @@ app.use(errorHandler);
 // Cleanup old rooms periodically (every 5 minutes)
 setInterval(() => {
   const ROOM_TIMEOUT = 60 * 60 * 1000; // 1 hour
-  roomService.cleanupOldRooms(ROOM_TIMEOUT);
+  roomService.cleanupOldRooms(ROOM_TIMEOUT).catch((err) => {
+    console.error('[RoomService-DB] Cleanup failed:', err.message);
+  });
 }, 5 * 60 * 1000);
+
+// Cleanup ended rooms after 30 minutes (every 10 minutes)
+setInterval(() => {
+  const ENDED_ROOM_RETENTION = 30 * 60 * 1000; // 30 minutes
+  roomService.cleanupEndedRooms(ENDED_ROOM_RETENTION).catch((err) => {
+    console.error('[RoomService-DB] Ended room cleanup failed:', err.message);
+  });
+}, 10 * 60 * 1000);
 
 // Start server
 app.listen(appConfig.port, () => {
@@ -157,5 +181,6 @@ app.listen(appConfig.port, () => {
   console.log(`🔗 LiveKit URL: ${livekitConfig.url}`);
   console.log(`👤 UserService URL: ${appConfig.userServiceUrl}`);
   console.log(`✅ LiveKit configured: ${livekitConfig.validateConfig()}`);
-  console.log(`🧹 Room cleanup enabled (1 hour timeout)\n`);
+  console.log(`🧹 Room cleanup enabled (1 hour timeout)`);
+  console.log(`🗑️ Ended room cleanup enabled (30 minutes after end)\n`);
 });

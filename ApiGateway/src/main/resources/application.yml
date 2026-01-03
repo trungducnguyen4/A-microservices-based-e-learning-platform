@@ -74,6 +74,12 @@ spring:
           uri: ${ANNOUNCEMENT_SERVICE_URL:http://localhost:8090}
           predicates:
             - Path=/api/announcements/**
+        - id: classroom-service
+          uri: ${CLASSROOM_SERVICE_URL:http://localhost:4000}
+          predicates:
+            - Path=/api/classrooms/**
+          filters:
+            - StripPrefix=2
         - id: file-service
           uri: ${FILE_SERVICE_URL:http://localhost:5000}
           predicates:

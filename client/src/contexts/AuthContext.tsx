@@ -61,14 +61,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const login = async (username: string, password: string) => {
     try {
       setIsLoading(true);
-      // Real authentication via API Gateway
-      // Use Vite env var if available, fall back to localhost gateway
-      const API_BASE = (import.meta as any)?.env?.VITE_API_BASE ?? 'http://localhost:8888';
+      // Real authentication via API Gateway through Vite proxy
+      // In dev: /api -> proxy to http://localhost:8888/api
+      const API_BASE = (import.meta as any)?.env?.VITE_API_BASE ?? '/api';
 
       // UserService expects { username, password }
   const payload = { username, password };
 
-      const response = await axios.post(`${API_BASE}/api/users/auth/login`, payload, {
+      const response = await axios.post(`${API_BASE}/users/auth/login`, payload, {
         headers: { 'Content-Type': 'application/json' }
       });
 

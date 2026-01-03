@@ -6,7 +6,7 @@
 import axios from 'axios';
 
 // Use API Gateway base URL
-const API_GATEWAY_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8888/api';
+const API_GATEWAY_BASE = import.meta.env.VITE_API_BASE || '/api';
 
 export const classroomApi = axios.create({
   baseURL: `${API_GATEWAY_BASE}/classrooms`,
@@ -98,6 +98,52 @@ export const classroomService = {
     const response = await classroomApi.post('/api/meeting/participant-left', {
       roomCode,
       identity,
+    });
+    return response.data;
+  },
+
+  /**
+   * Send a chat message to the room (save to DB)
+   */
+  sendMessage: async (roomCode: string, senderUserId: string | null, senderName: string, content: string) => {
+    const response = await classroomApi.post('/api/meeting/message', {
+      roomCode,
+      senderUserId,
+      senderName,
+      content,
+      messageType: 'text',
+    });
+    return response.data;
+  },
+
+  /**
+   * Get messages for a room
+   */
+  getMessages: async (roomCode: string, limit: number = 100) => {
+    const response = await classroomApi.get(`/api/meeting/messages/${roomCode}`, {
+      params: { limit },
+    });
+    return response.data;
+  },
+
+  /**
+   * End a room (only host can end)
+   */
+  endRoom: async (roomCode: string, userId: string) => {
+    const response = await classroomApi.post(`/api/meeting/end/${roomCode}`, {
+      userId,
+    });
+    return response.data;
+  },
+
+  /**
+   * Kick a participant from the room (only host can kick)
+   */
+  kickParticipant: async (roomCode: string, hostUserId: string, targetIdentity: string) => {
+    const response = await classroomApi.post('/api/meeting/kick-participant', {
+      roomCode,
+      hostUserId,
+      targetIdentity,
     });
     return response.data;
   },

@@ -1,8 +1,9 @@
 import axios from 'axios';
 
-// API Base URLs - All requests go through API Gateway
-// Use Vite env var when available (VITE_API_BASE), otherwise default to localhost
-const API_GATEWAY_BASE = (import.meta as any)?.env?.VITE_API_BASE ?? 'http://localhost:8888/api';
+// API Base URLs - All requests go through Vite proxy in development
+// In development: /api/* -> proxied to http://localhost:8888/api/*
+// In production: Use absolute URL from env or default
+const API_GATEWAY_BASE = (import.meta as any)?.env?.VITE_API_BASE ?? '/api';
 const HOMEWORK_API_BASE = API_GATEWAY_BASE;
 const FILE_API_BASE = API_GATEWAY_BASE;
 const ADMIN_API_BASE = API_GATEWAY_BASE;

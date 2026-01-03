@@ -28,7 +28,7 @@ class MeetingController {
       }
 
       // Check if room already exists
-      if (roomService.hasRoom(roomCode)) {
+      if (await roomService.hasRoom(roomCode)) {
         return res.status(409).json({
           success: false,
           message: 'Room already exists',
@@ -36,7 +36,7 @@ class MeetingController {
       }
 
       // Create room
-      const room = roomService.createRoom(roomCode, userId);
+      const room = await roomService.createRoom(roomCode, userId);
 
       console.log(`[MeetingController] Room created: ${roomCode} by user ${userId}`);
 
@@ -73,8 +73,8 @@ class MeetingController {
         });
       }
 
-      const exists = roomService.hasRoom(roomCode);
-      const room = exists ? roomService.getRoom(roomCode) : null;
+      const exists = await roomService.hasRoom(roomCode);
+      const room = exists ? await roomService.getRoom(roomCode) : null;
 
       res.json({
         success: true,
@@ -108,7 +108,7 @@ class MeetingController {
    */
   async getAllRooms(req, res) {
     try {
-      const rooms = roomService.getAllRooms();
+      const rooms = await roomService.getAllRooms();
 
       const roomList = Array.from(rooms.values()).map((room) => {
         const hostParticipant = Array.from(room.participants.values()).find(p => p.userId === room.hostUserId);
@@ -153,14 +153,14 @@ class MeetingController {
         });
       }
 
-      if (!roomService.hasRoom(roomCode)) {
+      if (!(await roomService.hasRoom(roomCode))) {
         return res.status(404).json({
           success: false,
           message: 'Room not found',
         });
       }
 
-      roomService.deleteRoom(roomCode);
+      await roomService.deleteRoom(roomCode);
 
       console.log(`[MeetingController] Room deleted: ${roomCode}`);
 
@@ -173,6 +173,64 @@ class MeetingController {
       res.status(500).json({
         success: false,
         message: 'Failed to delete room',
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Kết thúc phòng (CHỈ HOST)
+   * POST /api/meeting/end/:roomCode
+   * Body: { userId }
+   */
+  async endRoom(req, res) {
+    try {
+      const { roomCode } = req.params;
+      const { userId } = req.body;
+
+      if (!roomCode) {
+        return res.status(400).json({
+          success: false,
+          message: 'Room code is required',
+        });
+      }
+
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          message: 'User ID is required',
+        });
+      }
+
+      await roomService.endRoom(roomCode, userId);
+
+      console.log(`[MeetingController] Room ${roomCode} ended by ${userId}`);
+
+      res.json({
+        success: true,
+        message: 'Room ended successfully',
+      });
+    } catch (error) {
+      console.error('[MeetingController] Error ending room:', error);
+      
+      // Xử lý các lỗi cụ thể
+      if (error.message === 'Room not found') {
+        return res.status(404).json({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error.message === 'Room already ended' || error.message === 'Only host can end the room') {
+        return res.status(403).json({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to end room',
         error: error.message,
       });
     }
@@ -208,7 +266,7 @@ class MeetingController {
       );
 
       // Check if this user is the host
-      const room = roomService.getRoom(roomCode);
+      const room = await roomService.getRoom(roomCode);
       const isHost = room && room.hostUserId === userId;
 
       console.log(`[MeetingController] 🎫 Token for ${userName} (userId: ${userId})`);
@@ -255,14 +313,14 @@ class MeetingController {
       }
 
       // Remove participant from room
-      const removed = roomService.removeParticipant(roomCode, identity);
+      const removed = await roomService.removeParticipant(roomCode, identity);
       
       if (!removed) {
         console.log(`[MeetingController] Participant ${identity} not found in room ${roomCode}`);
       }
 
       // Check if room is now empty
-      const room = roomService.getRoom(roomCode);
+      const room = await roomService.getRoom(roomCode);
       const isEmpty = !room || room.participants.size === 0;
 
       if (isEmpty && room) {
@@ -282,6 +340,88 @@ class MeetingController {
       res.status(500).json({
         success: false,
         message: 'Failed to process participant leaving',
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Kick participant khỏi phòng (CHỈ HOST)
+   * POST /api/meeting/kick-participant
+   */
+  async kickParticipant(req, res) {
+    try {
+      const { roomCode, hostUserId, targetIdentity } = req.body;
+
+      // Validate input
+      if (!roomCode) {
+        return res.status(400).json({
+          success: false,
+          message: 'Room code is required',
+        });
+      }
+
+      if (!hostUserId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Host user ID is required',
+        });
+      }
+
+      if (!targetIdentity) {
+        return res.status(400).json({
+          success: false,
+          message: 'Target participant identity is required',
+        });
+      }
+
+      console.log(`[MeetingController] 🚫 Kick request: room=${roomCode}, host=${hostUserId}, target=${targetIdentity}`);
+
+      // Kick participant (includes permission check)
+      const result = await roomService.kickParticipant(roomCode, hostUserId, targetIdentity);
+
+      console.log(`[MeetingController] ✅ Successfully kicked ${targetIdentity} from ${roomCode}`);
+
+      res.json({
+        success: true,
+        message: 'Participant kicked successfully',
+        data: result,
+      });
+    } catch (error) {
+      console.error('[MeetingController] Error kicking participant:', error);
+      
+      // Handle specific errors
+      if (error.message === 'Room not found') {
+        return res.status(404).json({
+          success: false,
+          message: 'Room not found',
+        });
+      }
+      
+      if (error.message === 'Only host can kick participants') {
+        return res.status(403).json({
+          success: false,
+          message: 'Only the host can kick participants',
+        });
+      }
+      
+      if (error.message === 'Participant not found in room') {
+        return res.status(404).json({
+          success: false,
+          message: 'Participant not found in room',
+        });
+      }
+      
+      if (error.message === 'Cannot kick the host') {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot kick the host',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to kick participant',
         error: error.message,
       });
     }
