@@ -11,6 +11,9 @@
         <option value="$PROJECT_DIR$/HomeworkService/pom.xml" />
         <option value="$PROJECT_DIR$/AnnouncementService/pom.xml" />
         <option value="$PROJECT_DIR$/AdminService/pom.xml" />
+        <option value="$PROJECT_DIR$/ScheduleService1/pom.xml" />
+        <option value="$PROJECT_DIR$/HomeworkService1/pom.xml" />
+        <option value="$PROJECT_DIR$/AnnouncementService1/pom.xml" />
       </list>
     </option>
   </component>

@@ -57,7 +57,7 @@ services:
 
   homework-service:
     build:
-      context: ./HomeworkService
+      context: ./HomeworkService1
       dockerfile: Dockerfile
     container_name: e-learning-homework-service
     restart: unless-stopped
@@ -81,7 +81,7 @@ services:
 
   schedule-service:
     build:
-      context: ./ScheduleService
+      context: ./ScheduleService1
       dockerfile: Dockerfile
     container_name: e-learning-schedule-service
     restart: unless-stopped
@@ -124,6 +124,21 @@ services:
     depends_on:
       - redis
       - user-service
+    networks:
+      - e-learning-network
+
+  announcement-service:
+    build:
+      context: ./AnnouncementService1
+      dockerfile: Dockerfile
+    container_name: e-learning-announcement-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://${DB_HOST}:${DB_PORT:-3306}/${DB_NAME_ANNOUNCEMENT:-announcement_db}?useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-admin}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SERVER_PORT: 8090
     networks:
       - e-learning-network
 
