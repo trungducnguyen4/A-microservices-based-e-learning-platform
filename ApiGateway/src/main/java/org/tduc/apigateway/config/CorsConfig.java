@@ -19,8 +19,8 @@ public class CorsConfig {
         config.setAllowedOriginPatterns(Arrays.asList(
             "http://localhost:*", 
             "http://127.0.0.1:*",
-            "http://3.26.171.51",
-            "http://3.26.171.51:*",
+            "http://13.211.125.143",
+            "http://13.211.125.143:*",
             "http://academihub.site",
             "http://academihub.site:*",
             "https://academihub.site",
