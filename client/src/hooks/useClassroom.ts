@@ -133,11 +133,26 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
             audioElement = pub.track.attach() as HTMLAudioElement;
             audioElement.id = existingAudioId;
             audioElement.style.display = 'none';
+            // Mobile browsers sometimes require an explicit play attempt
+            try {
+              audioElement.autoplay = true;
+              const playPromise = (audioElement as any).play?.();
+              if (playPromise?.catch) playPromise.catch(() => undefined);
+            } catch {
+              // ignore
+            }
             // Append to document body to persist across re-renders
             document.body.appendChild(audioElement);
             console.log(`[renderRemoteParticipants] ✅ Created new audio element for ${participant.identity}`);
           } else {
             console.log(`[renderRemoteParticipants] ♻️ Reusing existing audio element for ${participant.identity}`);
+            try {
+              audioElement.autoplay = true;
+              const playPromise = (audioElement as any).play?.();
+              if (playPromise?.catch) playPromise.catch(() => undefined);
+            } catch {
+              // ignore
+            }
           }
         } else {
           console.log(`[renderRemoteParticipants] 🔇 Audio NOT attached for ${participant.identity} - subscribed: ${pub.isSubscribed}, muted: ${pub.isMuted}, track: ${!!pub.track}`);
@@ -161,6 +176,17 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
         if (pub.source === 'screen_share' && pub.track && pub.isSubscribed && !pub.isMuted) {
           hasScreenShare = true;
           screenShareElement = pub.track.attach() as HTMLVideoElement;
+          // Mobile-friendly playback
+          try {
+            screenShareElement.autoplay = true;
+            screenShareElement.muted = true;
+            screenShareElement.setAttribute('playsinline', 'true');
+            screenShareElement.setAttribute('webkit-playsinline', 'true');
+            const playPromise = (screenShareElement as any).play?.();
+            if (playPromise?.catch) playPromise.catch(() => undefined);
+          } catch {
+            // ignore
+          }
         }
       });
       
@@ -255,6 +281,18 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
       
       if (hasActiveVideo && videoElement) {
         // Participant has video - render it with proper aspect ratio
+        // Mobile-friendly playback
+        try {
+          videoElement.autoplay = true;
+          // Remote video elements are video-only; muting helps autoplay on mobile
+          videoElement.muted = true;
+          videoElement.setAttribute('playsinline', 'true');
+          videoElement.setAttribute('webkit-playsinline', 'true');
+          const playPromise = (videoElement as any).play?.();
+          if (playPromise?.catch) playPromise.catch(() => undefined);
+        } catch {
+          // ignore
+        }
         videoElement.style.width = "auto";
         videoElement.style.height = "auto";
         videoElement.style.maxWidth = "100%";
@@ -523,6 +561,17 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
     
     if (trackToRender) {
       const videoElement = trackToRender.attach() as HTMLVideoElement;
+      // Mobile-friendly playback
+      try {
+        videoElement.autoplay = true;
+        videoElement.muted = true;
+        videoElement.setAttribute('playsinline', 'true');
+        videoElement.setAttribute('webkit-playsinline', 'true');
+        const playPromise = (videoElement as any).play?.();
+        if (playPromise?.catch) playPromise.catch(() => undefined);
+      } catch {
+        // ignore
+      }
       videoElement.style.width = "100%";
       videoElement.style.height = "100%";
       videoElement.style.objectFit = isPinningScreen ? "contain" : "contain";
@@ -607,6 +656,13 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
           console.log(`[renderPinnedParticipant] 🔊 Attaching audio for pinned ${participant.identity}`);
           const audioElement = pub.track.attach();
           audioElement.style.display = 'none';
+          try {
+            (audioElement as any).autoplay = true;
+            const playPromise = (audioElement as any).play?.();
+            if (playPromise?.catch) playPromise.catch(() => undefined);
+          } catch {
+            // ignore
+          }
           wrapper.appendChild(audioElement);
         }
       });
@@ -818,6 +874,17 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
             tracks.forEach(track => {
               if (track.kind === 'video') {
                 const el = track.attach();
+                // Mobile-friendly playback
+                try {
+                  (el as any).autoplay = true;
+                  (el as any).muted = true;
+                  (el as any).setAttribute?.('playsinline', 'true');
+                  (el as any).setAttribute?.('webkit-playsinline', 'true');
+                  const playPromise = (el as any).play?.();
+                  if (playPromise?.catch) playPromise.catch(() => undefined);
+                } catch {
+                  // ignore
+                }
                 // Video giữ aspect ratio, không bị cắt hoặc stretch
                 el.style.width = "auto";
                 el.style.height = "auto";
@@ -1032,14 +1099,20 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
       const audioTrack = localTracksRef.current.find(t => t.kind === 'audio');
       if (audioTrack) {
         console.log('[toggleMute] 🔇 Unpublishing audio track');
-        audioTrack.stop();
-        const mediaTrack = audioTrack.mediaStreamTrack;
-        if (mediaTrack && mediaTrack.readyState === 'live') {
-          mediaTrack.stop();
+        try {
+          audioTrack.stop();
+          const mediaTrack = audioTrack.mediaStreamTrack;
+          if (mediaTrack && mediaTrack.readyState === 'live') {
+            mediaTrack.stop();
+          }
+          await room.localParticipant.unpublishTrack(audioTrack);
+          localTracksRef.current = localTracksRef.current.filter(t => t !== audioTrack);
+          console.log('[toggleMute] ✅ Audio track unpublished');
+        } catch (error) {
+          console.error('[toggleMute] ❌ Error unpublishing audio track:', error);
+          setError('Failed to disable microphone. Please try again.');
+          setTimeout(() => setError(null), 5000);
         }
-        await room.localParticipant.unpublishTrack(audioTrack);
-        localTracksRef.current = localTracksRef.current.filter(t => t !== audioTrack);
-        console.log('[toggleMute] ✅ Audio track unpublished');
       } else {
         console.log('[toggleMute] ⚠️ No audio track found to unpublish');
       }
@@ -1093,13 +1166,19 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
     if (!newVideoState) {
       const videoTrack = localTracksRef.current.find(t => t.kind === 'video');
       if (videoTrack) {
-        videoTrack.stop();
-        const mediaTrack = videoTrack.mediaStreamTrack;
-        if (mediaTrack && mediaTrack.readyState === 'live') {
-          mediaTrack.stop();
+        try {
+          videoTrack.stop();
+          const mediaTrack = videoTrack.mediaStreamTrack;
+          if (mediaTrack && mediaTrack.readyState === 'live') {
+            mediaTrack.stop();
+          }
+          await room.localParticipant.unpublishTrack(videoTrack);
+          localTracksRef.current = localTracksRef.current.filter(t => t !== videoTrack);
+        } catch (error) {
+          console.error('[toggleVideo] ❌ Error unpublishing video track:', error);
+          setError('Failed to disable camera. Please try again.');
+          setTimeout(() => setError(null), 5000);
         }
-        await room.localParticipant.unpublishTrack(videoTrack);
-        localTracksRef.current = localTracksRef.current.filter(t => t !== videoTrack);
       }
       if (localVideoRef.current) {
         localVideoRef.current.innerHTML = '';
@@ -1129,6 +1208,20 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
             localVideoRef.current.style.overflow = 'hidden';
             
             const el = videoTrack.attach();
+            // Mobile-friendly playback
+            try {
+              el.autoplay = true;
+              // Avoid feedback; local preview should be muted
+              el.muted = true;
+              // iOS Safari needs playsInline
+              // @ts-expect-error - playsInline exists on HTMLVideoElement
+              el.playsInline = true;
+              // Start playback; ignore autoplay rejection
+              const playPromise = (el as any).play?.();
+              if (playPromise?.catch) playPromise.catch(() => undefined);
+            } catch {
+              // ignore
+            }
             // Video giữ aspect ratio như Google Meet
             el.style.width = "auto";
             el.style.height = "auto";
