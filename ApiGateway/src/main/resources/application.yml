@@ -80,18 +80,7 @@ spring:
         - id: classroom-service
           uri: ${CLASSROOM_SERVICE_URL:http://localhost:4000}
           predicates:
-            # Meeting/Transcript routes in ClassroomService are prefixed with /api
-            # Client calls: /api/classrooms/meeting/** and /api/classrooms/transcript/**
-            # Gateway forwards to: /api/meeting/** and /api/transcript/**
-            - Path=/api/classrooms/meeting/**,/api/classrooms/transcript/**
-          filters:
-            - StripPrefix=2
-            - PrefixPath=/api
-        - id: classroom-service-direct
-          uri: ${CLASSROOM_SERVICE_URL:http://localhost:4000}
-          predicates:
-            # Endpoints that are NOT prefixed with /api in ClassroomService
-            - Path=/api/classrooms/getToken,/api/classrooms/health,/api/classrooms/rooms/**
+            - Path=/api/classrooms/**
           filters:
             - StripPrefix=2
         - id: file-service
@@ -176,20 +165,9 @@ spring:
         - id: classroom-service
           uri: ${CLASSROOM_SERVICE_URL:http://classroom-service:4000}
           predicates:
-            # Meeting/Transcript routes in ClassroomService are prefixed with /api
-            # Client calls: /api/classrooms/meeting/** and /api/classrooms/transcript/**
-            # Gateway forwards to: /api/meeting/** and /api/transcript/**
-            - Path=/api/classrooms/meeting/**,/api/classrooms/transcript/**
+            - Path=/api/classrooms/**
           filters:
-            - StripPrefix=2
-            - PrefixPath=/api
-        - id: classroom-service-direct
-          uri: ${CLASSROOM_SERVICE_URL:http://classroom-service:4000}
-          predicates:
-            # Endpoints that are NOT prefixed with /api in ClassroomService
-            - Path=/api/classrooms/getToken,/api/classrooms/health,/api/classrooms/rooms/**
-          filters:
-            - StripPrefix=2
+            - RewritePath=/api/classrooms/(?<segment>.*), /$\{segment}
         - id: file-service
           uri: ${FILE_SERVICE_URL:http://file-service:5000}
           predicates:

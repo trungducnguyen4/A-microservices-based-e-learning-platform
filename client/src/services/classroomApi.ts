@@ -59,7 +59,7 @@ export const classroomService = {
    * Check if a room exists
    */
   checkRoom: async (roomCode: string) => {
-    const response = await classroomApi.get(`/meeting/check/${roomCode}`);
+    const response = await classroomApi.get(`/api/meeting/check/${roomCode}`);
     return response.data;
   },
 
@@ -67,7 +67,7 @@ export const classroomService = {
    * Create a new room
    */
   createRoom: async (roomCode: string, userId: string) => {
-    const response = await classroomApi.post('/meeting/create', {
+    const response = await classroomApi.post('/api/meeting/create', {
       roomCode,
       userId
     });
@@ -95,7 +95,7 @@ export const classroomService = {
    * Returns whether the room is now empty
    */
   notifyParticipantLeft: async (roomCode: string, identity: string) => {
-    const response = await classroomApi.post('/meeting/participant-left', {
+    const response = await classroomApi.post('/api/meeting/participant-left', {
       roomCode,
       identity,
     });
@@ -106,7 +106,7 @@ export const classroomService = {
    * Send a chat message to the room (save to DB)
    */
   sendMessage: async (roomCode: string, senderUserId: string | null, senderName: string, content: string) => {
-    const response = await classroomApi.post('/meeting/message', {
+    const response = await classroomApi.post('/api/meeting/message', {
       roomCode,
       senderUserId,
       senderName,
@@ -120,7 +120,7 @@ export const classroomService = {
    * Get messages for a room
    */
   getMessages: async (roomCode: string, limit: number = 100) => {
-    const response = await classroomApi.get(`/meeting/messages/${roomCode}`, {
+    const response = await classroomApi.get(`/api/meeting/messages/${roomCode}`, {
       params: { limit },
     });
     return response.data;
@@ -130,7 +130,7 @@ export const classroomService = {
    * End a room (only host can end)
    */
   endRoom: async (roomCode: string, userId: string) => {
-    const response = await classroomApi.post(`/meeting/end/${roomCode}`, {
+    const response = await classroomApi.post(`/api/meeting/end/${roomCode}`, {
       userId,
     });
     return response.data;
@@ -140,7 +140,7 @@ export const classroomService = {
    * Kick a participant from the room (only host can kick)
    */
   kickParticipant: async (roomCode: string, hostUserId: string, targetIdentity: string) => {
-    const response = await classroomApi.post('/meeting/kick-participant', {
+    const response = await classroomApi.post('/api/meeting/kick-participant', {
       roomCode,
       hostUserId,
       targetIdentity,
