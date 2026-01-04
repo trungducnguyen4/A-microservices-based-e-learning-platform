@@ -21,10 +21,8 @@ public class CorsConfig {
             // Development - localhost
             "http://localhost:*", 
             "http://127.0.0.1:*",
-<<<<<<< HEAD
             "http://13.211.125.143",
             "http://13.211.125.143:*",
-=======
             "https://localhost:*",
             "https://127.0.0.1:*",
             
@@ -33,19 +31,13 @@ public class CorsConfig {
             "https://192.168.*.*:*",
             
             // Production - academihub.site
->>>>>>> 346cb7943b981faa47343ba51b25be75a898acc1
             "http://academihub.site",
             "http://academihub.site:*",
             "https://academihub.site",
             "https://academihub.site:*",
             "http://*.academihub.site",
-            "https://*.academihub.site",
+            "https://*.academihub.site"
             
-            // AWS/Cloud IPs (if needed)
-            "http://3.26.171.51",
-            "http://3.26.171.51:*",
-            "http://3.107.5.21",
-            "http://3.107.5.21:*"
         ));
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"));
         config.setAllowedHeaders(Arrays.asList("*"));
