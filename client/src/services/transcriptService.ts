@@ -37,7 +37,7 @@ export const saveTranscriptSegments = async (
   segments: TranscriptionSegment[]
 ): Promise<SaveTranscriptResponse> => {
   try {
-    const response = await fetch(`${API_GATEWAY_BASE}/classrooms/api/transcript/save-batch`, {
+      const response = await fetch(`${API_GATEWAY_BASE}/classrooms/transcript/save-batch`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -73,7 +73,7 @@ export const saveTranscriptSegments = async (
  */
 export const getTranscripts = async (roomCode: string): Promise<GetTranscriptResponse> => {
   try {
-    const response = await fetch(`${API_GATEWAY_BASE}/classrooms/api/transcript/${roomCode}`);
+    const response = await fetch(`${API_GATEWAY_BASE}/classrooms/transcript/${roomCode}`);
     const data = await response.json();
 
     if (!response.ok) {
@@ -93,7 +93,7 @@ export const getTranscripts = async (roomCode: string): Promise<GetTranscriptRes
  */
 export const deleteTranscripts = async (roomCode: string): Promise<{ success: boolean }> => {
   try {
-    const response = await fetch(`${API_GATEWAY_BASE}/classrooms/api/transcript/${roomCode}`, {
+    const response = await fetch(`${API_GATEWAY_BASE}/classrooms/transcript/${roomCode}`, {
       method: 'DELETE',
     });
 
