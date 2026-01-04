@@ -99,6 +99,7 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
   const pinnedVideoRef = useRef<HTMLDivElement>(null);
   const localTracksRef = useRef<LocalTrack[]>([]);
   const audioProcessorRef = useRef<AudioProcessor>(new AudioProcessor());
+  const renderTimeoutRef = useRef<number | null>(null);
 
   // Keep latest hostUserId accessible to event handlers (avoid stale closure)
   useEffect(() => {
@@ -107,8 +108,30 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
 
   /**
    * Render remote participants videos and screen shares
+   * Debounced and error-safe to prevent mobile crashes
    */
   const renderRemoteParticipants = (room: Room) => {
+    if (!remoteVideosRef.current) return;
+    
+    // Debounce: clear any pending render and schedule a new one
+    if (renderTimeoutRef.current !== null) {
+      window.cancelAnimationFrame(renderTimeoutRef.current);
+    }
+    
+    renderTimeoutRef.current = window.requestAnimationFrame(() => {
+      try {
+        renderRemoteParticipantsImmediate(room);
+      } catch (err) {
+        console.error('[renderRemoteParticipants] ❌ Render failed:', err);
+        // Don't crash - just log and continue
+      }
+    });
+  };
+
+  /**
+   * Internal immediate render function (wrapped by debounced renderRemoteParticipants)
+   */
+  const renderRemoteParticipantsImmediate = (room: Room) => {
     if (!remoteVideosRef.current) return;
     
     remoteVideosRef.current.innerHTML = '';
