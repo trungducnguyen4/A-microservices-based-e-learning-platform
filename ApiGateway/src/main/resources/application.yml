@@ -162,18 +162,12 @@ spring:
           uri: ${ANNOUNCEMENT_SERVICE_URL:http://announcement-service:8090}
           predicates:
             - Path=/api/announcements/**
-        - id: classroom-service-api
-          uri: ${CLASSROOM_SERVICE_URL:http://classroom-service:4000}
-          predicates:
-            - Path=/api/classrooms/meeting/**,/api/classrooms/transcript/**
-          filters:
-            - RewritePath=/api/classrooms/(?<segment>.*), /api/$\{segment}
-        - id: classroom-service-direct
+        - id: classroom-service
           uri: ${CLASSROOM_SERVICE_URL:http://classroom-service:4000}
           predicates:
             - Path=/api/classrooms/**
           filters:
-            - RewritePath=/api/classrooms/(?<segment>.*), /$\{segment}
+            - RewritePath=/api/classrooms/(?<segment>.*), /api/$\{segment}
         - id: file-service
           uri: ${FILE_SERVICE_URL:http://file-service:5000}
           predicates:
