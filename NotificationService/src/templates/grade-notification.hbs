@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #FF9800; color: white; padding: 20px; text-align: center; }
+    .content { padding: 20px; background: #f9f9f9; }
+    .grade-box { background: white; border: 2px solid #FF9800; padding: 20px; text-align: center; margin: 20px 0; border-radius: 10px; }
+    .grade { font-size: 48px; font-weight: bold; color: #FF9800; }
+    .button { display: inline-block; padding: 10px 20px; background: #FF9800; color: white; text-decoration: none; border-radius: 5px; }
+    .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>📝 Grade Posted</h2>
+    </div>
+    <div class="content">
+      <p>Hello {{studentName}},</p>
+      
+      <p>Your homework has been graded!</p>
+      
+      <h3>{{homeworkTitle}}</h3>
+      
+      <div class="grade-box">
+        <div class="grade">{{score}}/{{maxScore}}</div>
+        <p>{{percentage}}%</p>
+      </div>
+      
+      {{#if feedback}}
+      <p><strong>Teacher's Feedback:</strong></p>
+      <p style="background: white; padding: 15px; border-left: 4px solid #FF9800;">
+        {{feedback}}
+      </p>
+      {{/if}}
+      
+      <p style="margin-top: 30px;">
+        <a href="{{homeworkUrl}}" class="button">View Details</a>
+      </p>
+      
+      <p>Keep up the good work!</p>
+    </div>
+    <div class="footer">
+      <p>E-Learning Platform | &copy; 2026</p>
+    </div>
+  </div>
+</body>
+</html>

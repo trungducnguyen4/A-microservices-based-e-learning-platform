@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #4CAF50; color: white; padding: 20px; text-align: center; }
+    .content { padding: 20px; background: #f9f9f9; }
+    .button { display: inline-block; padding: 10px 20px; background: #4CAF50; color: white; text-decoration: none; border-radius: 5px; }
+    .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>📚 Homework Reminder</h2>
+    </div>
+    <div class="content">
+      <p>Hello {{studentName}},</p>
+      
+      <p>This is a friendly reminder that your homework assignment is due soon:</p>
+      
+      <h3>{{title}}</h3>
+      <p><strong>Due Date:</strong> {{dueDate}}</p>
+      <p><strong>Course:</strong> {{courseName}}</p>
+      
+      {{#if description}}
+      <p><strong>Description:</strong></p>
+      <p>{{description}}</p>
+      {{/if}}
+      
+      <p style="margin-top: 30px;">
+        <a href="{{homeworkUrl}}" class="button">View Homework</a>
+      </p>
+      
+      <p>Don't forget to submit your work before the deadline!</p>
+    </div>
+    <div class="footer">
+      <p>E-Learning Platform | &copy; 2026</p>
+      <p>You received this email because you are enrolled in {{courseName}}</p>
+    </div>
+  </div>
+</body>
+</html>

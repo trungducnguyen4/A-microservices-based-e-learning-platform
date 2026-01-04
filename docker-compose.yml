@@ -242,6 +242,51 @@ services:
     networks:
       - e-learning-network
 
+  notification-service:
+    build:
+      context: ./NotificationService
+      dockerfile: Dockerfile
+    container_name: e-learning-notification-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 5001
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME_NOTIFICATION:-notification_db}
+      DB_USER: ${DB_USER:-admin}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-your-very-secure-jwt-secret-key-here}
+      EMAIL_SERVICE: Gmail
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+      EMAIL_FROM: ${EMAIL_FROM:-E-Learning Platform <noreply@elearning.com>}
+      GOOGLE_CALENDAR_ENABLED: ${GOOGLE_CALENDAR_ENABLED:-false}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:5173/auth/google/callback}
+      USER_SERVICE_URL: http://user-service:8080
+      SCHEDULE_SERVICE_URL: http://schedule-service:8082
+      HOMEWORK_SERVICE_URL: http://homework-service:8081
+      HOMEWORK_REMINDER_HOURS: 24
+      CLASS_REMINDER_MINUTES: 10
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    # Port not exposed - accessed via API Gateway only
+    depends_on:
+      - redis
+      - user-service
+      - schedule-service
+      - homework-service
+    networks:
+      - e-learning-network
+
   # Frontend
   client:
     build:
