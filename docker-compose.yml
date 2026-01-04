@@ -192,7 +192,7 @@ services:
       PORT: 4000
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT:-3306}
-      DB_NAME: ${DB_NAME_CLASSROOM:-e_learning}
+      DB_NAME: ${DB_NAME_CLASSROOM:-classroom_db}
       DB_USER: ${DB_USER:-admin}
       DB_PASSWORD: ${DB_PASSWORD}
       REDIS_HOST: redis
