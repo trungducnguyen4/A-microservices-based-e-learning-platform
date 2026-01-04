@@ -47,12 +47,12 @@ export function useMediaDevices() {
         // Set defaults from localStorage or first device (only if valid deviceId exists)
         const savedAudio = localStorage.getItem('livekit-selected-audio');
         const savedVideo = localStorage.getItem('livekit-selected-video');
-        const savedOutput = localStorage.getItem('livekit-selected-output');
+        // KHÔNG lưu speaker vào localStorage - luôn reset về default khi reload
         
         // Only set if we have valid devices, otherwise set to empty string (safe fallback)
         setSelectedAudioDevice((savedAudio && audio.some(d => d.deviceId === savedAudio)) ? savedAudio : (audio[0]?.deviceId || ''));
         setSelectedVideoDevice((savedVideo && video.some(d => d.deviceId === savedVideo)) ? savedVideo : (video[0]?.deviceId || ''));
-        setSelectedAudioOutput((savedOutput && audioOutput.some(d => d.deviceId === savedOutput)) ? savedOutput : (audioOutput[0]?.deviceId || ''));
+        setSelectedAudioOutput(audioOutput[0]?.deviceId || ''); // Always use default speaker
       } catch (error) {
         console.error('[useMediaDevices] Failed to enumerate devices:', error);
         // Set empty arrays on complete failure
@@ -71,6 +71,24 @@ export function useMediaDevices() {
     };
   }, []);
 
+  // Reset to default devices (first device in each list)
+  const resetToDefaults = () => {
+    const defaultAudio = audioDevices[0]?.deviceId || '';
+    const defaultVideo = videoDevices[0]?.deviceId || '';
+    const defaultOutput = audioOutputDevices[0]?.deviceId || '';
+    
+    setSelectedAudioDevice(defaultAudio);
+    setSelectedVideoDevice(defaultVideo);
+    setSelectedAudioOutput(defaultOutput);
+    
+    // Clear localStorage
+    localStorage.removeItem('livekit-selected-audio');
+    localStorage.removeItem('livekit-selected-video');
+    localStorage.removeItem('livekit-selected-output');
+    
+    console.log('[useMediaDevices] Reset to defaults:', { defaultAudio, defaultVideo, defaultOutput });
+  };
+
   return {
     audioDevices,
     videoDevices,
@@ -81,5 +99,6 @@ export function useMediaDevices() {
     setSelectedAudioDevice,
     setSelectedVideoDevice,
     setSelectedAudioOutput,
+    resetToDefaults,
   };
 }

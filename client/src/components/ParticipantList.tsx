@@ -91,6 +91,17 @@ export function ParticipantList({
     return userId === hostUserId;
   };
 
+  // 🤖 Check if participant is a bot
+  const isBot = (participant: RemoteParticipant | LocalParticipant) => {
+    try {
+      if (!participant.metadata) return false;
+      const metadata = JSON.parse(participant.metadata);
+      return metadata.isBot === true;
+    } catch {
+      return false;
+    }
+  };
+
   return (
     <Card className="w-full h-full flex flex-col shadow-lg border-0 lg:border rounded-none lg:rounded-lg">
       {/* Header */}
@@ -167,6 +178,7 @@ export function ParticipantList({
           {/* Remote Participants */}
           {participants.map((participant) => {
             const participantIsHost = isHost(participant.identity);
+            const participantIsBot = isBot(participant);
             const isMuted = isParticipantMuted(participant);
             const handRaised = raisedHands.has(participant.identity);
             
@@ -176,8 +188,8 @@ export function ParticipantList({
                 className="flex items-center gap-2 xs:gap-3 p-2 xs:p-3 rounded-lg hover:bg-accent/50 transition-colors"
               >
                 <Avatar className="h-8 w-8 xs:h-10 xs:w-10 flex-shrink-0">
-                  <AvatarFallback className="bg-secondary text-secondary-foreground font-semibold text-xs xs:text-sm">
-                    {getInitials(participant.identity)}
+                  <AvatarFallback className={`${participantIsBot ? 'bg-gray-500' : 'bg-secondary'} text-secondary-foreground font-semibold text-xs xs:text-sm`}>
+                    {participantIsBot ? '🤖' : getInitials(participant.identity)}
                   </AvatarFallback>
                 </Avatar>
                 
@@ -186,6 +198,11 @@ export function ParticipantList({
                     <p className="font-medium text-xs xs:text-sm truncate">
                       {participant.identity}
                     </p>
+                    {participantIsBot && (
+                      <Badge variant="secondary" className="text-[10px] xs:text-xs px-1 xs:px-1.5 py-0 h-4 xs:h-auto flex-shrink-0 bg-gray-200 dark:bg-gray-700">
+                        BOT
+                      </Badge>
+                    )}
                     {participantIsHost && (
                       <span title="Host">
                         <Crown className="w-3 h-3 xs:w-4 xs:h-4 text-yellow-500 flex-shrink-0" />
