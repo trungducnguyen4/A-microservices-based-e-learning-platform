@@ -931,61 +931,98 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
 
         // Event listeners
         r.on(RoomEvent.ParticipantConnected, (participant) => {
-          console.log("👥 New participant:", participant.identity);
-          setParticipants(prev => [...prev, participant]);
+          try {
+            console.log("👥 New participant:", participant.identity);
+            setParticipants(prev => [...prev, participant]);
+            // ✅ Render immediately so new participant appears in UI
+            renderRemoteParticipants(r);
+          } catch (err) {
+            console.error('[ParticipantConnected] Error:', err);
+          }
         });
 
         r.on(RoomEvent.ParticipantDisconnected, (participant) => {
-          console.log("🚪 Participant left:", participant.identity);
-          setParticipants(prev => prev.filter(p => p.identity !== participant.identity));
-          
-          // Clean up audio element for disconnected participant
-          const audioElementId = `audio-${participant.identity}`;
-          const audioElement = document.getElementById(audioElementId);
-          if (audioElement) {
-            audioElement.remove();
-            console.log(`[ParticipantDisconnected] 🗑️ Cleaned up audio for ${participant.identity}`);
+          try {
+            console.log("🚪 Participant left:", participant.identity);
+            setParticipants(prev => prev.filter(p => p.identity !== participant.identity));
+            
+            // Clean up audio element for disconnected participant
+            const audioElementId = `audio-${participant.identity}`;
+            const audioElement = document.getElementById(audioElementId);
+            if (audioElement) {
+              audioElement.remove();
+              console.log(`[ParticipantDisconnected] 🗑️ Cleaned up audio for ${participant.identity}`);
+            }
+            
+            // ✅ Re-render to update UI
+            renderRemoteParticipants(r);
+          } catch (err) {
+            console.error('[ParticipantDisconnected] Error:', err);
           }
         });
 
         r.on(RoomEvent.TrackPublished, (publication, participant) => {
-          if (participant.isLocal) return;
-          console.log("📤 Track published:", publication.kind, publication.source, "from", participant.identity);
-          renderRemoteParticipants(r);
+          try {
+            if (participant.isLocal) return;
+            console.log("📤 Track published:", publication.kind, publication.source, "from", participant.identity);
+            renderRemoteParticipants(r);
+          } catch (err) {
+            console.error('[TrackPublished] Error:', err);
+          }
         });
 
         r.on(RoomEvent.TrackUnpublished, (publication, participant) => {
-          if (participant.isLocal) return;
-          console.log("📤 Track unpublished:", publication.kind, publication.source, "from", participant.identity);
-          // If unpinned track is screen share, unpin it
-          if (publication.source === 'screen_share' && pinnedParticipantIdentity === `${participant.identity}-screen`) {
-            setPinnedParticipantIdentity(null);
+          try {
+            if (participant.isLocal) return;
+            console.log("📤 Track unpublished:", publication.kind, publication.source, "from", participant.identity);
+            // If unpinned track is screen share, unpin it
+            if (publication.source === 'screen_share' && pinnedParticipantIdentity === `${participant.identity}-screen`) {
+              setPinnedParticipantIdentity(null);
+            }
+            renderRemoteParticipants(r);
+          } catch (err) {
+            console.error('[TrackUnpublished] Error:', err);
           }
-          renderRemoteParticipants(r);
         });
 
         r.on(RoomEvent.TrackSubscribed, (track, pub, participant) => {
-          if (participant.isLocal) return;
-          console.log("📹 Track subscribed:", track.kind, "from", participant.identity);
-          renderRemoteParticipants(r);
+          try {
+            if (participant.isLocal) return;
+            console.log("📹 Track subscribed:", track.kind, "from", participant.identity);
+            renderRemoteParticipants(r);
+          } catch (err) {
+            console.error('[TrackSubscribed] Error:', err);
+          }
         });
 
         r.on(RoomEvent.TrackUnsubscribed, (track, pub, participant) => {
-          if (participant.isLocal) return;
-          console.log("📹 Track unsubscribed:", track.kind, "from", participant.identity);
-          renderRemoteParticipants(r);
+          try {
+            if (participant.isLocal) return;
+            console.log("📹 Track unsubscribed:", track.kind, "from", participant.identity);
+            renderRemoteParticipants(r);
+          } catch (err) {
+            console.error('[TrackUnsubscribed] Error:', err);
+          }
         });
 
         r.on(RoomEvent.TrackMuted, (publication, participant) => {
-          if (participant.isLocal) return;
-          console.log("🔇 Track muted:", publication.kind, "from", participant.identity);
-          renderRemoteParticipants(r);
+          try {
+            if (participant.isLocal) return;
+            console.log("🔇 Track muted:", publication.kind, "from", participant.identity);
+            renderRemoteParticipants(r);
+          } catch (err) {
+            console.error('[TrackMuted] Error:', err);
+          }
         });
 
         r.on(RoomEvent.TrackUnmuted, (publication, participant) => {
-          if (participant.isLocal) return;
-          console.log("🔊 Track unmuted:", publication.kind, "from", participant.identity);
-          renderRemoteParticipants(r);
+          try {
+            if (participant.isLocal) return;
+            console.log("🔊 Track unmuted:", publication.kind, "from", participant.identity);
+            renderRemoteParticipants(r);
+          } catch (err) {
+            console.error('[TrackUnmuted] Error:', err);
+          }
         });
 
         // Data received handler for hand-raise events ONLY
@@ -1067,6 +1104,12 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
       localTracksRef.current.forEach(track => track.stop());
       localTracksRef.current = [];
       audioProcessorRef.current.cleanup();
+      
+      // ✅ Cancel any pending render to avoid crashes after unmount
+      if (renderTimeoutRef.current !== null) {
+        window.cancelAnimationFrame(renderTimeoutRef.current);
+        renderTimeoutRef.current = null;
+      }
       
       // Clean up all remote audio elements
       if (currentRoom) {
