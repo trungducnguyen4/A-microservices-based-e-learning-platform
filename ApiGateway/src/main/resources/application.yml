@@ -77,12 +77,21 @@ spring:
           uri: ${ANNOUNCEMENT_SERVICE_URL:http://localhost:8090}
           predicates:
             - Path=/api/announcements/**
-        - id: classroom-service
+        # ClassroomService routes:
+        # - /api/meeting/**, /api/transcript/** (prefixed with /api)
+        # - /getToken, /health, /rooms/** (NOT prefixed with /api)
+        - id: classroom-service-direct
           uri: ${CLASSROOM_SERVICE_URL:http://localhost:4000}
           predicates:
-            - Path=/api/classrooms/**
+            - Path=/api/classrooms/getToken,/api/classrooms/health,/api/classrooms/rooms/**
           filters:
-            - StripPrefix=2
+            - RewritePath=/api/classrooms/(?<segment>.*), /$\{segment}
+        - id: classroom-service-api
+          uri: ${CLASSROOM_SERVICE_URL:http://localhost:4000}
+          predicates:
+            - Path=/api/classrooms/meeting/**,/api/classrooms/transcript/**
+          filters:
+            - RewritePath=/api/classrooms/(?<segment>.*), /api/$\{segment}
         - id: file-service
           uri: ${FILE_SERVICE_URL:http://localhost:5000}
           predicates:
@@ -162,10 +171,19 @@ spring:
           uri: ${ANNOUNCEMENT_SERVICE_URL:http://announcement-service:8090}
           predicates:
             - Path=/api/announcements/**
-        - id: classroom-service
+        # ClassroomService routes:
+        # - /api/meeting/**, /api/transcript/** (prefixed with /api)
+        # - /getToken, /health, /rooms/** (NOT prefixed with /api)
+        - id: classroom-service-direct
           uri: ${CLASSROOM_SERVICE_URL:http://classroom-service:4000}
           predicates:
-            - Path=/api/classrooms/**
+            - Path=/api/classrooms/getToken,/api/classrooms/health,/api/classrooms/rooms/**
+          filters:
+            - RewritePath=/api/classrooms/(?<segment>.*), /$\{segment}
+        - id: classroom-service-api
+          uri: ${CLASSROOM_SERVICE_URL:http://classroom-service:4000}
+          predicates:
+            - Path=/api/classrooms/meeting/**,/api/classrooms/transcript/**
           filters:
             - RewritePath=/api/classrooms/(?<segment>.*), /api/$\{segment}
         - id: file-service
