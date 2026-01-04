@@ -20,57 +20,100 @@ export function useMediaPermissions() {
   });
 
   useEffect(() => {
-    checkPermissions();
+    let cancelled = false;
 
-    // Listen for permission changes (nếu user thay đổi trong browser settings)
-    const interval = setInterval(checkPermissions, 3000); // Check every 3 seconds
-    
-    return () => clearInterval(interval);
+    const safeSetPermissions = (next: MediaPermissions) => {
+      if (cancelled) return;
+      setPermissions(prev => {
+        if (
+          prev.camera === next.camera &&
+          prev.microphone === next.microphone &&
+          prev.isChecking === next.isChecking
+        ) {
+          return prev;
+        }
+        return next;
+      });
+    };
+
+    const check = async () => {
+      const next = await checkPermissions();
+      if (next) safeSetPermissions(next);
+    };
+
+    // Initial check
+    void check();
+
+    // Re-check when user returns to tab/app (mobile browsers especially)
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') void check();
+    };
+    const onFocus = () => void check();
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('focus', onFocus);
+    };
   }, []);
 
-  const checkPermissions = async () => {
+  const checkPermissions = async (): Promise<MediaPermissions | null> => {
     try {
       // Check if Permissions API is available
       if (!navigator.permissions) {
-        console.warn('[useMediaPermissions] Permissions API not available');
-        // Fallback: Try to get media to test permissions
-        await checkPermissionsViaGetUserMedia();
-        return;
+        if (import.meta.env.DEV) {
+          console.warn('[useMediaPermissions] Permissions API not available');
+        }
+
+        // On some mobile browsers (notably iOS Safari), calling getUserMedia without
+        // a user gesture can fail and can cause repeated prompts/errors if polled.
+        // We keep state as 'prompt' here and only request via user action.
+        return {
+          camera: 'prompt',
+          microphone: 'prompt',
+          isChecking: false,
+        };
       }
 
       // Query permissions
       const cameraPermission = await navigator.permissions.query({ name: 'camera' as PermissionName });
       const micPermission = await navigator.permissions.query({ name: 'microphone' as PermissionName });
 
-      setPermissions({
-        camera: cameraPermission.state,
-        microphone: micPermission.state,
-        isChecking: false,
-      });
-
-      console.log('[useMediaPermissions] Permissions:', {
-        camera: cameraPermission.state,
-        microphone: micPermission.state,
-      });
+      if (import.meta.env.DEV) {
+        console.log('[useMediaPermissions] Permissions:', {
+          camera: cameraPermission.state,
+          microphone: micPermission.state,
+        });
+      }
 
       // Listen for permission changes
       cameraPermission.onchange = () => {
-        setPermissions(prev => ({
-          ...prev,
-          camera: cameraPermission.state,
-        }));
+        setPermissions(prev => ({ ...prev, camera: cameraPermission.state }));
       };
 
       micPermission.onchange = () => {
-        setPermissions(prev => ({
-          ...prev,
-          microphone: micPermission.state,
-        }));
+        setPermissions(prev => ({ ...prev, microphone: micPermission.state }));
+      };
+
+      return {
+        camera: cameraPermission.state,
+        microphone: micPermission.state,
+        isChecking: false,
       };
     } catch (error) {
-      console.warn('[useMediaPermissions] Error checking permissions:', error);
-      // Fallback: Try to get media to test permissions
-      await checkPermissionsViaGetUserMedia();
+      if (import.meta.env.DEV) {
+        console.warn('[useMediaPermissions] Error checking permissions:', error);
+      }
+
+      // Avoid aggressive fallback checks; user-triggered requestPermissions is safer.
+      return {
+        camera: 'unknown',
+        microphone: 'unknown',
+        isChecking: false,
+      };
     }
   };
 
@@ -118,10 +161,12 @@ export function useMediaPermissions() {
         isChecking: false,
       });
 
-      console.log('[useMediaPermissions] Permissions (fallback):', {
-        camera: cameraState,
-        microphone: micState,
-      });
+      if (import.meta.env.DEV) {
+        console.log('[useMediaPermissions] Permissions (fallback):', {
+          camera: cameraState,
+          microphone: micState,
+        });
+      }
     } catch (error) {
       console.error('[useMediaPermissions] Error in fallback check:', error);
       setPermissions({
@@ -141,12 +186,14 @@ export function useMediaPermissions() {
       stream.getTracks().forEach(track => track.stop());
       
       // Recheck permissions after request
-      await checkPermissions();
+      const next = await checkPermissions();
+      if (next) setPermissions(next);
       
       return true;
     } catch (error) {
       console.error('[useMediaPermissions] Error requesting permissions:', error);
-      await checkPermissions();
+      const next = await checkPermissions();
+      if (next) setPermissions(next);
       return false;
     }
   };
