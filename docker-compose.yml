@@ -26,6 +26,12 @@ services:
       SPRING_REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET:-your-very-secure-jwt-secret-key-here}
       SERVER_PORT: 8888
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     ports:
       - "8888:8888"
     depends_on:
@@ -71,7 +77,13 @@ services:
       JWT_SECRET: ${JWT_SECRET:-your-very-secure-jwt-secret-key-here}
       SERVER_PORT: 8081
       USER_SERVICE_URL: http://user-service:8080
-      FILE_SERVICE_URL: http://file-service:3001
+      FILE_SERVICE_URL: http://file-service:5000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 50s
     # Port not exposed - accessed via API Gateway only
     depends_on:
       - redis
@@ -95,6 +107,12 @@ services:
       JWT_SECRET: ${JWT_SECRET:-your-very-secure-jwt-secret-key-here}
       SERVER_PORT: 8082
       USER_SERVICE_URL: http://user-service:8080
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 50s
     # Port not exposed - accessed via API Gateway only
     depends_on:
       - redis
@@ -121,6 +139,41 @@ services:
       USER_SERVICE_URL: http://user-service:8080
       HOMEWORK_SERVICE_URL: http://homework-service:8081
       SCHEDULE_SERVICE_URL: http://schedule-service:8082
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      - redis
+      - user-service
+    networks:
+      - e-learning-network
+
+  # Announcement Service
+  announcement-service:
+    build:
+      context: ./AnnouncementService1
+      dockerfile: Dockerfile
+    container_name: e-learning-announcement-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://${DB_HOST}:${DB_PORT:-3306}/${DB_NAME_ANNOUNCEMENT:-announcement_db}?useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-admin}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-your-very-secure-jwt-secret-key-here}
+      SERVER_PORT: 8090
+      USER_SERVICE_URL: http://user-service:8080
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     depends_on:
       - redis
       - user-service
@@ -136,7 +189,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      PORT: 3000
+      PORT: 4000
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT:-3306}
       DB_NAME: ${DB_NAME_CLASSROOM:-e_learning}
@@ -146,6 +199,15 @@ services:
       REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET:-your-very-secure-jwt-secret-key-here}
       USER_SERVICE_URL: http://user-service:8080
+      LIVEKIT_URL: ${LIVEKIT_URL}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
     # Port not exposed - accessed via API Gateway only
     depends_on:
       - redis
@@ -161,7 +223,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      PORT: 3001
+      PORT: 5000
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT:-3306}
       DB_NAME: ${DB_NAME_FILE:-e_learning}
