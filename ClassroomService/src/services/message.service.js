@@ -51,7 +51,7 @@ class MessageService {
        WHERE r.room_code = ?
        ORDER BY m.created_at ASC
        LIMIT ?`,
-      [roomCode, limit]
+      [roomCode, parseInt(limit) || 100]
     );
 
     return rows.map(row => ({
