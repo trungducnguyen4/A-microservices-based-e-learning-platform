@@ -747,15 +747,28 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
         // Publish local tracks - with permission error handling
         let tracks: LocalTrack[] = []; // Define outside try-catch to avoid ReferenceError
         try {
+          const shouldCreateAudio = !isMuted;
+          const shouldCreateVideo = isVideoOn;
           console.log('[useClassroom] 🎬 Creating local tracks - isMuted:', isMuted, 'isVideoOn:', isVideoOn);
-          tracks = await createLocalTracks({ 
-            audio: !isMuted ? {
-              deviceId: params.selectedAudioDevice || undefined,
-            } : false, 
-            video: isVideoOn ? {
-              deviceId: params.selectedVideoDevice || undefined,
-            } : false 
-          });
+
+          // LiveKit (and browser getUserMedia) requires at least one of audio/video.
+          if (!shouldCreateAudio && !shouldCreateVideo) {
+            console.log('[useClassroom] 🎬 Mic+camera are OFF, skipping local track creation');
+            tracks = [];
+          } else {
+            tracks = await createLocalTracks({
+              audio: shouldCreateAudio
+                ? {
+                    deviceId: params.selectedAudioDevice || undefined,
+                  }
+                : false,
+              video: shouldCreateVideo
+                ? {
+                    deviceId: params.selectedVideoDevice || undefined,
+                  }
+                : false,
+            });
+          }
           
           console.log('[useClassroom] ✅ Created', tracks.length, 'tracks:', tracks.map(t => t.kind).join(', '));
           localTracksRef.current = tracks;

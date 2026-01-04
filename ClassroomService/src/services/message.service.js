@@ -44,14 +44,19 @@ class MessageService {
    * @param {number} limit - Số lượng message tối đa (default 100)
    */
   async getMessages(roomCode, limit = 100) {
+    const parsedLimit = Number.parseInt(String(limit), 10);
+    const safeLimit = Number.isFinite(parsedLimit) && parsedLimit > 0
+      ? Math.min(parsedLimit, 500)
+      : 100;
+
     const [rows] = await pool.execute(
       `SELECT m.id, m.room_id, m.sender_user_id, m.sender_name, m.message_type, m.content, m.created_at
        FROM room_messages m
        INNER JOIN rooms r ON m.room_id = r.id
        WHERE r.room_code = ?
        ORDER BY m.created_at ASC
-       LIMIT ?`,
-      [roomCode, parseInt(limit) || 100]
+       LIMIT ${safeLimit}`,
+      [roomCode]
     );
 
     return rows.map(row => ({
