@@ -146,6 +146,22 @@ public class HomeworkController {
     }
 
     /**
+     * Get all homeworks for a student (both active and inactive)
+     */
+    @GetMapping("/student/{studentId}")
+    public ApiResponse<List<HomeworkResponse>> getStudentHomework(@PathVariable String studentId) {
+        log.info("GET /api/homework/student/{} - Getting all homeworks for student", studentId);
+        
+        List<HomeworkResponse> homeworks = homeworkService.getActiveHomeworksForStudent(studentId);
+        
+        return ApiResponse.<List<HomeworkResponse>>builder()
+            .code(HttpStatus.OK.value())
+            .message("Student homeworks retrieved successfully")
+            .result(homeworks)
+            .build();
+    }
+
+    /**
      * Get active homeworks for a student
      */
     @GetMapping("/student/{studentId}/active")
