@@ -39,6 +39,16 @@ public class ScheduleService {
             randomCode = generateJoinCode();
         } while (scheduleRepository.existsByJoinCode(randomCode));
         schedule.setJoinCode(randomCode);
+        
+        // If roomCode is provided from client, use it; otherwise generate one
+        if (request.getRoomCode() != null && !request.getRoomCode().isEmpty()) {
+            schedule.setRoomCode(request.getRoomCode());
+        } else {
+            // Generate a unique room code
+            String roomCode = "ROOM-" + System.currentTimeMillis() + "-" + generateJoinCode();
+            schedule.setRoomCode(roomCode);
+        }
+        
         return scheduleRepository.save(schedule);
     }
 

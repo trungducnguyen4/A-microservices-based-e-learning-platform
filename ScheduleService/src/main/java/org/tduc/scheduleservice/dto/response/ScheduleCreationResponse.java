@@ -43,4 +43,8 @@ public class ScheduleCreationResponse {
     ZonedDateTime createdAt;
     ZonedDateTime updatedAt;
     String createdBy;
+    
+    // Room code for classroom service
+    @Column(nullable = true)
+    String roomCode;
 }

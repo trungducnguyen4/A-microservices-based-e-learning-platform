@@ -47,6 +47,13 @@ export default function CreateCourse() {
       // build final recurrenceRule
       const builtRRule = recurrenceType === 'none' ? undefined : (recurrenceType === 'custom' ? (customRule || undefined) : buildRRulePreview(recurrenceType, interval, weeklyDays));
       setRecurrenceRule(builtRRule || "");
+      
+      // Generate a unique room code for this course
+      const generateRoomCode = () => {
+        return `ROOM-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+      };
+      const roomCode = generateRoomCode();
+      
       const payload: any = {
         title,
         collaborators: collaborators
@@ -54,7 +61,8 @@ export default function CreateCourse() {
           : null,
         startTime: toIso(startDate),
         endTime: toIso(endDate),
-        recurrenceRule: builtRRule || undefined
+        recurrenceRule: builtRRule || undefined,
+        roomCode: roomCode  // Add room code to schedule
       };
 
       // Attach userId (teacher id) from local storage user or token so backend receives canonical id

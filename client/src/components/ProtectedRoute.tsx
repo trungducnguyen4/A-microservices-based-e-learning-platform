@@ -59,44 +59,45 @@ export default function ProtectedRoute({
     const requiredRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
     
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center p-3 sm:p-4 md:p-6">
         <Card className="max-w-md w-full">
-          <CardContent className="pt-6 text-center">
-            <div className="flex justify-center mb-4">
-              <div className="bg-red-100 p-3 rounded-full">
-                <ShieldAlert className="h-8 w-8 text-red-600" />
+          <CardContent className="pt-4 sm:pt-6 text-center">
+            <div className="flex justify-center mb-3 sm:mb-4">
+              <div className="bg-red-100 p-2 sm:p-3 rounded-full">
+                <ShieldAlert className="h-6 w-6 sm:h-8 sm:w-8 text-red-600" />
               </div>
             </div>
             
-            <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+            <h2 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3">Access Denied</h2>
             
-            <p className="text-muted-foreground mb-4">
+            <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4">
               You don't have permission to access this page. This area is restricted to:
             </p>
             
-            <div className="flex justify-center gap-2 mb-6">
+            <div className="flex justify-center gap-2 mb-4 sm:mb-6 flex-wrap">
               {requiredRoles.map((role) => (
-                <Badge key={role} variant="outline" className="capitalize">
+                <Badge key={role} variant="outline" className="capitalize text-xs sm:text-sm">
                   {role}
                 </Badge>
               ))}
             </div>
             
             {user && (
-              <div className="bg-muted p-3 rounded-lg mb-4">
-                <p className="text-sm text-muted-foreground">
+              <div className="bg-muted p-2 sm:p-3 rounded-lg mb-3 sm:mb-4">
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   Currently logged in as:
                 </p>
-                <p className="font-medium">{user.name}</p>
-                <Badge variant="secondary" className="capitalize mt-1">
+                <p className="font-medium text-sm sm:text-base">{user.name}</p>
+                <Badge variant="secondary" className="capitalize mt-1 text-xs sm:text-sm">
                   {user.role}
                 </Badge>
               </div>
             )}
             
-            <div className="flex gap-2 justify-center">
+            <div className="flex flex-col sm:flex-row gap-2 justify-center">
               <Button 
                 variant="outline" 
+                className="h-9 sm:h-10 text-xs sm:text-sm w-full sm:w-auto"
                 onClick={() => window.history.back()}
               >
                 Go Back
@@ -104,13 +105,14 @@ export default function ProtectedRoute({
               
               <Button 
                 variant="outline" 
+                className="h-9 sm:h-10 text-xs sm:text-sm w-full sm:w-auto"
                 onClick={logout}
               >
-                <Lock className="h-4 w-4 mr-2" />
+                <Lock className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
                 Switch Account
               </Button>
               
-              <Button onClick={() => {
+              <Button className="h-9 sm:h-10 text-xs sm:text-sm w-full sm:w-auto" onClick={() => {
                 // Navigate to appropriate dashboard based on current role
                 const path = user?.role ? `/${user.role}` : '/';
                 window.location.href = path;

@@ -29,4 +29,7 @@ public class ScheduleCreationRequest {
     // Quy tắc lặp (RRULE, iCal format)
     @Column(columnDefinition = "TEXT")
     String recurrenceRule;
+    // Room code for classroom service
+    @Column(nullable = true)
+    String roomCode;
 }
