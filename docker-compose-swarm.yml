@@ -25,7 +25,7 @@ services:
     networks:
       - e-learning-network
     deploy:
-        <<: *restart_policy
+      <<: *restart_policy
       placement:
         constraints:
           - node.role == manager
@@ -50,7 +50,7 @@ services:
     networks:
       - e-learning-network
     deploy:
-        <<: *restart_policy
+      <<: *restart_policy
       replicas: 2
       update_config:
         order: start-first
@@ -71,7 +71,7 @@ services:
     networks:
       - e-learning-network
     deploy:
-        <<: *restart_policy
+      <<: *restart_policy
       replicas: 2
 
   homework-service:
@@ -97,7 +97,7 @@ services:
     networks:
       - e-learning-network
     deploy:
-        <<: *restart_policy
+      <<: *restart_policy
       replicas: 2
 
   schedule-service:
@@ -122,7 +122,7 @@ services:
     networks:
       - e-learning-network
     deploy:
-        <<: *restart_policy
+      <<: *restart_policy
       replicas: 2
 
   admin-service:
@@ -149,7 +149,7 @@ services:
     networks:
       - e-learning-network
     deploy:
-        <<: *restart_policy
+      <<: *restart_policy
       replicas: 2
 
   announcement-service:
@@ -174,7 +174,7 @@ services:
     networks:
       - e-learning-network
     deploy:
-        <<: *restart_policy
+      <<: *restart_policy
       replicas: 2
 
   classroom-service:
@@ -207,7 +207,7 @@ services:
     networks:
       - e-learning-network
     deploy:
-        <<: *restart_policy
+      <<: *restart_policy
       replicas: 2
 
   file-service:
@@ -233,7 +233,7 @@ services:
     networks:
       - e-learning-network
     deploy:
-        <<: *restart_policy
+      <<: *restart_policy
       replicas: 2
 
   notification-service:
@@ -277,7 +277,7 @@ services:
     networks:
       - e-learning-network
     deploy:
-        <<: *restart_policy
+      <<: *restart_policy
       replicas: 2
 
   client:
@@ -292,7 +292,7 @@ services:
     networks:
       - e-learning-network
     deploy:
-        <<: *restart_policy
+      <<: *restart_policy
       replicas: 1
 
 volumes:
