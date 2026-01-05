@@ -61,7 +61,7 @@ services:
     image: trungduc14/user-service:latest
     environment:
       <<: *spring_env
-      SPRING_DATASOURCE_URL: jdbc:mysql://${DB_HOST}:${DB_PORT:-3306}/${DB_NAME_USER}?useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_URL: jdbc:mysql://${DB_HOST}:${DB_PORT:-3306}/${DB_NAME_USER}?useSSL=false&allowPublicKeyRetrieval=true&connectTimeout=30000&socketTimeout=30000
       SPRING_DATASOURCE_USERNAME: ${DB_USER:-admin}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       SERVER_PORT: 8080
@@ -71,7 +71,7 @@ services:
       - e-learning-network
     deploy:
       <<: *restart_policy
-      replicas: 2
+      replicas: 1
 
   homework-service:
     <<: *envfile
