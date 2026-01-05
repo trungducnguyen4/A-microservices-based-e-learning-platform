@@ -10,11 +10,10 @@ x-envfile: &envfile
     - .env
 
 x-common-spring: &spring_env
-  environment:
-    SPRING_PROFILES_ACTIVE: docker
-    SPRING_REDIS_HOST: redis
-    SPRING_REDIS_PORT: 6379
-    JWT_SECRET: ${JWT_SECRET:-your-very-secure-jwt-secret-key-here}
+  SPRING_PROFILES_ACTIVE: docker
+  SPRING_REDIS_HOST: redis
+  SPRING_REDIS_PORT: 6379
+  JWT_SECRET: ${JWT_SECRET:-your-very-secure-jwt-secret-key-here}
 
 services:
   redis:
