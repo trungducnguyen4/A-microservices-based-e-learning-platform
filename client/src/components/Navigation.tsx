@@ -39,7 +39,6 @@ const Navigation = () => {
     if (!isAuthenticated) {
       return [
         { path: "/", label: "Home", icon: BookOpen },
-        { path: "/login", label: "Login", icon: User },
       ];
     }
 

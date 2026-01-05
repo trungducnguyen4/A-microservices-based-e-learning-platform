@@ -141,7 +141,7 @@ const TeacherDashboard = () => {
         localStorage.removeItem("token");
         navigate("/login");
       } else {
-        setError(err.response?.data?.message || "Không thể tải danh sách khóa học");
+        setError(err.response?.data?.message || "Could not load course list");
       }
     } finally {
       setLoading(false);
@@ -288,121 +288,83 @@ const TeacherDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Teacher Dashboard</h1>
-            <p className="text-muted-foreground mt-2">Manage your courses, students, and assignments</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Teacher Dashboard</h1>
+            <p className="text-xs sm:text-sm md:text-base text-muted-foreground mt-1 sm:mt-2">Manage your courses, students, and assignments</p>
           </div>
-          <div className="flex gap-3">
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button className="bg-primary hover:bg-primary/90" onClick={() => window.location.href = "/teacher/create-assignment"}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  New Assignment
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create New Assignment</DialogTitle>
-                  <DialogDescription>Add a new assignment for your students</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="title">Assignment Title</Label>
-                    <Input id="title" placeholder="Enter assignment title" />
-                  </div>
-                  <div>
-                    <Label htmlFor="course">Course</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select course" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {courses.map(course => (
-                          <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea id="description" placeholder="Assignment description" />
-                  </div>
-                  <div>
-                    <Label htmlFor="dueDate">Due Date</Label>
-                    <Input id="dueDate" type="datetime-local" />
-                  </div>
-                  <Button className="w-full">Create Assignment</Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+            <Button className="bg-primary hover:bg-primary/90 h-9 sm:h-10 text-sm sm:text-base w-full sm:w-auto" onClick={() => window.location.href = "/teacher/create-assignment"}>
+              <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
+              New Assignment
+            </Button>
             
-            <Button variant="outline" onClick={() => window.location.href = "/teacher/create-course"}>
-              <Calendar className="w-4 h-4 mr-2" />
+            <Button variant="outline" className="h-9 sm:h-10 text-sm sm:text-base w-full sm:w-auto" onClick={() => window.location.href = "/teacher/create-course"}>
+              <Calendar className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
               Create New Course
             </Button>
           </div>
         </div>
 
         {/* Quick Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-8">
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Total Students</p>
-                  <p className="text-2xl font-bold text-foreground">{totalStudents}</p>
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Total Students</p>
+                  <p className="text-xl sm:text-2xl font-bold text-foreground">{totalStudents}</p>
                 </div>
-                <Users className="w-8 h-8 text-primary" />
+                <Users className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
               </div>
             </CardContent>
           </Card>
           
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Active Courses</p>
-                  <p className="text-2xl font-bold text-foreground">{courses.length}</p>
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Active Courses</p>
+                  <p className="text-xl sm:text-2xl font-bold text-foreground">{courses.length}</p>
                 </div>
-                <BookOpen className="w-8 h-8 text-accent" />
+                <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 text-accent" />
               </div>
             </CardContent>
           </Card>
           
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Classes Today</p>
-                  <p className="text-2xl font-bold text-foreground">{classesToday}</p>
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Classes Today</p>
+                  <p className="text-xl sm:text-2xl font-bold text-foreground">{classesToday}</p>
                 </div>
-                <Calendar className="w-8 h-8 text-success" />
+                <Calendar className="w-6 h-6 sm:w-8 sm:h-8 text-success" />
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2">
-            <Tabs defaultValue="announcements" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="announcements">Announcements</TabsTrigger>
-                <TabsTrigger value="courses">Courses</TabsTrigger>
-                <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <Tabs defaultValue="announcements" className="space-y-4 sm:space-y-6">
+              <TabsList className="grid w-full grid-cols-3 h-9 sm:h-10">
+                <TabsTrigger value="announcements" className="text-xs sm:text-sm">Announcements</TabsTrigger>
+                <TabsTrigger value="courses" className="text-xs sm:text-sm">Courses</TabsTrigger>
+                <TabsTrigger value="analytics" className="text-xs sm:text-sm">Analytics</TabsTrigger>
               </TabsList>
 
               
 
               <TabsContent value="announcements" className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold text-foreground">Announcements</h3>
-                  <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                  <h3 className="text-base sm:text-lg font-semibold text-foreground">Announcements</h3>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
                     <Select value={selectedCourse} onValueChange={setSelectedCourse}>
-                      <SelectTrigger className="w-48">
+                      <SelectTrigger className="w-full sm:w-48 h-9 sm:h-10 text-sm sm:text-base">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -414,7 +376,7 @@ const TeacherDashboard = () => {
 
                     <Dialog open={annDialogOpen} onOpenChange={setAnnDialogOpen}>
                       <DialogTrigger asChild>
-                        <Button className="bg-primary hover:bg-primary/90" onClick={() => {
+                        <Button className="bg-primary hover:bg-primary/90 h-9 sm:h-10 text-sm sm:text-base w-full sm:w-auto" onClick={() => {
                           // open create dialog (clear state)
                           setEditingAnnouncement(null);
                           setAnnTitle("");
@@ -423,7 +385,7 @@ const TeacherDashboard = () => {
                           setAttachments([]);
                           setAnnDialogOpen(true);
                         }}>
-                          <Plus className="w-4 h-4 mr-2" />
+                          <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
                           New Announcement
                         </Button>
                       </DialogTrigger>
@@ -462,7 +424,7 @@ const TeacherDashboard = () => {
                                 if (!f) return;
                                 try {
                                   const uploaded = await fileService.uploadFile(f);
-                                  const url = uploaded?.url || uploaded?.path || uploaded?.downloadUrl || uploaded?.id;
+                                  const url = uploaded?.url || uploaded?.path || uploaded?.id;
                                   if (url) setAttachments(prev => [{ url, name: uploaded.originalName || f.name, type: f.type }, ...prev]);
                                 } catch (err) {
                                   console.error('File upload failed', err);
@@ -621,10 +583,10 @@ const TeacherDashboard = () => {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
-                    placeholder="Tìm kiếm khóa học theo tên..."
+                    placeholder="Search courses by name..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 h-9 sm:h-10 text-sm sm:text-base"
                   />
                 </div>
 
@@ -632,47 +594,47 @@ const TeacherDashboard = () => {
                   <div className="flex items-center justify-center p-8">
                     <div className="text-center">
                       <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
-                      <p className="text-sm text-muted-foreground">Đang tải khóa học...</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">Loading courses...</p>
                     </div>
                   </div>
                 ) : (
                   <div className="grid gap-4">
                     {filteredCourses.length === 0 ? (
-                      <Card className="p-8 text-center">
-                        <BookOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                        <h4 className="font-semibold mb-2">Chưa có khóa học nào</h4>
-                        <p className="text-muted-foreground mb-4">Bạn chưa tạo khóa học nào. Hãy tạo khóa học đầu tiên!</p>
-                        <Button onClick={() => window.location.href = "/teacher/create-course"}>
-                          <Plus className="w-4 h-4 mr-2" />
-                          Tạo khóa học mới
+                      <Card className="p-6 sm:p-8 text-center">
+                        <BookOpen className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4 text-muted-foreground" />
+                        <h4 className="text-base sm:text-lg font-semibold mb-2">No courses yet</h4>
+                        <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4">You haven't created any courses yet. Create your first course!</p>
+                        <Button className="h-9 sm:h-10 text-sm sm:text-base" onClick={() => window.location.href = "/teacher/create-course"}>
+                          <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
+                          Create New Course
                         </Button>
                       </Card>
                     ) : (
                       filteredCourses.map((course) => (
                         <Card key={course.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleCourseClick(course.id)}>
-                          <CardContent className="p-6">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-4">
-                                <div className={`w-12 h-12 ${course.color} rounded-lg flex items-center justify-center`}>
-                                  <BookOpen className="w-6 h-6 text-white" />
+                          <CardContent className="p-4 sm:p-6">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+                              <div className="flex items-center space-x-3 sm:space-x-4 w-full sm:w-auto">
+                                <div className={`w-10 h-10 sm:w-12 sm:h-12 ${course.color} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                                  <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                                 </div>
-                                <div>
-                                  <h4 className="font-semibold text-foreground">{course.name}</h4>
-                                  <p className="text-sm text-muted-foreground">{course.students} students enrolled</p>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="text-sm sm:text-base font-semibold text-foreground truncate">{course.name}</h4>
+                                  <p className="text-xs sm:text-sm text-muted-foreground">{course.students} students enrolled</p>
                                   {course.description && (
-                                    <p className="text-xs text-muted-foreground mt-1">{course.description}</p>
+                                    <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{course.description}</p>
                                   )}
                                 </div>
                               </div>
-                              <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
-                                <Badge variant={course.status === "Active" ? "default" : "secondary"}>
+                              <div className="flex items-center space-x-2 self-end sm:self-auto" onClick={(e) => e.stopPropagation()}>
+                                <Badge variant={course.status === "Active" ? "default" : "secondary"} className="text-xs">
                                   {course.status}
                                 </Badge>
-                                <Button variant="ghost" size="sm" onClick={() => handleCourseClick(course.id)}>
-                                  <Eye className="w-4 h-4" />
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleCourseClick(course.id)}>
+                                  <Eye className="w-3 h-3 sm:w-4 sm:h-4" />
                                 </Button>
-                                <Button variant="ghost" size="sm">
-                                  <Edit className="w-4 h-4" />
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                  <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
                                 </Button>
                               </div>
                             </div>

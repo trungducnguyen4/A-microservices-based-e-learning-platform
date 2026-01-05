@@ -45,7 +45,7 @@ const queryClient = new QueryClient();
 // Component to conditionally render Navigation
 const AppContent = () => {
   const location = useLocation();
-  const hideNavbar = ['/classroom', '/prejoin'].includes(location.pathname);
+  const hideNavbar = ['/classroom', '/prejoin', '/login', '/register', '/auth', '/admin/login', '/choose-role'].includes(location.pathname);
   
   return (
     <div className="min-h-screen bg-background">

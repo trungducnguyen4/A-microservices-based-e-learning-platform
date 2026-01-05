@@ -62,9 +62,9 @@ const Login = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-3 sm:p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-4 sm:mb-8">
-          <div className="flex justify-center mb-3 sm:mb-4">
+          <Link to="/" className="inline-flex justify-center mb-3 sm:mb-4 hover:opacity-80 transition-opacity">
             <img src={APP_LOGO_URL} alt={APP_NAME} className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg object-cover" />
-          </div>
+          </Link>
           <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
             {APP_NAME}
           </h1>

@@ -39,7 +39,7 @@ export default function CreateCourse() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!title.trim()) return setError("Tiêu đề khóa học là bắt buộc");
+    if (!title.trim()) return setError("Course title is required");
     setLoading(true);
     try {
       // Convert datetime-local (which is local time) to ISO string
@@ -86,77 +86,77 @@ export default function CreateCourse() {
       }
     } catch (err: any) {
       console.error(err);
-      setError(err?.response?.data?.message || err.message || 'Lỗi khi tạo khóa học');
+      setError(err?.response?.data?.message || err.message || 'Error creating course');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-3xl">
+    <div className="container mx-auto p-3 sm:p-4 md:p-6 max-w-3xl">
       <Card>
-        <CardHeader>
-          <CardTitle>Tạo Khóa Học Mới</CardTitle>
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="text-lg sm:text-xl md:text-2xl">Create New Course</CardTitle>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <CardContent className="p-4 sm:p-6">
+          <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
             {error && (
-              <div className="text-destructive text-sm">{error}</div>
+              <div className="text-destructive text-xs sm:text-sm p-2 bg-destructive/10 rounded">{error}</div>
             )}
 
             <div>
-              <Label>Tiêu đề</Label>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="React và TypeScript Cơ Bản" />
+              <Label className="text-sm sm:text-base">Title</Label>
+              <Input className="h-9 sm:h-10 text-sm sm:text-base mt-1.5" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="React and TypeScript Basics" />
             </div>
 
             <div>
-              <Label>Collaborators (comma separated)</Label>
-              <Input value={collaborators} onChange={(e) => setCollaborators(e.target.value)} placeholder="user1,user2@example.com" />
+              <Label className="text-sm sm:text-base">Collaborators (comma separated)</Label>
+              <Input className="h-9 sm:h-10 text-sm sm:text-base mt-1.5" value={collaborators} onChange={(e) => setCollaborators(e.target.value)} placeholder="user1,user2@example.com" />
             </div>
 
             <div>
-              <Label>Recurrence (Lặp)</Label>
-              <div className="flex gap-2 mt-2">
-                <select value={recurrenceType} onChange={(e) => setRecurrenceType(e.target.value as any)} className="border rounded px-2 py-1">
-                  <option value="none">Không lặp</option>
-                  <option value="daily">Hằng ngày</option>
-                  <option value="weekly">Hằng tuần</option>
-                  <option value="monthly">Hằng tháng</option>
-                  <option value="custom">Tùy chỉnh (RRULE)</option>
+              <Label className="text-sm sm:text-base">Recurrence</Label>
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-2">
+                <select value={recurrenceType} onChange={(e) => setRecurrenceType(e.target.value as any)} className="border rounded px-2 sm:px-3 py-1.5 sm:py-2 text-sm sm:text-base h-9 sm:h-10">
+                  <option value="none">No repeat</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="custom">Custom (RRULE)</option>
                 </select>
                 {recurrenceType !== 'custom' && (
                   <div className="flex items-center gap-2">
-                    <Label className="text-sm">Mỗi</Label>
-                    <Input type="number" value={interval} onChange={(e) => setInterval(Number(e.target.value || 1))} className="w-20" />
-                    <span className="text-sm">{recurrenceType === 'daily' ? 'ngày' : recurrenceType === 'weekly' ? 'tuần' : 'tháng'}</span>
+                    <Label className="text-xs sm:text-sm">Every</Label>
+                    <Input type="number" value={interval} onChange={(e) => setInterval(Number(e.target.value || 1))} className="w-16 sm:w-20 h-9 sm:h-10 text-sm sm:text-base" />
+                    <span className="text-xs sm:text-sm">{recurrenceType === 'daily' ? 'day(s)' : recurrenceType === 'weekly' ? 'week(s)' : 'month(s)'}</span>
                   </div>
                 )}
               </div>
 
               {recurrenceType === 'weekly' && (
-                <div className="mt-3 grid grid-cols-7 gap-2">
+                <div className="mt-3 grid grid-cols-7 gap-1 sm:gap-2">
                   {[
-                    ['MO','T2'], ['TU','T3'], ['WE','T4'], ['TH','T5'], ['FR','T6'], ['SA','T7'], ['SU','CN']
+                    ['MO','Mon'], ['TU','Tue'], ['WE','Wed'], ['TH','Thu'], ['FR','Fri'], ['SA','Sat'], ['SU','Sun']
                   ].map(([code,label]) => (
-                    <label key={code} className={`flex flex-col items-center text-sm border rounded p-2 ${weeklyDays[code as string] ? 'bg-primary/10' : ''}`}>
+                    <label key={code} className={`flex flex-col items-center text-xs sm:text-sm border rounded p-1 sm:p-2 cursor-pointer transition-colors ${weeklyDays[code as string] ? 'bg-primary/10 border-primary' : ''}`}>
                       <input type="checkbox" checked={weeklyDays[code as string]} onChange={(e) => {
                         setWeeklyDays(prev => ({ ...prev, [code as string]: e.target.checked }));
-                      }} />
-                      <span className="mt-1">{label}</span>
+                      }} className="mb-1" />
+                      <span className="mt-0.5 sm:mt-1">{label}</span>
                     </label>
                   ))}
                 </div>
-              )}
+              )}  
 
               {recurrenceType === 'custom' && (
                 <div className="mt-3">
-                  <Textarea value={customRule} onChange={(e) => setCustomRule(e.target.value)} placeholder="VD: FREQ=WEEKLY;BYDAY=MO,WE,FR;INTERVAL=1" />
+                  <Textarea className="text-xs sm:text-sm" value={customRule} onChange={(e) => setCustomRule(e.target.value)} placeholder="e.g: FREQ=WEEKLY;BYDAY=MO,WE,FR;INTERVAL=1" />
                 </div>
               )}
 
-              <div className="mt-3 text-sm text-muted-foreground">
-                <div>Preview RRULE:</div>
-                <div className="mt-1 font-mono text-xs bg-muted/20 p-2 rounded">
+              <div className="mt-3 text-xs sm:text-sm text-muted-foreground">
+                <div className="font-medium">Preview RRULE:</div>
+                <div className="mt-1.5 font-mono text-xs bg-muted/20 p-2 sm:p-3 rounded break-all">
                   {recurrenceType === 'none' ? '' : recurrenceType === 'custom' ? (customRule || '') : buildRRulePreview(recurrenceType, interval, weeklyDays)}
                 </div>
               </div>
@@ -164,22 +164,22 @@ export default function CreateCourse() {
               <input type="hidden" value={recurrenceRule} />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label>Ngày bắt đầu</Label>
-                <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                <Label className="text-sm sm:text-base">Start Date</Label>
+                <Input className="h-9 sm:h-10 text-sm sm:text-base mt-1.5" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
               </div>
               <div>
-                <Label>Ngày kết thúc</Label>
-                <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                <Label className="text-sm sm:text-base">End Date</Label>
+                <Input className="h-9 sm:h-10 text-sm sm:text-base mt-1.5" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
               </div>
             </div>
 
             {/* No maxStudents/class code in current backend contract; keep form minimal */}
 
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="ghost" onClick={() => navigate('/teacher')}>Hủy</Button>
-              <Button type="submit" disabled={loading}>{loading ? 'Đang tạo...' : 'Tạo Khóa Học'}</Button>
+            <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-2">
+              <Button className="h-9 sm:h-10 text-sm sm:text-base" type="button" variant="ghost" onClick={() => navigate('/teacher')}>Cancel</Button>
+              <Button className="h-9 sm:h-10 text-sm sm:text-base" type="submit" disabled={loading}>{loading ? 'Creating...' : 'Create Course'}</Button>
             </div>
           </form>
         </CardContent>

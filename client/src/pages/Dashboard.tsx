@@ -53,17 +53,6 @@ const Dashboard = () => {
               A comprehensive e-learning platform for students, teachers, and administrators. 
               Manage courses, assignments, and track progress all in one place.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild size="lg" className="text-lg px-8 py-6">
-                <Link to="/login">
-                  Get Started
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Link>
-              </Button>
-              <Button asChild variant="outline" size="lg" className="text-lg px-8 py-6">
-                <Link to="/register">Sign Up</Link>
-              </Button>
-            </div>
           </div>
 
           {/* Features Grid */}

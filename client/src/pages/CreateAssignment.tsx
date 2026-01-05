@@ -266,28 +266,29 @@ export default function CreateAssignment() {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/teacher")}>
-          <ArrowLeft className="h-4 w-4" />
+    <div className="container mx-auto p-3 sm:p-4 md:p-6 max-w-4xl">
+      <div className="flex items-center gap-2 sm:gap-4 mb-4 sm:mb-6">
+        <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={() => navigate("/teacher")}>
+          <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4" />
         </Button>
-        <h1 className="text-3xl font-bold text-primary">Create New Assignment</h1>
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-primary">Create New Assignment</h1>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Basic Information */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
               Basic Information
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <CardContent className="p-4 sm:p-6 space-y-3 sm:space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label htmlFor="title">Assignment Title *</Label>
+                <Label htmlFor="title" className="text-sm sm:text-base">Assignment Title *</Label>
                 <Input
+                  className="h-9 sm:h-10 text-sm sm:text-base mt-1.5"
                   id="title"
                   value={formData.title}
                   onChange={(e) => setFormData({...formData, title: e.target.value})}
@@ -297,9 +298,9 @@ export default function CreateAssignment() {
               </div>
               
               <div>
-                <Label htmlFor="course">Course *</Label>
+                <Label htmlFor="course" className="text-sm sm:text-base">Course *</Label>
                 <Select value={formData.courseId} onValueChange={(value) => setFormData({...formData, courseId: value})}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9 sm:h-10 text-sm sm:text-base mt-1.5">
                     <SelectValue placeholder="Select course" />
                   </SelectTrigger>
                   <SelectContent>
@@ -313,11 +314,11 @@ export default function CreateAssignment() {
               </div>
             </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mt-2">
                 <div>
-                  <Label htmlFor="assignmentType">Type</Label>
+                  <Label htmlFor="assignmentType" className="text-sm sm:text-base">Type</Label>
                   <Select value={formData.assignmentType} onValueChange={(value: any) => setFormData({...formData, assignmentType: value})}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-9 sm:h-10 text-sm sm:text-base mt-1.5">
                       <SelectValue />
                     </SelectTrigger>
                       <SelectContent>
@@ -329,14 +330,14 @@ export default function CreateAssignment() {
                 </div>
 
                 <div>
-                  <Label htmlFor="topic">Topic</Label>
-                  <Input id="topic" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Optional topic" />
+                  <Label htmlFor="topic" className="text-sm sm:text-base">Topic</Label>
+                  <Input className="h-9 sm:h-10 text-sm sm:text-base mt-1.5" id="topic" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Optional topic" />
                 </div>
 
                 <div>
-                  <Label htmlFor="assignTo">Assign To</Label>
+                  <Label htmlFor="assignTo" className="text-sm sm:text-base">Assign To</Label>
                   <Select value={assignTo} onValueChange={(v: any) => setAssignTo(v)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-9 sm:h-10 text-sm sm:text-base mt-1.5">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -349,14 +350,15 @@ export default function CreateAssignment() {
 
               {assignTo === 'SPECIFIC' && (
                 <div className="mt-2">
-                  <Label htmlFor="specificStudentIds">Student IDs (comma-separated)</Label>
-                  <Input id="specificStudentIds" value={specificStudentIds} onChange={(e) => setSpecificStudentIds(e.target.value)} placeholder="e.g. id1,id2" />
+                  <Label htmlFor="specificStudentIds" className="text-sm sm:text-base">Student IDs (comma-separated)</Label>
+                  <Input className="h-9 sm:h-10 text-sm sm:text-base mt-1.5" id="specificStudentIds" value={specificStudentIds} onChange={(e) => setSpecificStudentIds(e.target.value)} placeholder="e.g. id1,id2" />
                 </div>
               )}
 
             <div>
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description" className="text-sm sm:text-base">Description</Label>
               <Textarea
+                className="text-sm sm:text-base mt-1.5"
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({...formData, description: e.target.value})}
@@ -366,8 +368,9 @@ export default function CreateAssignment() {
             </div>
 
             <div>
-              <Label htmlFor="instructions">Detailed Instructions</Label>
+              <Label htmlFor="instructions" className="text-sm sm:text-base">Detailed Instructions</Label>
               <Textarea
+                className="text-sm sm:text-base mt-1.5"
                 id="instructions"
                 value={formData.instructions}
                 onChange={(e) => setFormData({...formData, instructions: e.target.value})}
@@ -380,17 +383,18 @@ export default function CreateAssignment() {
 
         {/* Settings */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings className="h-5 w-5" />
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
               Assignment Settings
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <CardContent className="p-4 sm:p-6 space-y-3 sm:space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
               <div>
-                <Label htmlFor="maxScore">Max Score *</Label>
+                <Label htmlFor="maxScore" className="text-sm sm:text-base">Max Score *</Label>
                 <Input
+                  className="h-9 sm:h-10 text-sm sm:text-base mt-1.5"
                   id="maxScore"
                   type="number"
                   value={formData.maxScore}
@@ -401,8 +405,9 @@ export default function CreateAssignment() {
               </div>
 
               <div>
-                <Label htmlFor="estimatedDuration">Estimated Duration (minutes)</Label>
+                <Label htmlFor="estimatedDuration" className="text-sm sm:text-base">Estimated Duration (minutes)</Label>
                 <Input
+                  className="h-9 sm:h-10 text-sm sm:text-base mt-1.5"
                   id="estimatedDuration"
                   type="number"
                   value={formData.estimatedDurationMinutes}
@@ -412,11 +417,11 @@ export default function CreateAssignment() {
               </div>
 
               <div>
-                <Label>Due Date *</Label>
+                <Label className="text-sm sm:text-base">Due Date *</Label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start text-left font-normal">
-                      <CalendarIcon className="mr-2 h-4 w-4" />
+                    <Button variant="outline" className="w-full justify-start text-left font-normal h-9 sm:h-10 text-sm sm:text-base mt-1.5">
+                      <CalendarIcon className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                       {dueDate ? format(dueDate, "PPP") : "Select date"}
                     </Button>
                   </PopoverTrigger>
@@ -432,11 +437,11 @@ export default function CreateAssignment() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label htmlFor="submissionType">Submission Type</Label>
+                <Label htmlFor="submissionType" className="text-sm sm:text-base">Submission Type</Label>
                 <Select value={formData.submissionType} onValueChange={(value: "TEXT" | "FILE" | "BOTH") => setFormData({...formData, submissionType: value})}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9 sm:h-10 text-sm sm:text-base mt-1.5">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -448,8 +453,9 @@ export default function CreateAssignment() {
               </div>
 
               <div>
-                <Label htmlFor="maxAttempts">Max Attempts</Label>
+                <Label htmlFor="maxAttempts" className="text-sm sm:text-base">Max Attempts</Label>
                 <Input
+                  className="h-9 sm:h-10 text-sm sm:text-base mt-1.5"
                   id="maxAttempts"
                   type="number"
                   value={formData.maxAttempts}
@@ -459,11 +465,11 @@ export default function CreateAssignment() {
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="allowLate">Allow Late Submissions</Label>
-                  <p className="text-sm text-muted-foreground">Students can submit after due date</p>
+            <div className="space-y-3 sm:space-y-4">
+              <div className="flex items-start sm:items-center justify-between gap-3 sm:gap-4 p-3 sm:p-0">
+                <div className="flex-1">
+                  <Label htmlFor="allowLate" className="text-sm sm:text-base">Allow Late Submissions</Label>
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Students can submit after due date</p>
                 </div>
                 <Switch
                   id="allowLate"
@@ -472,10 +478,10 @@ export default function CreateAssignment() {
                 />
               </div>
 
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="allowResubmission">Allow Resubmission</Label>
-                  <p className="text-sm text-muted-foreground">Students can resubmit their work</p>
+              <div className="flex items-start sm:items-center justify-between gap-3 sm:gap-4 p-3 sm:p-0">
+                <div className="flex-1">
+                  <Label htmlFor="allowResubmission" className="text-sm sm:text-base">Allow Resubmission</Label>
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Students can resubmit their work</p>
                 </div>
                 <Switch
                   id="allowResubmission"
@@ -490,58 +496,58 @@ export default function CreateAssignment() {
         {/* Question builder (visible when Type = Question) */}
         {formData.assignmentType === 'Question' && (
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
                 Question Bank / Multiple Choice
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
+            <CardContent className="p-4 sm:p-6">
+              <div className="space-y-3 sm:space-y-4">
                 {questions.map((q, qi) => (
-                  <div key={q.id} className="border rounded p-3">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <Label>Question {qi + 1}</Label>
-                        <Input value={q.text} onChange={(e) => updateQuestion(q.id, 'text', e.target.value)} placeholder="Enter question text" />
+                  <div key={q.id} className="border rounded p-2 sm:p-3">
+                    <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
+                      <div className="flex-1 w-full">
+                        <Label className="text-sm sm:text-base">Question {qi + 1}</Label>
+                        <Input className="h-9 sm:h-10 text-sm sm:text-base mt-1.5" value={q.text} onChange={(e) => updateQuestion(q.id, 'text', e.target.value)} placeholder="Enter question text" />
                       </div>
-                      <div className="ml-4 flex flex-col items-end">
-                        <Button variant="ghost" size="icon" onClick={() => removeQuestion(q.id)}>
-                          <X className="h-4 w-4" />
+                      <div className="sm:ml-4 flex flex-row sm:flex-col items-end">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => removeQuestion(q.id)}>
+                          <X className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>
                       </div>
                     </div>
 
-                    <div className="mt-3">
-                      <Label>Options</Label>
-                      <div className="space-y-2 mt-2">
+                    <div className="mt-2 sm:mt-3">
+                      <Label className="text-sm sm:text-base">Options</Label>
+                      <div className="space-y-2 mt-1.5 sm:mt-2">
                         {q.options.map((opt: string, idx: number) => (
-                          <div key={idx} className="flex items-center gap-2">
-                            <input type="radio" name={`correct-${q.id}`} checked={q.correctIndex === idx} onChange={() => updateQuestion(q.id, 'correctIndex', idx)} />
-                            <Input value={opt} onChange={(e) => updateQuestionOption(q.id, idx, e.target.value)} placeholder={`Option ${idx + 1}`} />
-                            <Button variant="ghost" size="icon" onClick={() => removeOptionFromQuestion(q.id, idx)}>
-                              <X className="h-4 w-4" />
+                          <div key={idx} className="flex items-center gap-1.5 sm:gap-2">
+                            <input type="radio" name={`correct-${q.id}`} checked={q.correctIndex === idx} onChange={() => updateQuestion(q.id, 'correctIndex', idx)} className="flex-shrink-0" />
+                            <Input className="h-9 sm:h-10 text-sm sm:text-base" value={opt} onChange={(e) => updateQuestionOption(q.id, idx, e.target.value)} placeholder={`Option ${idx + 1}`} />
+                            <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0" onClick={() => removeOptionFromQuestion(q.id, idx)}>
+                              <X className="h-3 w-3 sm:h-4 sm:w-4" />
                             </Button>
                           </div>
                         ))}
 
                         <div className="mt-2">
-                          <Button variant="outline" onClick={() => addOptionToQuestion(q.id)}>Add Option</Button>
+                          <Button variant="outline" size="sm" className="text-xs sm:text-sm h-8 sm:h-9" onClick={() => addOptionToQuestion(q.id)}>Add Option</Button>
                         </div>
                       </div>
                     </div>
 
-                    <div className="mt-3 grid grid-cols-2 gap-2">
+                    <div className="mt-2 sm:mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div>
-                        <Label>Points</Label>
-                        <Input type="number" value={q.points} onChange={(e) => updateQuestion(q.id, 'points', parseInt(e.target.value || '0'))} />
+                        <Label className="text-sm sm:text-base">Points</Label>
+                        <Input className="h-9 sm:h-10 text-sm sm:text-base mt-1.5" type="number" value={q.points} onChange={(e) => updateQuestion(q.id, 'points', parseInt(e.target.value || '0'))} />
                       </div>
                     </div>
                   </div>
                 ))}
 
                 <div>
-                  <Button onClick={addQuestion}>Add Question</Button>
+                  <Button className="text-sm sm:text-base h-9 sm:h-10" onClick={addQuestion}>Add Question</Button>
                 </div>
               </div>
             </CardContent>
@@ -551,17 +557,18 @@ export default function CreateAssignment() {
         {/* File Configuration */}
         {(formData.submissionType === 'FILE' || formData.submissionType === 'BOTH') && (
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Upload className="h-5 w-5" />
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <Upload className="h-4 w-4 sm:h-5 sm:w-5" />
                 File Upload Settings
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <CardContent className="p-4 sm:p-6 space-y-3 sm:space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <Label htmlFor="maxFileSize">Max File Size (MB)</Label>
+                  <Label htmlFor="maxFileSize" className="text-sm sm:text-base">Max File Size (MB)</Label>
                   <Input
+                    className="h-9 sm:h-10 text-sm sm:text-base mt-1.5"
                     id="maxFileSize"
                     type="number"
                     value={formData.maxFileSizeMB}
@@ -572,8 +579,8 @@ export default function CreateAssignment() {
               </div>
 
               <div>
-                <Label>Allowed File Types</Label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
+                <Label className="text-sm sm:text-base">Allowed File Types</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mt-2">
                   {fileTypes.map((type) => (
                     <div key={type.value} className="flex items-center space-x-2">
                       <input
@@ -581,8 +588,9 @@ export default function CreateAssignment() {
                         id={type.value}
                         checked={formData.allowedFileTypes.includes(type.value)}
                         onChange={() => toggleFileType(type.value)}
+                        className="flex-shrink-0"
                       />
-                      <Label htmlFor={type.value} className="text-sm">{type.label}</Label>
+                      <Label htmlFor={type.value} className="text-xs sm:text-sm cursor-pointer">{type.label}</Label>
                     </div>
                   ))}
                 </div>
@@ -595,19 +603,21 @@ export default function CreateAssignment() {
 
         {/* Teacher File Attachments */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Upload className="h-5 w-5" />
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Upload className="h-4 w-4 sm:h-5 sm:w-5" />
               Assignment Materials
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
-              <Upload className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground mb-2">Drop files here or</p>
+          <CardContent className="p-4 sm:p-6">
+            <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4 sm:p-6 text-center">
+              <Upload className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-3 sm:mb-4 text-muted-foreground" />
+              <p className="text-xs sm:text-sm text-muted-foreground mb-2">Drop files here or</p>
               <Button 
                 type="button" 
                 variant="outline"
+                size="sm"
+                className="text-xs sm:text-sm h-8 sm:h-9"
                 onClick={() => document.getElementById('file-upload')?.click()}
                 disabled={isLoading}
               >
@@ -623,13 +633,13 @@ export default function CreateAssignment() {
             </div>
             
             {attachments.length > 0 && (
-              <div className="mt-4 space-y-2">
+              <div className="mt-3 sm:mt-4 space-y-2">
                 {attachments.map((file) => (
                   <div key={file.id} className="flex items-center justify-between p-2 border rounded">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4" />
-                      <span className="text-sm">{file.originalName}</span>
-                      <span className="text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <FileText className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                      <span className="text-xs sm:text-sm truncate">{file.originalName}</span>
+                      <span className="text-xs text-muted-foreground flex-shrink-0">
                         ({(file.size / 1024 / 1024).toFixed(2)} MB)
                       </span>
                     </div>
@@ -637,9 +647,10 @@ export default function CreateAssignment() {
                       type="button"
                       variant="ghost"
                       size="icon"
+                      className="h-8 w-8 flex-shrink-0"
                       onClick={() => removeAttachment(file.id)}
                     >
-                      <X className="h-4 w-4" />
+                      <X className="h-3 w-3 sm:h-4 sm:w-4" />
                     </Button>
                   </div>
                 ))}
@@ -649,12 +660,13 @@ export default function CreateAssignment() {
         </Card>
 
         {/* Action Buttons */}
-        <div className="flex gap-4 justify-end">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 justify-end">
           <Button 
             type="button" 
             variant="outline" 
             onClick={() => navigate("/teacher")}
             disabled={isLoading}
+            className="h-9 sm:h-10 text-sm sm:text-base"
           >
             Cancel
           </Button>
@@ -663,18 +675,18 @@ export default function CreateAssignment() {
             variant="secondary"
             onClick={() => handleSubmit(true)}
             disabled={isLoading}
-            className="flex items-center gap-2"
+            className="flex items-center justify-center gap-2 h-9 sm:h-10 text-sm sm:text-base"
           >
-            <Save className="h-4 w-4" />
+            <Save className="h-3 w-3 sm:h-4 sm:w-4" />
             Save as Draft
           </Button>
           <Button 
             type="button" 
             onClick={() => handleSubmit(false)}
             disabled={isLoading}
-            className="min-w-32 flex items-center gap-2"
+            className="min-w-[140px] sm:min-w-32 flex items-center justify-center gap-2 h-9 sm:h-10 text-sm sm:text-base"
           >
-            <Send className="h-4 w-4" />
+            <Send className="h-3 w-3 sm:h-4 sm:w-4" />
             {isLoading ? 'Publishing...' : 'Publish Assignment'}
           </Button>
         </div>
