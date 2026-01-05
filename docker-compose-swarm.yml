@@ -302,4 +302,5 @@ volumes:
 
 networks:
   e-learning-network:
-    driver: bridge
+    driver: overlay
+    attachable: true
