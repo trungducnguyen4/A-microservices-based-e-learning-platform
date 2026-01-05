@@ -40,7 +40,7 @@ public class Schedule {
     // Quy tắc lặp (RRULE, iCal format)
     @Column(columnDefinition = "TEXT")
     String recurrenceRule;
-    // Room code for classroom service - created when schedule is created
+    // Room code for classroom service - created when schedule is created, should be unique but nullable
     @Column(nullable = true, unique = true)
     String roomCode;
 }

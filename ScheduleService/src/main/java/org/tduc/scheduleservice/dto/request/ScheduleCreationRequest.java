@@ -3,6 +3,7 @@ package org.tduc.scheduleservice.dto.request;
 import jakarta.persistence.Column;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.tduc.scheduleservice.model.ScheduleStatus;
@@ -17,19 +18,18 @@ import java.util.List;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ScheduleCreationRequest {
-    @Column(nullable = false)
+    @NotNull(message = "userId cannot be null")
     String userId;
     List<String> collaborators;
-    @Column(nullable = false)
+    @NotNull(message = "title cannot be null")
     String title;
-    @Column(nullable = false)
+    @NotNull(message = "startTime cannot be null")
     ZonedDateTime startTime;
-    @Column(nullable = false)
+    @NotNull(message = "endTime cannot be null")
     ZonedDateTime endTime;
     // Quy tắc lặp (RRULE, iCal format)
     @Column(columnDefinition = "TEXT")
     String recurrenceRule;
-    // Room code for classroom service
-    @Column(nullable = true)
+    // Room code for classroom service - optional
     String roomCode;
 }
