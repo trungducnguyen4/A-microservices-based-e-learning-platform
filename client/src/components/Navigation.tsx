@@ -95,21 +95,21 @@ const Navigation = () => {
 
   return (
     <nav className="bg-background border-b shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-14 sm:h-16">
           {/* Logo and brand */}
-          <div className="flex items-center">
-            <Link to="/" className="flex items-center space-x-2">
+          <div className="flex items-center flex-shrink-0">
+            <Link to="/" className="flex items-center space-x-1.5 sm:space-x-2">
               <img
                 src={APP_LOGO_URL}
                 alt={APP_NAME}
-                className="w-8 h-8 rounded-lg object-cover"
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg object-cover flex-shrink-0"
                 onError={(e) => {
                   // Fallback to icon if image missing
                   (e.currentTarget as HTMLImageElement).style.display = 'none';
                 }}
               />
-              <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              <span className="text-base sm:text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent whitespace-nowrap">
                 {APP_NAME}
               </span>
             </Link>
@@ -162,12 +162,12 @@ const Navigation = () => {
           </div>
 
           {/* User menu */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-1.5 sm:space-x-4 flex-shrink-0">
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <Avatar className="h-8 w-8">
+                  <Button variant="ghost" className="relative h-7 w-7 sm:h-8 sm:w-8 rounded-full p-0">
+                    <Avatar className="h-7 w-7 sm:h-8 sm:w-8">
                       <AvatarImage src={user?.avatar} alt={user?.name || "User"} />
                       <AvatarFallback>
                         {user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
@@ -211,11 +211,11 @@ const Navigation = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <div className="flex items-center space-x-2">
-                <Button variant="ghost" asChild>
+              <div className="hidden sm:flex items-center space-x-2">
+                <Button variant="ghost" size="sm" asChild>
                   <Link to="/login">Login</Link>
                 </Button>
-                <Button asChild>
+                <Button size="sm" asChild>
                   <Link to="/register">Sign Up</Link>
                 </Button>
               </div>
@@ -226,9 +226,10 @@ const Navigation = () => {
               <Button
                 variant="ghost"
                 size="sm"
+                className="h-8 w-8 p-0"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               >
-                {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                {isMobileMenuOpen ? <X className="w-4 h-4 sm:w-5 sm:h-5" /> : <Menu className="w-4 h-4 sm:w-5 sm:h-5" />}
               </Button>
             </div>
           </div>
@@ -236,8 +237,31 @@ const Navigation = () => {
 
         {/* Mobile navigation */}
         {isMobileMenuOpen && (
-          <div className="md:hidden">
-            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+          <div className="md:hidden border-t">
+            <div className="px-2 pt-2 pb-3 space-y-1">
+              {/* Login/SignUp for non-authenticated users on mobile */}
+              {!isAuthenticated && (
+                <>
+                  <Link
+                    to="/login"
+                    className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <User className="w-5 h-5" />
+                    <span>Login</span>
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium bg-primary text-primary-foreground transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <User className="w-5 h-5" />
+                    <span>Sign Up</span>
+                  </Link>
+                  <div className="border-t border-border my-2"></div>
+                </>
+              )}
+              
               {navItems.map((item) => {
                 const Icon = item.icon;
                 return (

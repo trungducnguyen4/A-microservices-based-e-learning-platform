@@ -13,17 +13,17 @@ const Auth = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Xử lý đăng nhập/đăng ký ở đây
+    // Handle login/register here
   };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
       <div className="bg-card p-8 rounded-lg shadow-lg w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-6 text-center">Đăng nhập / Đăng ký</h2>
+        <h2 className="text-2xl font-bold mb-6 text-center">Sign In / Sign Up</h2>
         <form onSubmit={handleSubmit} className="mb-4">
           <input
             type="text"
-            placeholder="Tên đăng nhập"
+            placeholder="Username"
             value={username}
             onChange={e => setUsername(e.target.value)}
             className="w-full mb-3 px-3 py-2 border rounded"
@@ -32,7 +32,7 @@ const Auth = () => {
           <div className="relative mb-3">
             <input
               type={showPassword ? "text" : "password"}
-              placeholder="Mật khẩu"
+              placeholder="Password"
               value={password}
               onChange={e => setPassword(e.target.value)}
               className="w-full px-3 py-2 border rounded"
@@ -43,14 +43,14 @@ const Auth = () => {
               className="absolute right-2 top-2 text-sm"
               onClick={() => setShowPassword(!showPassword)}
             >
-              {showPassword ? "Ẩn" : "Hiện"}
+              {showPassword ? "Hide" : "Show"}
             </button>
           </div>
           <div className="flex justify-between items-center mb-4">
-            <a href="#" className="text-sm text-blue-500 hover:underline">Quên mật khẩu?</a>
+            <a href="#" className="text-sm text-blue-500 hover:underline">Forgot password?</a>
           </div>
           <Button className="w-full mb-2" type="submit">
-            Đăng nhập
+            Sign In
           </Button>
         </form>
         <Button

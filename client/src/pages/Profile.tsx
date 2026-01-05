@@ -82,7 +82,7 @@ const Profile = () => {
         localStorage.removeItem("token");
         navigate("/login");
       } else {
-        setError(err.response?.data?.message || "Không thể tải thông tin người dùng");
+        setError(err.response?.data?.message || "Unable to load user information");
       }
     } finally {
       setLoading(false);
@@ -133,7 +133,7 @@ const Profile = () => {
         localStorage.removeItem("token");
         navigate("/login");
       } else {
-        setError(err.response?.data?.message || "Không thể lưu thông tin");
+        setError(err.response?.data?.message || "Unable to save information");
       }
     } finally {
       setSaving(false);
@@ -157,21 +157,21 @@ const Profile = () => {
   const handleChangePassword = async () => {
     setChangeError(null);
     if (!oldPassword || !newPassword) {
-      setChangeError('Vui lòng điền đủ thông tin');
+      setChangeError('Please fill in all fields');
       return;
     }
     if (newPassword !== confirmPassword) {
-      setChangeError('Mật khẩu mới và xác nhận không khớp');
+      setChangeError('New password and confirmation do not match');
       return;
     }
     if (newPassword.length < 6) {
-      setChangeError('Mật khẩu mới phải có ít nhất 6 ký tự');
+      setChangeError('New password must be at least 6 characters');
       return;
     }
     try {
       setChanging(true);
       await api.post('/users/change-password', { oldPassword, newPassword });
-      alert('Đổi mật khẩu thành công');
+      alert('Password changed successfully');
       setChangeOpen(false);
       // Reset sau khi đóng dialog
       setTimeout(() => {
@@ -182,7 +182,7 @@ const Profile = () => {
       }, 0);
     } catch (err: any) {
       console.error('Change password failed', err);
-      setChangeError(err?.response?.data?.message || 'Không thể đổi mật khẩu');
+      setChangeError(err?.response?.data?.message || 'Unable to change password');
     } finally {
       setChanging(false);
     }
@@ -197,8 +197,8 @@ const Profile = () => {
             <CardContent className="pt-6">
               <div className="text-center">
                 <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
-                <h3 className="text-lg font-semibold mb-2">Đang tải thông tin...</h3>
-                <p className="text-sm text-muted-foreground">Vui lòng đợi</p>
+                <h3 className="text-lg font-semibold mb-2">Loading information...</h3>
+                <p className="text-sm text-muted-foreground">Please wait</p>
               </div>
             </CardContent>
           </Card>
@@ -218,9 +218,9 @@ const Profile = () => {
                 <div className="w-16 h-16 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mx-auto mb-4">
                   <User className="w-8 h-8" />
                 </div>
-                <h3 className="text-lg font-semibold mb-2">Lỗi tải thông tin</h3>
+                <h3 className="text-lg font-semibold mb-2">Error loading information</h3>
                 <p className="text-sm text-muted-foreground mb-4">{error}</p>
-                <Button onClick={loadUserProfile}>Thử lại</Button>
+                <Button onClick={loadUserProfile}>Try again</Button>
               </div>
             </CardContent>
           </Card>
@@ -235,11 +235,11 @@ const Profile = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Thông tin cá nhân</h1>
-            <p className="text-muted-foreground">Quản lý thông tin tài khoản của bạn</p>
+            <h1 className="text-3xl font-bold">Personal Information</h1>
+            <p className="text-muted-foreground">Manage your account information</p>
           </div>
           <Badge variant="outline" className="text-sm">
-            {profile.role || "Chưa xác định"}
+            {profile.role || "Not defined"}
           </Badge>
         </div>
 
@@ -247,7 +247,7 @@ const Profile = () => {
           {/* Avatar Section */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-center">Ảnh đại diện</CardTitle>
+              <CardTitle className="text-center">Profile Picture</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center space-y-4">
               <div className="relative">
@@ -276,27 +276,27 @@ const Profile = () => {
           <div className="lg:col-span-2">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Thông tin chi tiết</CardTitle>
+                <CardTitle>Detailed Information</CardTitle>
                 <div className="space-x-2">
                   {isEditing ? (
                     <>
                       <Button variant="outline" size="sm" onClick={handleCancel} disabled={saving}>
-                        Hủy
+                        Cancel
                       </Button>
                       <Button size="sm" onClick={handleSave} disabled={saving}>
                         {saving ? (
                           <>
                             <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                            Đang lưu...
+                            Saving...
                           </>
                         ) : (
-                          "Lưu"
+                          "Save"
                         )}
                       </Button>
                     </>
                   ) : (
                     <Button size="sm" onClick={() => setIsEditing(true)}>
-                      Chỉnh sửa
+                      Edit
                     </Button>
                   )}
                 </div>
@@ -311,7 +311,7 @@ const Profile = () => {
                   <div className="space-y-2">
                     <Label htmlFor="username" className="flex items-center gap-2">
                       <User className="h-4 w-4" />
-                      Tên đăng nhập
+                      Username
                     </Label>
                     <Input
                       id="username"
@@ -338,7 +338,7 @@ const Profile = () => {
                   <div className="space-y-2">
                     <Label htmlFor="fullName" className="flex items-center gap-2">
                       <IdCard className="h-4 w-4" />
-                      Họ và tên
+                      Full Name
                     </Label>
                     <Input
                       id="fullName"
@@ -351,7 +351,7 @@ const Profile = () => {
                   <div className="space-y-2">
                     <Label htmlFor="phone" className="flex items-center gap-2">
                       <Phone className="h-4 w-4" />
-                      Số điện thoại
+                      Phone Number
                     </Label>
                     <Input
                       id="phone"
@@ -362,21 +362,21 @@ const Profile = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="role">Vai trò</Label>
+                    <Label htmlFor="role">Role</Label>
                     <Select disabled={true} value={profile.role}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Chưa xác định" />
+                        <SelectValue placeholder="Not defined" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="student">Học viên</SelectItem>
-                        <SelectItem value="teacher">Giảng viên</SelectItem>
-                        <SelectItem value="admin">Quản trị viên</SelectItem>
+                        <SelectItem value="student">Student</SelectItem>
+                        <SelectItem value="teacher">Teacher</SelectItem>
+                        <SelectItem value="admin">Administrator</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="department">Khoa/Phòng ban</Label>
+                    <Label htmlFor="department">Department</Label>
                     <Input
                       id="department"
                       value={profile.department}
@@ -389,10 +389,10 @@ const Profile = () => {
                 <div className="pt-4 border-t">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-muted-foreground">
                     <div>
-                      <span className="font-medium">Ngày tham gia:</span> {profile.joinDate}
+                      <span className="font-medium">Joined:</span> {profile.joinDate}
                     </div>
                     <div>
-                      <span className="font-medium">Cập nhật lần cuối:</span> {new Date().toLocaleDateString('vi-VN')}
+                      <span className="font-medium">Last Updated:</span> {new Date().toLocaleDateString('en-US')}
                     </div>
                   </div>
                 </div>
@@ -404,13 +404,13 @@ const Profile = () => {
         {/* Additional Settings */}
         <Card>
           <CardHeader>
-            <CardTitle>Cài đặt tài khoản</CardTitle>
+            <CardTitle>Account Settings</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between p-4 border rounded-lg">
               <div>
-                <h4 className="font-medium">Đổi mật khẩu</h4>
-                <p className="text-sm text-muted-foreground">Cập nhật mật khẩu để bảo mật tài khoản</p>
+                <h4 className="font-medium">Change Password</h4>
+                <p className="text-sm text-muted-foreground">Update your password to secure your account</p>
               </div>
               <Dialog open={changeOpen} onOpenChange={setChangeOpen}>
                 <DialogTrigger asChild>
@@ -420,29 +420,29 @@ const Profile = () => {
                     setNewPassword('');
                     setConfirmPassword('');
                     setChangeError(null);
-                  }}>Đổi mật khẩu</Button>
+                  }}>Change Password</Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Đổi mật khẩu</DialogTitle>
+                    <DialogTitle>Change Password</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label> Mật khẩu hiện tại </Label>
+                      <Label>Current Password</Label>
                       <Input type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} />
                     </div>
                     <div className="space-y-2">
-                      <Label> Mật khẩu mới </Label>
+                      <Label>New Password</Label>
                       <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
                     </div>
                     <div className="space-y-2">
-                      <Label> Xác nhận mật khẩu mới </Label>
+                      <Label>Confirm New Password</Label>
                       <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
                     </div>
                     {changeError && <div className="text-sm text-destructive">{changeError}</div>}
                     <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => setChangeOpen(false)} disabled={changing}>Hủy</Button>
-                      <Button onClick={handleChangePassword} disabled={changing}>{changing ? 'Đang đổi...' : 'Đổi mật khẩu'}</Button>
+                      <Button variant="outline" onClick={() => setChangeOpen(false)} disabled={changing}>Cancel</Button>
+                      <Button onClick={handleChangePassword} disabled={changing}>{changing ? 'Changing...' : 'Change Password'}</Button>
                     </div>
                   </div>
                 </DialogContent>
@@ -451,10 +451,10 @@ const Profile = () => {
             
             <div className="flex items-center justify-between p-4 border rounded-lg">
               <div>
-                <h4 className="font-medium">Xác thực hai bước</h4>
-                <p className="text-sm text-muted-foreground">Tăng cường bảo mật cho tài khoản của bạn</p>
+                <h4 className="font-medium">Two-Factor Authentication</h4>
+                <p className="text-sm text-muted-foreground">Enhance security for your account</p>
               </div>
-              <Button variant="outline">Cài đặt</Button>
+              <Button variant="outline">Setup</Button>
             </div>
           </CardContent>
         </Card>

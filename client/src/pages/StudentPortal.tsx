@@ -355,12 +355,12 @@ const StudentPortal = () => {
     try {
       const token = localStorage.getItem("token");
       if (!token) {
-        alert("Vui lòng đăng nhập lại");
+        alert("Please sign in again");
         return;
       }
 
       if (!userInfo?.id) {
-        alert("Không thể lấy thông tin người dùng");
+        alert("Unable to get user information");
         return;
       }
 
@@ -376,7 +376,7 @@ const StudentPortal = () => {
       const response = await api.post(`/schedules/join`, payload);
 
       if (response.data.code === 200 && response.data.result) {
-        alert("Tham gia khóa học thành công!");
+        alert("Course joined successfully!");
         setJoinCourseCode("");
         setJoinDialogOpen(false);
         // Log to console and reload so UI shows updated enrollments
@@ -385,11 +385,11 @@ const StudentPortal = () => {
         } catch (e) {}
         window.location.reload();
       } else {
-        alert(response.data.message || "Không thể tham gia khóa học");
+        alert(response.data.message || "Unable to join course");
       }
     } catch (error: any) {
       console.error("Error joining course:", error);
-      alert(error.response?.data?.message || "Mã khóa học không hợp lệ");
+      alert(error.response?.data?.message || "Invalid course code");
     } finally {
       setIsJoining(false);
     }

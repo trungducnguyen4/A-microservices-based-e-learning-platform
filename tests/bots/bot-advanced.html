@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🤖 Advanced LiveKit Bot Spawner</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: white;
+    }
+    
+    .main-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    
+    .panel {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    
+    h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    h2 {
+      font-size: 20px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+      padding-bottom: 12px;
+    }
+    
+    .subtitle {
+      color: rgba(255, 255, 255, 0.8);
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+    
+    .form-group {
+      margin-bottom: 16px;
+    }
+    
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+    
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.9);
+      color: #333;
+      font-size: 14px;
+      transition: all 0.3s;
+    }
+    
+    input:focus, select:focus {
+      outline: none;
+      border-color: #764ba2;
+      box-shadow: 0 0 0 3px rgba(118, 75, 162, 0.2);
+    }
+    
+    button {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      color: white;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      width: 100%;
+      margin-top: 12px;
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(245, 87, 108, 0.4);
+    }
+    
+    button:active {
+      transform: translateY(0);
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .status {
+      margin-top: 16px;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .status-line {
+      margin: 3px 0;
+      padding: 3px;
+      border-left: 3px solid transparent;
+    }
+    
+    .status-line.success {
+      border-left-color: #10b981;
+      color: #10b981;
+    }
+    
+    .status-line.error {
+      border-left-color: #ef4444;
+      color: #fca5a5;
+    }
+    
+    .status-line.info {
+      border-left-color: #3b82f6;
+      color: #93c5fd;
+    }
+    
+    .bot-list {
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 12px;
+    }
+    
+    .bot-item {
+      background: rgba(0, 0, 0, 0.2);
+      border-left: 4px solid #3b82f6;
+      padding: 10px;
+      margin-bottom: 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .bot-item.video {
+      border-left-color: #10b981;
+    }
+    
+    .bot-item.audio {
+      border-left-color: #f59e0b;
+    }
+    
+    .bot-info {
+      flex: 1;
+    }
+    
+    .bot-name {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    
+    .bot-status {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+    
+    .bot-actions {
+      display: flex;
+      gap: 6px;
+      margin-left: 10px;
+    }
+    
+    .bot-btn {
+      padding: 4px 8px;
+      font-size: 11px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .bot-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+    
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 16px;
+    }
+    
+    .stat-box {
+      background: rgba(0, 0, 0, 0.2);
+      padding: 12px;
+      border-radius: 8px;
+      border-left: 4px solid #10b981;
+    }
+    
+    .stat-label {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+    
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #10b981;
+    }
+    
+    .button-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    
+    .button-group button {
+      margin-top: 0;
+    }
+    
+    button.danger {
+      background: linear-gradient(135deg, #ff6b6b 0%, #c92a2a 100%);
+    }
+    
+    button.danger:hover {
+      box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+    }
+
+    @media (max-width: 1024px) {
+      .main-container {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="main-container">
+    <!-- Control Panel -->
+    <div class="panel">
+      <h1>🤖 Bot Spawner</h1>
+      <p class="subtitle">Create and manage fake participants</p>
+      
+      <div class="form-group">
+        <label for="roomCode">Room Code</label>
+        <input type="text" id="roomCode" placeholder="Y2B-SY4Q-A2T" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="botName">Bot Name (Prefix)</label>
+        <input type="text" id="botName" placeholder="TestBot" value="TestBot">
+      </div>
+      
+      <div class="form-group">
+        <label for="numBots">Bots to Create</label>
+        <input type="number" id="numBots" min="1" max="50" value="1" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="audioPercent">Enable Audio (%)</label>
+        <input type="number" id="audioPercent" min="0" max="100" value="50">
+      </div>
+      
+      <div class="form-group">
+        <label for="videoPercent">Enable Video (%)</label>
+        <input type="number" id="videoPercent" min="0" max="100" value="50">
+      </div>
+      
+      <div class="button-group">
+        <button id="spawnBtn" onclick="spawnBots()">➕ Spawn Bots</button>
+        <button id="stopBtn" class="danger" onclick="stopAllBots()" style="display: none;">⏹️ Stop All</button>
+      </div>
+      
+      <div class="stats">
+        <div class="stat-box">
+          <div class="stat-label">Active Bots</div>
+          <div class="stat-value" id="activeBotCount">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Total Bots</div>
+          <div class="stat-value" id="totalBotCount">0</div>
+        </div>
+      </div>
+      
+      <div class="status" id="status"></div>
+    </div>
+    
+    <!-- Bot Management Panel -->
+    <div class="panel">
+      <h2>📋 Active Bots</h2>
+      <div class="bot-list" id="botList">
+        <p style="text-align: center; color: rgba(255, 255, 255, 0.5);">No bots running yet...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load LiveKit Client from CDN (UMD) -->
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.5.8/dist/livekit-client.umd.min.js"></script>
+  <script>
+    const LIVEKIT_URL = 'wss://elearning-microservice-98bdertb.livekit.cloud';
+    const LIVEKIT_API_KEY = 'APIw58QnxLKZhHz';
+    const LIVEKIT_API_SECRET = 'efMRFX9tmBWDrGUkvO9WKp3jh2pVJ6UlVWXp3gJZ3rB';
+    
+    let bots = [];
+    let botCounter = 0;
+    
+    function log(message, type = 'info') {
+      const statusDiv = document.getElementById('status');
+      const line = document.createElement('div');
+      line.className = `status-line ${type}`;
+      line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      statusDiv.appendChild(line);
+      statusDiv.scrollTop = statusDiv.scrollHeight;
+    }
+    
+    function updateUI() {
+      const activeBots = bots.filter(b => b.room && b.room.state === 'connected').length;
+      document.getElementById('activeBotCount').textContent = activeBots;
+      document.getElementById('totalBotCount').textContent = bots.length;
+      updateBotList();
+    }
+    
+    function updateBotList() {
+      const botList = document.getElementById('botList');
+      if (bots.length === 0) {
+        botList.innerHTML = '<p style="text-align: center; color: rgba(255, 255, 255, 0.5);">No bots running yet...</p>';
+        document.getElementById('spawnBtn').disabled = false;
+        document.getElementById('stopBtn').style.display = 'none';
+        return;
+      }
+      
+      document.getElementById('stopBtn').style.display = 'block';
+      
+      botList.innerHTML = bots.map((bot, idx) => {
+        const isConnected = bot.room && bot.room.state === 'connected';
+        const videoClass = bot.videoEnabled ? 'video' : '';
+        const audioClass = bot.audioEnabled ? 'audio' : '';
+        
+        return `
+          <div class="bot-item ${videoClass} ${audioClass}">
+            <div class="bot-info">
+              <div class="bot-name">${bot.name}</div>
+              <div class="bot-status">
+                Status: ${isConnected ? '✅ Connected' : '❌ Disconnected'}
+                ${bot.videoEnabled ? '| 📹 Video' : ''}
+                ${bot.audioEnabled ? '| 🎤 Audio' : ''}
+              </div>
+            </div>
+            <div class="bot-actions">
+              ${bot.videoEnabled ? `<button class="bot-btn" onclick="toggleBotVideo(${idx})">Hide Video</button>` : `<button class="bot-btn" onclick="toggleBotVideo(${idx})">Show Video</button>`}
+              ${bot.audioEnabled ? `<button class="bot-btn" onclick="toggleBotAudio(${idx})">Mute</button>` : `<button class="bot-btn" onclick="toggleBotAudio(${idx})">Unmute</button>`}
+              <button class="bot-btn" onclick="removeBot(${idx})">❌ Remove</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    function generateToken(roomName, botIdentity, botName) {
+      const now = Math.floor(Date.now() / 1000);
+      const exp = now + 86400;
+      
+      const payload = {
+        exp: exp,
+        iss: LIVEKIT_API_KEY,
+        nbf: now,
+        sub: botIdentity,
+        name: botName,
+        video: {
+          room: roomName,
+          roomJoin: true,
+          canPublish: true,
+          canSubscribe: true,
+          canPublishData: true,
+        },
+        metadata: JSON.stringify({
+          isBot: true,
+          botType: 'test',
+          createdAt: new Date().toISOString(),
+        }),
+      };
+      
+      function base64UrlEncode(str) {
+        const base64 = btoa(str);
+        return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+      }
+      
+      const header = { alg: 'HS256', typ: 'JWT' };
+      const encodedHeader = base64UrlEncode(JSON.stringify(header));
+      const encodedPayload = base64UrlEncode(JSON.stringify(payload));
+      const message = encodedHeader + '.' + encodedPayload;
+      
+      return crypto.subtle.importKey(
+        'raw',
+        new TextEncoder().encode(LIVEKIT_API_SECRET),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      ).then(key => {
+        return crypto.subtle.sign('HMAC', key, new TextEncoder().encode(message));
+      }).then(signature => {
+        const base64Signature = btoa(String.fromCharCode(...new Uint8Array(signature)));
+        const urlSafeSignature = base64Signature.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+        return message + '.' + urlSafeSignature;
+      });
+    }
+    
+    function createFakeVideoTrack(botName, color, lowQuality = false) {
+      // Optimize for performance: lower resolution and frame rate for many bots
+      const width = lowQuality ? 320 : 640;
+      const height = lowQuality ? 240 : 480;
+      const fps = lowQuality ? 15 : 30;
+      
+      // Create fake video using Canvas - NO CAMERA ACCESS
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d', { 
+        willReadFrequently: false,
+        alpha: false // Disable alpha for better performance
+      });
+      
+      let frameCount = 0;
+      let animationId = null;
+      
+      function animate() {
+        // Simple flat background (no gradient for performance)
+        ctx.fillStyle = color;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Robot emoji (no pulse effect in low quality)
+        const fontSize = lowQuality ? 60 : 120;
+        ctx.font = `bold ${fontSize}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = 'white';
+        ctx.fillText('🤖', canvas.width / 2, canvas.height / 2 - 20);
+        
+        // Bot name (smaller font)
+        const nameFontSize = lowQuality ? 14 : 28;
+        ctx.font = `bold ${nameFontSize}px Arial`;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(botName, canvas.width / 2, canvas.height / 2 + 40);
+        
+        // Time (update less frequently)
+        if (frameCount % (fps * 2) === 0) {
+          ctx.font = `${lowQuality ? 10 : 16}px monospace`;
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+          ctx.fillText(new Date().toLocaleTimeString(), canvas.width / 2, canvas.height - 15);
+        }
+        
+        frameCount++;
+        animationId = requestAnimationFrame(animate);
+      }
+      animate();
+      
+      // Create MediaStream from Canvas with specified FPS
+      const stream = canvas.captureStream(fps);
+      const videoTrack = stream.getVideoTracks()[0];
+      
+      videoTrack.enabled = true;
+      
+      // Store cleanup function
+      videoTrack._cleanup = () => {
+        if (animationId) {
+          cancelAnimationFrame(animationId);
+          animationId = null;
+        }
+      };
+      
+      return videoTrack;
+    }
+    
+    // Shared AudioContext for all bots (better performance)
+    let sharedAudioContext = null;
+    
+    function createFakeAudioTrack() {
+      // Reuse AudioContext to save memory
+      if (!sharedAudioContext) {
+        sharedAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      
+      const destination = sharedAudioContext.createMediaStreamDestination();
+      
+      // Simpler audio - just one frequency
+      const oscillator = sharedAudioContext.createOscillator();
+      const gainNode = sharedAudioContext.createGain();
+      
+      oscillator.type = 'sine';
+      oscillator.frequency.value = 440 + Math.random() * 220; // Random frequency
+      gainNode.gain.value = 0.1; // Lower volume
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(destination);
+      
+      oscillator.start();
+      
+      const audioTrack = destination.stream.getAudioTracks()[0];
+      
+      // Store cleanup
+      audioTrack._cleanup = () => {
+        try {
+          oscillator.stop();
+          oscillator.disconnect();
+          gainNode.disconnect();
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+      };
+      
+      return audioTrack;
+    }
+    
+    function getRandomColor() {
+      const colors = ['#1e3a8a', '#7c2d12', '#166534', '#86198f', '#be123c', '#0f766e'];
+      return colors[Math.floor(Math.random() * colors.length)];
+    }
+    
+    async function spawnBot(roomCode, botName, enableAudio, enableVideo) {
+      const botIndex = ++botCounter;
+      const fullBotName = `${botName}-${botIndex}`;
+      const botIdentity = `bot-${botIndex}-${Date.now()}`;
+      
+      // Enable low quality mode if many bots
+      const lowQuality = bots.length >= 10;
+      
+      try {
+        const token = await generateToken(roomCode, botIdentity, fullBotName);
+        
+        log(`🔗 ${fullBotName}: Connecting...`, 'info');
+        
+        const LiveKit = window.LivekitClient || window.livekit;
+        if (!LiveKit || !LiveKit.Room) {
+          throw new Error('LiveKit library not loaded. Please refresh (Ctrl+F5).');
+        }
+
+        const room = new LiveKit.Room();
+        
+        await room.connect(LIVEKIT_URL, token, {
+          autoSubscribe: false, // Don't subscribe to save bandwidth
+          dynacast: true,
+          adaptiveStream: true,
+        });
+
+        log(`✅ ${fullBotName}: Connected!`, 'success');
+        
+        let videoTrack = null;
+        let audioTrack = null;
+        
+        // Publish video
+        if (enableVideo) {
+          try {
+            // Create FAKE video track with quality based on bot count
+            videoTrack = createFakeVideoTrack(fullBotName, getRandomColor(), lowQuality);
+            
+            // Publish as LocalVideoTrack
+            await room.localParticipant.publishTrack(videoTrack, {
+              name: 'camera',
+              source: LiveKit.Track.Source.Camera,
+              simulcast: false, // Disable simulcast for fake video
+              videoEncoding: lowQuality ? {
+                maxBitrate: 500_000,
+                maxFramerate: 15,
+              } : {
+                maxBitrate: 1_500_000,
+                maxFramerate: 30,
+              },
+            });
+            log(`📹 ${fullBotName}: Video published (${lowQuality ? 'Low' : 'High'} quality)`, 'success');
+          } catch (err) {
+            log(`❌ ${fullBotName}: Video error - ${err?.message ?? err}`, 'error');
+          }
+        }
+        
+        // Publish audio
+        if (enableAudio) {
+          try {
+            audioTrack = createFakeAudioTrack();
+            await room.localParticipant.publishTrack(audioTrack, {
+              name: 'microphone',
+              source: LiveKit.Track.Source.Microphone,
+              audioEncoding: {
+                maxBitrate: 20_000, // Lower bitrate for audio
+              },
+            });
+            log(`🎤 ${fullBotName}: Audio published`, 'success');
+          } catch (err) {
+            log(`❌ ${fullBotName}: Audio error - ${err?.message ?? err}`, 'error');
+          }
+        }
+        
+        const botData = {
+          id: botIndex,
+          name: fullBotName,
+          room: room,
+          videoTrack: videoTrack,
+          audioTrack: audioTrack,
+          videoEnabled: enableVideo,
+          audioEnabled: enableAudio,
+          interval: null,
+        };
+        
+        // Remove periodic status updates to save CPU
+        // Only keep room alive
+        botData.interval = setInterval(() => {
+          if (room.state !== 'connected') {
+            clearInterval(botData.interval);
+          }
+        }, 60000); // Check every 60s instead of 30s
+        
+        bots.push(botData);
+        updateUI();
+        
+      } catch (error) {
+        log(`❌ ${fullBotName}: ${error.message}`, 'error');
+      }
+    }
+    
+    async function spawnBots() {
+      const roomCode = document.getElementById('roomCode').value.trim();
+      const botNamePrefix = document.getElementById('botName').value.trim() || 'TestBot';
+      const numBots = parseInt(document.getElementById('numBots').value);
+      const audioPercent = parseInt(document.getElementById('audioPercent').value) / 100;
+      const videoPercent = parseInt(document.getElementById('videoPercent').value) / 100;
+      
+      if (!roomCode) {
+        alert('Please enter a room code');
+        return;
+      }
+      
+      if (isNaN(numBots) || numBots < 1 || numBots > 50) {
+        alert('Number of bots must be between 1 and 50');
+        return;
+      }
+      
+      document.getElementById('spawnBtn').disabled = true;
+      
+      log(`🚀 Spawning ${numBots} bots...`, 'info');
+      
+      for (let i = 0; i < numBots; i++) {
+        const enableAudio = Math.random() < audioPercent;
+        const enableVideo = Math.random() < videoPercent;
+        
+        await spawnBot(roomCode, botNamePrefix, enableAudio, enableVideo);
+        
+        // Longer delay for many bots to avoid overwhelming
+        const delay = bots.length > 20 ? 1500 : 800;
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+      
+      log(`✅ All ${numBots} bots spawned! (${bots.length >= 10 ? 'LOW QUALITY MODE' : 'HIGH QUALITY MODE'})`, 'success');
+      document.getElementById('spawnBtn').disabled = false;
+    }
+    
+    function toggleBotVideo(idx) {
+      const bot = bots[idx];
+      if (!bot || !bot.room) return;
+      
+      bot.videoEnabled = !bot.videoEnabled;
+      bot.room.localParticipant.setCameraEnabled(bot.videoEnabled);
+      log(`📹 ${bot.name}: Camera ${bot.videoEnabled ? 'enabled' : 'disabled'}`, 'info');
+      updateUI();
+    }
+    
+    function toggleBotAudio(idx) {
+      const bot = bots[idx];
+      if (!bot || !bot.room) return;
+      
+      bot.audioEnabled = !bot.audioEnabled;
+      bot.room.localParticipant.setMicrophoneEnabled(bot.audioEnabled);
+      log(`🎤 ${bot.name}: Microphone ${bot.audioEnabled ? 'enabled' : 'disabled'}`, 'info');
+      updateUI();
+    }
+    
+    function removeBot(idx) {
+      const bot = bots[idx];
+      if (!bot) return;
+      
+      // Cleanup interval
+      if (bot.interval) clearInterval(bot.interval);
+      
+      // Cleanup video track
+      if (bot.videoTrack) {
+        if (bot.videoTrack._cleanup) bot.videoTrack._cleanup();
+        bot.videoTrack.stop();
+      }
+      
+      // Cleanup audio track
+      if (bot.audioTrack) {
+        if (bot.audioTrack._cleanup) bot.audioTrack._cleanup();
+        bot.audioTrack.stop();
+      }
+      
+      // Disconnect room
+      if (bot.room) bot.room.disconnect();
+      
+      bots.splice(idx, 1);
+      log(`👋 ${bot.name}: Removed & cleaned up`, 'info');
+      updateUI();
+    }
+    
+    function stopAllBots() {
+      log(`⏹️ Stopping all ${bots.length} bots...`, 'info');
+      
+      bots.forEach(bot => {
+        if (bot.interval) clearInterval(bot.interval);
+        
+        // Cleanup video track
+        if (bot.videoTrack) {
+          if (bot.videoTrack._cleanup) bot.videoTrack._cleanup();
+          bot.videoTrack.stop();
+        }
+        
+        // Cleanup audio track
+        if (bot.audioTrack) {
+          if (bot.audioTrack._cleanup) bot.audioTrack._cleanup();
+          bot.audioTrack.stop();
+        }
+        
+        if (bot.room) bot.room.disconnect();
+      });
+      
+      // Cleanup shared audio context
+      if (sharedAudioContext) {
+        sharedAudioContext.close();
+        sharedAudioContext = null;
+      }
+      
+      bots = [];
+      botCounter = 0;
+      updateUI();
+      log(`✅ All bots stopped & cleaned up`, 'success');
+    }
+    
+    // Initial UI update
+    updateUI();
+  </script>
+</body>
+</html>

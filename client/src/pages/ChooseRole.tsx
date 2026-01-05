@@ -85,7 +85,7 @@ const ChooseRole = () => {
   };
 
   const submit = async () => {
-    if (!role) return alert('Vui lòng chọn vai trò');
+    if (!role) return alert('Please choose a role');
     setLoading(true);
     try {
       // Get token from localStorage
@@ -93,7 +93,7 @@ const ChooseRole = () => {
       console.log('Token from localStorage:', token ? `${token.substring(0, 20)}...` : 'null');
       
       if (!token) {
-        alert('Không tìm thấy token. Vui lòng đăng nhập lại.');
+        alert('Token not found. Please sign in again.');
         navigate('/login');
         return;
       }
@@ -123,17 +123,17 @@ const ChooseRole = () => {
         localStorage.setItem('user', JSON.stringify(updatedUser));
         updateUser(updatedUser);
 
-        showNotification('success', 'Cập nhật vai trò thành công!');
+        showNotification('success', 'Role updated successfully!');
         
         // Navigate to appropriate page based on role
         setTimeout(() => navigateBasedOnRole(normalizedRole), 1500);
       } else {
-        showNotification('error', res.data?.message || 'Cập nhật vai trò thất bại');
+        showNotification('error', res.data?.message || 'Failed to update role');
       }
     } catch (err: any) {
       console.error('Choose role error', err);
       console.error('Error response:', err.response?.data);
-      showNotification('error', err.response?.data?.message || 'Lỗi khi cập nhật vai trò');
+      showNotification('error', err.response?.data?.message || 'Error updating role');
     } finally {
       setLoading(false);
     }
@@ -151,20 +151,20 @@ const ChooseRole = () => {
         </div>
       )}
       <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
-        <h2 className="text-center text-2xl font-bold mb-4">Chọn vai trò của bạn</h2>
+        <h2 className="text-center text-2xl font-bold mb-4">Choose your role</h2>
         <div className="flex gap-6 justify-center my-4">
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="radio" name="role" value="STUDENT" checked={role === 'STUDENT'} onChange={() => setRole('STUDENT')} />
-            <span className="ml-2">Người học</span>
+            <span className="ml-2">Student</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="radio" name="role" value="TEACHER" checked={role === 'TEACHER'} onChange={() => setRole('TEACHER')} />
-            <span className="ml-2">Người dạy</span>
+            <span className="ml-2">Teacher</span>
           </label>
         </div>
 
         <button disabled={!role || loading} onClick={submit} className="w-full bg-blue-500 text-white py-2 rounded">
-          {loading ? 'Đang cập nhật...' : 'Xác nhận'}
+          {loading ? 'Updating...' : 'Confirm'}
         </button>
       </div>
     </div>
