@@ -1,12 +1,3 @@
-echo "=============================="
-echo "🚀 START DEPLOY ELEARNING"
-echo "=============================="
-echo ">>> Pull latest code"
-git pull
-done
-echo "=============================="
-echo "✅ DEPLOY FINISHED SUCCESSFULLY"
-echo "=============================="
 #!/bin/bash
 set -e
 
