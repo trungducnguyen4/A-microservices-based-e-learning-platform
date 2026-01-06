@@ -75,6 +75,8 @@ services:
           - spread: node.id
 
   homework-service:
+    build:
+      context: ./HomeworkService1
     image: homework-service-local:latest
     environment:
       <<: *spring_env
@@ -96,6 +98,8 @@ services:
           - spread: node.id
 
   schedule-service:
+    build:
+      context: ./ScheduleService1
     image: schedule-service-local:latest
     environment:
       <<: *spring_env
@@ -138,6 +142,8 @@ services:
           - spread: node.id
 
   announcement-service:
+    build:
+      context: ./AnnouncementService1
     image: announcement-service-local:latest
     environment:
       <<: *spring_env
