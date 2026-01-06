@@ -51,7 +51,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-        start_period: 120s
+      start_period: 120s
     ports:
       - "8888:8888"
     networks:
@@ -82,7 +82,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-        start_period: 120s
+      start_period: 120s
     networks:
       - e-learning-network
     deploy:
@@ -197,7 +197,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-        start_period: 120s
+      start_period: 120s
     networks:
       - e-learning-network
     deploy:
@@ -229,7 +229,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-        start_period: 120s
+      start_period: 120s
     networks:
       - e-learning-network
     deploy:
@@ -270,7 +270,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-        start_period: 120s
+      start_period: 120s
     networks:
       - e-learning-network
     deploy:
