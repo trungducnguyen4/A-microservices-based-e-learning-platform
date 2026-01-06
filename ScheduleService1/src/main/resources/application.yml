@@ -35,7 +35,7 @@ server:
 # Service URLs
 services:
   user-service:
-    url: https://localhost:8080
+    url: http://e-learning-user-service:8080
 
 logging:
   level:

@@ -80,7 +80,7 @@ server:
 # Service URLs
 services:
   user-service:
-    url: ${USER_SERVICE_URL:https://user-service:8080}
+    url: ${USER_SERVICE_URL:http://e-learning-user-service:8080}
 
 logging:
   level:

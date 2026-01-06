@@ -139,11 +139,11 @@ spring:
       # Docker profile: route using service name present in docker-compose
       routes:
         - id: user-service
-          uri: ${USER_SERVICE_URL:https://user-service:8080}
+          uri: ${USER_SERVICE_URL:http://e-learning-user-service:8080}
           predicates:
             - Path=/api/users/**
         - id: admin-service
-          uri: ${ADMIN_SERVICE_URL:https://admin-service:8084}
+          uri: ${ADMIN_SERVICE_URL:http://e-learning-admin-service:8084}
           predicates:
             - Path=/api/admin/**
         - id: oauth2-authorization
@@ -156,11 +156,11 @@ spring:
             - Path=/login/oauth2/code/**
       
         - id: schedule-service
-          uri: ${SCHEDULE_SERVICE_URL:https://schedule-service:8082}
+          uri: ${SCHEDULE_SERVICE_URL:http://e-learning-schedule-service:8082}
           predicates:
             - Path=/api/schedules/**
         - id: homework-service
-          uri: ${HOMEWORK_SERVICE_URL:https://homework-service:8081}
+          uri: ${HOMEWORK_SERVICE_URL:http://e-learning-homework-service:8081}
           predicates:
             - Path=/api/homework/**
         - id: homework-submission-service
@@ -168,26 +168,26 @@ spring:
           predicates:
             - Path=/api/submission/**
         - id: announcement-service
-          uri: ${ANNOUNCEMENT_SERVICE_URL:https://announcement-service:8090}
+          uri: ${ANNOUNCEMENT_SERVICE_URL:http://e-learning-announcement-service:8090}
           predicates:
             - Path=/api/announcements/**
         # ClassroomService routes:
         # - /api/meeting/**, /api/transcript/** (prefixed with /api)
         # - /getToken, /health, /rooms/** (NOT prefixed with /api)
         - id: classroom-service-direct
-          uri: ${CLASSROOM_SERVICE_URL:https://classroom-service:4000}
+          uri: ${CLASSROOM_SERVICE_URL:http://e-learning-classroom-service:3000}
           predicates:
             - Path=/api/classrooms/getToken,/api/classrooms/health,/api/classrooms/rooms/**
           filters:
             - RewritePath=/api/classrooms/(?<segment>.*), /$\{segment}
         - id: classroom-service-api
-          uri: ${CLASSROOM_SERVICE_URL:https://classroom-service:4000}
+          uri: ${CLASSROOM_SERVICE_URL:http://e-learning-classroom-service:3000}
           predicates:
             - Path=/api/classrooms/meeting/**,/api/classrooms/transcript/**
           filters:
             - RewritePath=/api/classrooms/(?<segment>.*), /api/$\{segment}
         - id: file-service
-          uri: ${FILE_SERVICE_URL:https://file-service:5000}
+          uri: ${FILE_SERVICE_URL:http://e-learning-file-service:3001}
           predicates:
             - Path=/api/files/**
           filters:

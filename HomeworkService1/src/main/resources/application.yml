@@ -85,9 +85,9 @@ server:
 # Service URLs
 services:
   user-service:
-    url: ${USER_SERVICE_URL:https://user-service:8080}
+    url: ${USER_SERVICE_URL:http://e-learning-user-service:8080}
   file-service:
-    url: ${FILE_SERVICE_URL:https://file-service:3001}
+    url: ${FILE_SERVICE_URL:http://e-learning-file-service:3001}
 
 logging:
   level:
