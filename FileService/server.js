@@ -562,7 +562,7 @@ const startServer = async () => {
     await ensureDirectories();
     
     app.listen(PORT, () => {
-      console.log(`FileService running at http://localhost:${PORT}`);
+      console.log(`FileService running at https://localhost:${PORT}`);
       console.log(`Upload directory: ${UPLOAD_DIR}`);
       console.log(`Max file size: ${process.env.MAX_FILE_SIZE || '50MB'}`);
       console.log('Available endpoints:');

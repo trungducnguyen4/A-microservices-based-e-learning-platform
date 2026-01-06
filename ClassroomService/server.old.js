@@ -13,6 +13,7 @@ const API_KEY = process.env.LIVEKIT_API_KEY;
 const API_SECRET = process.env.LIVEKIT_API_SECRET;
 const LIVEKIT_URL = process.env.LIVEKIT_URL;
 const USER_SERVICE_URL = process.env.USER_SERVICE_URL || "http://localhost:8080";
+const USER_SERVICE_URL = process.env.USER_SERVICE_URL || "https://localhost:8080";
 const PORT = process.env.PORT || 4000;
 
 // In-memory store để track created rooms
@@ -256,5 +257,6 @@ setInterval(() => {
 
 app.listen(PORT, () => {
   console.log(`Backend chạy tại http://localhost:${PORT}`);
+  console.log(`Backend chạy tại https://localhost:${PORT}`);
   console.log(`Room validation enabled`);
 });

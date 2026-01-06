@@ -35,7 +35,7 @@ server:
 # Service URLs
 services:
   user-service:
-    url: http://localhost:8080
+    url: https://localhost:8080
 
 logging:
   level:
@@ -80,7 +80,7 @@ server:
 # Service URLs
 services:
   user-service:
-    url: ${USER_SERVICE_URL:http://user-service:8080}
+    url: ${USER_SERVICE_URL:https://user-service:8080}
 
 logging:
   level:

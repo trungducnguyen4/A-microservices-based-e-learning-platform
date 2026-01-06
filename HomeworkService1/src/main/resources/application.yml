@@ -36,9 +36,9 @@ server:
 # Service URLs
 services:
   user-service:
-    url: http://localhost:8080
+    url: https://localhost:8080
   file-service:
-    url: http://localhost:3001
+    url: https://localhost:3001
 
 logging:
   level:
@@ -85,9 +85,9 @@ server:
 # Service URLs
 services:
   user-service:
-    url: ${USER_SERVICE_URL:http://user-service:8080}
+    url: ${USER_SERVICE_URL:https://user-service:8080}
   file-service:
-    url: ${FILE_SERVICE_URL:http://file-service:3001}
+    url: ${FILE_SERVICE_URL:https://file-service:3001}
 
 logging:
   level:

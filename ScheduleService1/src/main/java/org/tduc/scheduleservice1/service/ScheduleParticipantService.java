@@ -34,7 +34,7 @@ public class ScheduleParticipantService {
     @Autowired
     private RestTemplate restTemplate;
 
-    @Value("${services.user-service.url:http://localhost:8080}")
+    @Value("${services.user-service.url:https://localhost:8080}")
     private String userServiceUrl;
 
     public ScheduleParticipant createScheduleParticipant(ScheduleParticipantCreationRequest request) {

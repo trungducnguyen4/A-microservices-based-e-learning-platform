@@ -34,7 +34,7 @@ public class SecurityConfig {
 	private final OAuth2UserService<OAuth2UserRequest, OAuth2User> customOAuth2UserService;
     private final UserService userService;
 
-	@Value("${app.oauth2.success-redirect:http://localhost:8083/choose-role}")
+	@Value("${app.oauth2.success-redirect:https://localhost:8083/choose-role}")
 	private String successRedirect;
 
 	public SecurityConfig(OAuth2UserService<OAuth2UserRequest, OAuth2User> customOAuth2UserService,

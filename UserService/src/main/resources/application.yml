@@ -24,7 +24,7 @@ spring:
 
 app:
   oauth2:
-    success-redirect: ${OAUTH2_SUCCESS_REDIRECT:http://localhost:8083/choose-role}
+    success-redirect: ${OAUTH2_SUCCESS_REDIRECT:https://localhost:8083/choose-role}
 
 ---
 # Development Profile (use XAMPP MySQL on localhost:3306)

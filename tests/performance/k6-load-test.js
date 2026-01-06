@@ -20,7 +20,7 @@ export const options = {
   },
 };
 
-const BASE_URL = __ENV.API_URL || 'http://localhost:8888';
+const BASE_URL = __ENV.API_URL || 'https://localhost:8888';
 
 export default function () {
   // Test 1: Health check

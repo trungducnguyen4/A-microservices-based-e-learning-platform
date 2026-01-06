@@ -35,11 +35,11 @@ server:
 
 services:
   user-service:
-    url: http://localhost:8080
+    url: https://localhost:8080
   homework-service:
-    url: http://localhost:8081
+    url: https://localhost:8081
   schedule-service:
-    url: http://localhost:8082
+    url: https://localhost:8082
 
 logging:
   level:
@@ -86,11 +86,11 @@ server:
 
 services:
   user-service:
-    url: ${USER_SERVICE_URL:http://user-service:8080}
+    url: ${USER_SERVICE_URL:https://user-service:8080}
   homework-service:
-    url: ${HOMEWORK_SERVICE_URL:http://homework-service:8081}
+    url: ${HOMEWORK_SERVICE_URL:https://homework-service:8081}
   schedule-service:
-    url: ${SCHEDULE_SERVICE_URL:http://schedule-service:8082}
+    url: ${SCHEDULE_SERVICE_URL:https://schedule-service:8082}
 
 logging:
   level:
