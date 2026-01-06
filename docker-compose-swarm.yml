@@ -39,7 +39,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 30s
 
   api-gateway:
     image: trungduc14/api-gateway:latest
@@ -74,13 +74,15 @@ services:
       SPRING_DATASOURCE_URL: "jdbc:mysql://elearningplatform.cj6aaa462kbk.ap-southeast-2.rds.amazonaws.com:3306/user_db?useSSL=false&allowPublicKeyRetrieval=true&connectTimeout=30000&socketTimeout=30000"
       SPRING_DATASOURCE_USERNAME: "admin"
       SPRING_DATASOURCE_PASSWORD: "14072004Az!"
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "5"
+      SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: "2"
       SERVER_PORT: 8080
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s
     networks:
       - e-learning-network
     deploy:
@@ -97,6 +99,8 @@ services:
       SPRING_DATASOURCE_URL: "jdbc:mysql://elearningplatform.cj6aaa462kbk.ap-southeast-2.rds.amazonaws.com:3306/homework_db?useSSL=false&allowPublicKeyRetrieval=true"
       SPRING_DATASOURCE_USERNAME: "admin"
       SPRING_DATASOURCE_PASSWORD: "14072004Az!"
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "5"
+      SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: "2"
       SERVER_PORT: 8081
       USER_SERVICE_URL: "http://user-service:8080"
       FILE_SERVICE_URL: "http://file-service:5000"
@@ -122,6 +126,8 @@ services:
       SPRING_DATASOURCE_URL: "jdbc:mysql://elearningplatform.cj6aaa462kbk.ap-southeast-2.rds.amazonaws.com:3306/schedule_db?useSSL=false&allowPublicKeyRetrieval=true"
       SPRING_DATASOURCE_USERNAME: "admin"
       SPRING_DATASOURCE_PASSWORD: "14072004Az!"
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "5"
+      SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: "2"
       SERVER_PORT: 8082
       USER_SERVICE_URL: "http://user-service:8080"
     healthcheck:
@@ -146,6 +152,8 @@ services:
       SPRING_DATASOURCE_URL: "jdbc:mysql://elearningplatform.cj6aaa462kbk.ap-southeast-2.rds.amazonaws.com:3306/admin_db?useSSL=false&allowPublicKeyRetrieval=true"
       SPRING_DATASOURCE_USERNAME: "admin"
       SPRING_DATASOURCE_PASSWORD: "14072004Az!"
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "5"
+      SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: "2"
       SERVER_PORT: 8084
       USER_SERVICE_URL: "http://user-service:8080"
       HOMEWORK_SERVICE_URL: "http://homework-service:8081"
@@ -172,6 +180,8 @@ services:
       SPRING_DATASOURCE_URL: "jdbc:mysql://elearningplatform.cj6aaa462kbk.ap-southeast-2.rds.amazonaws.com:3306/announcement_db?useSSL=false&allowPublicKeyRetrieval=true"
       SPRING_DATASOURCE_USERNAME: "admin"
       SPRING_DATASOURCE_PASSWORD: "14072004Az!"
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "5"
+      SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: "2"
       SERVER_PORT: 8090
       USER_SERVICE_URL: "http://user-service:8080"
     healthcheck:
