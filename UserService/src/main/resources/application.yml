@@ -83,6 +83,15 @@ spring:
       host: redis
       port: 6379
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
 
 ---
 # Production Profile
