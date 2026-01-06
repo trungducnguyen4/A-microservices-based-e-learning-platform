@@ -71,7 +71,7 @@ services:
     image: trungduc14/user-service:latest
     environment:
       <<: *spring_env
-      SPRING_DATASOURCE_URL: "jdbc:mysql://elearningplatform.cj6aaa462kbk.ap-southeast-2.rds.amazonaws.com:3306/db_user?useSSL=false&allowPublicKeyRetrieval=true&connectTimeout=30000&socketTimeout=30000"
+      SPRING_DATASOURCE_URL: "jdbc:mysql://elearningplatform.cj6aaa462kbk.ap-southeast-2.rds.amazonaws.com:3306/user_db?useSSL=false&allowPublicKeyRetrieval=true&connectTimeout=30000&socketTimeout=30000"
       SPRING_DATASOURCE_USERNAME: "admin"
       SPRING_DATASOURCE_PASSWORD: "14072004Az!"
       SERVER_PORT: 8080
@@ -94,7 +94,7 @@ services:
     image: trungduc14/homework-service:latest
     environment:
       <<: *spring_env
-      SPRING_DATASOURCE_URL: "jdbc:mysql://elearningplatform.cj6aaa462kbk.ap-southeast-2.rds.amazonaws.com:3306/db_homework?useSSL=false&allowPublicKeyRetrieval=true"
+      SPRING_DATASOURCE_URL: "jdbc:mysql://elearningplatform.cj6aaa462kbk.ap-southeast-2.rds.amazonaws.com:3306/homework_db?useSSL=false&allowPublicKeyRetrieval=true"
       SPRING_DATASOURCE_USERNAME: "admin"
       SPRING_DATASOURCE_PASSWORD: "14072004Az!"
       SERVER_PORT: 8081
@@ -119,7 +119,7 @@ services:
     image: trungduc14/schedule-service:latest
     environment:
       <<: *spring_env
-      SPRING_DATASOURCE_URL: "jdbc:mysql://elearningplatform.cj6aaa462kbk.ap-southeast-2.rds.amazonaws.com:3306/db_schedule?useSSL=false&allowPublicKeyRetrieval=true"
+      SPRING_DATASOURCE_URL: "jdbc:mysql://elearningplatform.cj6aaa462kbk.ap-southeast-2.rds.amazonaws.com:3306/schedule_db?useSSL=false&allowPublicKeyRetrieval=true"
       SPRING_DATASOURCE_USERNAME: "admin"
       SPRING_DATASOURCE_PASSWORD: "14072004Az!"
       SERVER_PORT: 8082
@@ -228,7 +228,7 @@ services:
       PORT: 5000
       DB_HOST: "elearningplatform.cj6aaa462kbk.ap-southeast-2.rds.amazonaws.com"
       DB_PORT: "3306"
-      DB_NAME: "e_learning"
+      DB_NAME: "file_db"
       DB_USER: "admin"
       DB_PASSWORD: "14072004Az!"
       REDIS_HOST: redis
