@@ -3,49 +3,57 @@ version: "3.9"
 x-restart: &restart_policy
   restart_policy:
     condition: on-failure
+    delay: 5s
+    max_attempts: 3
+    window: 30s
 
-# Shared env file for all services
-x-envfile: &envfile
-  env_file:
-    - .env
-
+# Swarm-compliant common env - NO .env file!
 x-common-spring: &spring_env
   SPRING_PROFILES_ACTIVE: docker
   SPRING_REDIS_HOST: redis
   SPRING_REDIS_PORT: 6379
-  JWT_SECRET: ${JWT_SECRET:-your-very-secure-jwt-secret-key-here}
+  JWT_SECRET: "your-very-secure-jwt-secret-key-here"
+  # Database hardcoded for Swarm (use docker secret in production)
+  DB_HOST: "elearningplatform.cj6aaa462kbk.ap-southeast-2.rds.amazonaws.com"
+  DB_PORT: "3306"
+  DB_USER: "admin"
+  DB_PASSWORD: "14072004Az!"
 
 services:
   redis:
-    <<: *envfile
     image: redis:7-alpine
+    command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
     networks:
       - e-learning-network
     deploy:
       <<: *restart_policy
-      placement:
-        constraints:
-          - node.role == manager
       replicas: 1
+      # Removed: constraint to manager (too risky)
+      placement:
+        preferences:
+          - spread: node.id
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   api-gateway:
-    <<: *envfile
     image: trungduc14/api-gateway:latest
     environment:
       <<: *spring_env
       SERVER_PORT: 8888
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8888/actuator/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
     ports:
       - "8888:8888"
-    depends_on:
-      - redis
     networks:
       - e-learning-network
     deploy:
@@ -54,245 +62,252 @@ services:
       update_config:
         order: start-first
         parallelism: 1
-        delay: 5s
+        delay: 10s
+      placement:
+        preferences:
+          - spread: node.id
 
   user-service:
-    <<: *envfile
     image: trungduc14/user-service:latest
     environment:
       <<: *spring_env
-      SPRING_DATASOURCE_URL: jdbc:mysql://${DB_HOST}:${DB_PORT:-3306}/${DB_NAME_USER}?useSSL=false&allowPublicKeyRetrieval=true&connectTimeout=30000&socketTimeout=30000
-      SPRING_DATASOURCE_USERNAME: ${DB_USER:-admin}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_DATASOURCE_URL: "jdbc:mysql://${DB_HOST}:${DB_PORT}/db_user?useSSL=false&allowPublicKeyRetrieval=true&connectTimeout=30000&socketTimeout=30000"
+      SPRING_DATASOURCE_USERNAME: "${DB_USER}"
+      SPRING_DATASOURCE_PASSWORD: "${DB_PASSWORD}"
       SERVER_PORT: 8080
-    depends_on:
-      - redis
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       - e-learning-network
     deploy:
       <<: *restart_policy
       replicas: 1
+      placement:
+        preferences:
+          - spread: node.id
 
   homework-service:
-    <<: *envfile
     image: trungduc14/homework-service:latest
     environment:
       <<: *spring_env
-      SPRING_DATASOURCE_URL: jdbc:mysql://${DB_HOST}:${DB_PORT:-3306}/${DB_NAME_HOMEWORK}?useSSL=false&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: ${DB_USER:-admin}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_DATASOURCE_URL: "jdbc:mysql://${DB_HOST}:${DB_PORT}/db_homework?useSSL=false&allowPublicKeyRetrieval=true"
+      SPRING_DATASOURCE_USERNAME: "${DB_USER}"
+      SPRING_DATASOURCE_PASSWORD: "${DB_PASSWORD}"
       SERVER_PORT: 8081
-      USER_SERVICE_URL: http://user-service:8080
-      FILE_SERVICE_URL: http://file-service:5000
+      USER_SERVICE_URL: "http://user-service:8080"
+      FILE_SERVICE_URL: "http://file-service:5000"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/actuator/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 50s
-    depends_on:
-      - redis
-      - user-service
+      start_period: 60s
     networks:
       - e-learning-network
     deploy:
       <<: *restart_policy
       replicas: 2
+      placement:
+        preferences:
+          - spread: node.id
 
   schedule-service:
-    <<: *envfile
     image: trungduc14/schedule-service:latest
     environment:
       <<: *spring_env
-      SPRING_DATASOURCE_URL: jdbc:mysql://${DB_HOST}:${DB_PORT:-3306}/${DB_NAME_SCHEDULE}?useSSL=false&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: ${DB_USER:-admin}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_DATASOURCE_URL: "jdbc:mysql://${DB_HOST}:${DB_PORT}/db_schedule?useSSL=false&allowPublicKeyRetrieval=true"
+      SPRING_DATASOURCE_USERNAME: "${DB_USER}"
+      SPRING_DATASOURCE_PASSWORD: "${DB_PASSWORD}"
       SERVER_PORT: 8082
-      USER_SERVICE_URL: http://user-service:8080
+      USER_SERVICE_URL: "http://user-service:8080"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8082/actuator/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 50s
-    depends_on:
-      - redis
-      - user-service
+      start_period: 60s
     networks:
       - e-learning-network
     deploy:
       <<: *restart_policy
       replicas: 2
+      placement:
+        preferences:
+          - spread: node.id
 
   admin-service:
-    <<: *envfile
     image: trungduc14/admin-service:latest
     environment:
       <<: *spring_env
-      SPRING_DATASOURCE_URL: jdbc:mysql://${DB_HOST}:${DB_PORT:-3306}/${DB_NAME_ADMIN:-admin_db}?useSSL=false&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: ${DB_USER:-admin}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_DATASOURCE_URL: "jdbc:mysql://${DB_HOST}:${DB_PORT}/admin_db?useSSL=false&allowPublicKeyRetrieval=true"
+      SPRING_DATASOURCE_USERNAME: "${DB_USER}"
+      SPRING_DATASOURCE_PASSWORD: "${DB_PASSWORD}"
       SERVER_PORT: 8084
-      USER_SERVICE_URL: http://user-service:8080
-      HOMEWORK_SERVICE_URL: http://homework-service:8081
-      SCHEDULE_SERVICE_URL: http://schedule-service:8082
+      USER_SERVICE_URL: "http://user-service:8080"
+      HOMEWORK_SERVICE_URL: "http://homework-service:8081"
+      SCHEDULE_SERVICE_URL: "http://schedule-service:8082"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8084/actuator/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
-    depends_on:
-      - redis
-      - user-service
+      start_period: 60s
     networks:
       - e-learning-network
     deploy:
       <<: *restart_policy
       replicas: 2
+      placement:
+        preferences:
+          - spread: node.id
 
   announcement-service:
-    <<: *envfile
     image: trungduc14/announcement-service:latest
     environment:
       <<: *spring_env
-      SPRING_DATASOURCE_URL: jdbc:mysql://${DB_HOST}:${DB_PORT:-3306}/${DB_NAME_ANNOUNCEMENT:-announcement_db}?useSSL=false&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: ${DB_USER:-admin}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_DATASOURCE_URL: "jdbc:mysql://${DB_HOST}:${DB_PORT}/announcement_db?useSSL=false&allowPublicKeyRetrieval=true"
+      SPRING_DATASOURCE_USERNAME: "${DB_USER}"
+      SPRING_DATASOURCE_PASSWORD: "${DB_PASSWORD}"
       SERVER_PORT: 8090
-      USER_SERVICE_URL: http://user-service:8080
+      USER_SERVICE_URL: "http://user-service:8080"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8090/actuator/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8090/actuator/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
-    depends_on:
-      - redis
-      - user-service
+      start_period: 60s
     networks:
       - e-learning-network
     deploy:
       <<: *restart_policy
       replicas: 2
+      placement:
+        preferences:
+          - spread: node.id
 
   classroom-service:
-    <<: *envfile
     image: trungduc14/classroom-service:latest
     environment:
       NODE_ENV: production
       PORT: 4000
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT:-3306}
-      DB_NAME: ${DB_NAME_CLASSROOM:-classroom_db}
-      DB_USER: ${DB_USER:-admin}
-      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: "elearningplatform.cj6aaa462kbk.ap-southeast-2.rds.amazonaws.com"
+      DB_PORT: "3306"
+      DB_NAME: "classroom_db"
+      DB_USER: "admin"
+      DB_PASSWORD: "14072004Az!"
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      JWT_SECRET: ${JWT_SECRET:-your-very-secure-jwt-secret-key-here}
-      USER_SERVICE_URL: http://user-service:8080
-      LIVEKIT_URL: ${LIVEKIT_URL}
-      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
-      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+      JWT_SECRET: "your-very-secure-jwt-secret-key-here"
+      USER_SERVICE_URL: "http://user-service:8080"
+      LIVEKIT_URL: "${LIVEKIT_URL}"
+      LIVEKIT_API_KEY: "${LIVEKIT_API_KEY}"
+      LIVEKIT_API_SECRET: "${LIVEKIT_API_SECRET}"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:4000/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 20s
-    depends_on:
-      - redis
-      - user-service
+      start_period: 30s
     networks:
       - e-learning-network
     deploy:
       <<: *restart_policy
       replicas: 2
+      placement:
+        preferences:
+          - spread: node.id
 
   file-service:
-    <<: *envfile
     image: trungduc14/file-service:latest
     environment:
       NODE_ENV: production
       PORT: 5000
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT:-3306}
-      DB_NAME: ${DB_NAME_FILE:-e_learning}
-      DB_USER: ${DB_USER:-admin}
-      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: "elearningplatform.cj6aaa462kbk.ap-southeast-2.rds.amazonaws.com"
+      DB_PORT: "3306"
+      DB_NAME: "e_learning"
+      DB_USER: "admin"
+      DB_PASSWORD: "14072004Az!"
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      JWT_SECRET: ${JWT_SECRET:-your-very-secure-jwt-secret-key-here}
+      JWT_SECRET: "your-very-secure-jwt-secret-key-here"
       UPLOAD_PATH: /app/uploads
-      MAX_FILE_SIZE: 10485760
+      MAX_FILE_SIZE: "10485760"
     volumes:
       - file_uploads:/app/uploads
-    depends_on:
-      - redis
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     networks:
       - e-learning-network
     deploy:
       <<: *restart_policy
       replicas: 2
+      placement:
+        preferences:
+          - spread: node.id
 
   notification-service:
-    <<: *envfile
     image: trungduc14/notification-service:latest
     environment:
       NODE_ENV: production
       PORT: 5001
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT:-3306}
-      DB_NAME: ${DB_NAME_NOTIFICATION:-notification_db}
-      DB_USER: ${DB_USER:-admin}
-      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: "elearningplatform.cj6aaa462kbk.ap-southeast-2.rds.amazonaws.com"
+      DB_PORT: "3306"
+      DB_NAME: "notification_db"
+      DB_USER: "admin"
+      DB_PASSWORD: "14072004Az!"
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      JWT_SECRET: ${JWT_SECRET:-your-very-secure-jwt-secret-key-here}
+      JWT_SECRET: "your-very-secure-jwt-secret-key-here"
       EMAIL_SERVICE: Gmail
-      EMAIL_USER: ${EMAIL_USER}
-      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
-      EMAIL_FROM: ${EMAIL_FROM:-E-Learning Platform <noreply@elearning.com>}
-      GOOGLE_CALENDAR_ENABLED: ${GOOGLE_CALENDAR_ENABLED:-false}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:5173/auth/google/callback}
-      USER_SERVICE_URL: http://user-service:8080
-      SCHEDULE_SERVICE_URL: http://schedule-service:8082
-      HOMEWORK_SERVICE_URL: http://homework-service:8081
-      HOMEWORK_REMINDER_HOURS: 24
-      CLASS_REMINDER_MINUTES: 10
+      EMAIL_USER: "${EMAIL_USER}"
+      EMAIL_PASSWORD: "${EMAIL_PASSWORD}"
+      EMAIL_FROM: "${EMAIL_FROM:-E-Learning Platform <noreply@elearning.com>}"
+      GOOGLE_CALENDAR_ENABLED: "${GOOGLE_CALENDAR_ENABLED:-false}"
+      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID}"
+      GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET}"
+      GOOGLE_REDIRECT_URI: "${GOOGLE_REDIRECT_URI:-http://localhost:5173/auth/google/callback}"
+      USER_SERVICE_URL: "http://user-service:8080"
+      SCHEDULE_SERVICE_URL: "http://schedule-service:8082"
+      HOMEWORK_SERVICE_URL: "http://homework-service:8081"
+      HOMEWORK_REMINDER_HOURS: "24"
+      CLASS_REMINDER_MINUTES: "10"
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      test: ["CMD-SHELL", "curl -f http://localhost:5001/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 20s
-    depends_on:
-      - redis
-      - user-service
-      - schedule-service
-      - homework-service
+      start_period: 30s
     networks:
       - e-learning-network
     deploy:
       <<: *restart_policy
       replicas: 2
+      placement:
+        preferences:
+          - spread: node.id
 
   client:
-    <<: *envfile
     image: trungduc14/client:latest
     environment:
       NODE_ENV: production
     ports:
       - "3000:80"
-    depends_on:
-      - api-gateway
     networks:
       - e-learning-network
     deploy:
       <<: *restart_policy
       replicas: 1
+      placement:
+        preferences:
+          - spread: node.id
 
 volumes:
   redis_data:
