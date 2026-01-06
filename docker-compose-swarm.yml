@@ -36,7 +36,7 @@ services:
           - spread: node.id
 
   api-gateway:
-    image: trungduc14/api-gateway:latest
+    image: api-gateway-local:latest
     environment:
       <<: *spring_env
       SERVER_PORT: 8888
@@ -56,7 +56,7 @@ services:
           - spread: node.id
 
   user-service:
-    image: trungduc14/user-service:latest
+    image: user-service-local:latest
     environment:
       <<: *spring_env
       SPRING_DATASOURCE_URL: "jdbc:mysql://elearningplatform.cj6aaa462kbk.ap-southeast-2.rds.amazonaws.com:3306/user_db?useSSL=false&allowPublicKeyRetrieval=true&connectTimeout=30000&socketTimeout=30000"
@@ -75,7 +75,7 @@ services:
           - spread: node.id
 
   homework-service:
-    image: trungduc14/homework-service:latest
+    image: homework-service-local:latest
     environment:
       <<: *spring_env
       SPRING_DATASOURCE_URL: "jdbc:mysql://elearningplatform.cj6aaa462kbk.ap-southeast-2.rds.amazonaws.com:3306/homework_db?useSSL=false&allowPublicKeyRetrieval=true"
@@ -96,7 +96,7 @@ services:
           - spread: node.id
 
   schedule-service:
-    image: trungduc14/schedule-service:latest
+    image: schedule-service-local:latest
     environment:
       <<: *spring_env
       SPRING_DATASOURCE_URL: "jdbc:mysql://elearningplatform.cj6aaa462kbk.ap-southeast-2.rds.amazonaws.com:3306/schedule_db?useSSL=false&allowPublicKeyRetrieval=true"
@@ -116,7 +116,7 @@ services:
           - spread: node.id
 
   admin-service:
-    image: trungduc14/admin-service:latest
+    image: admin-service-local:latest
     environment:
       <<: *spring_env
       SPRING_DATASOURCE_URL: "jdbc:mysql://elearningplatform.cj6aaa462kbk.ap-southeast-2.rds.amazonaws.com:3306/admin_db?useSSL=false&allowPublicKeyRetrieval=true"
@@ -138,7 +138,7 @@ services:
           - spread: node.id
 
   announcement-service:
-    image: trungduc14/announcement-service:latest
+    image: announcement-service-local:latest
     environment:
       <<: *spring_env
       SPRING_DATASOURCE_URL: "jdbc:mysql://elearningplatform.cj6aaa462kbk.ap-southeast-2.rds.amazonaws.com:3306/announcement_db?useSSL=false&allowPublicKeyRetrieval=true"
@@ -158,7 +158,7 @@ services:
           - spread: node.id
 
   classroom-service:
-    image: trungduc14/classroom-service:latest
+    image: classroom-service-local:latest
     environment:
       NODE_ENV: production
       PORT: 4000
@@ -184,7 +184,7 @@ services:
           - spread: node.id
 
   file-service:
-    image: trungduc14/file-service:latest
+    image: file-service-local:latest
     environment:
       NODE_ENV: production
       PORT: 5000
@@ -210,7 +210,7 @@ services:
           - spread: node.id
 
   notification-service:
-    image: trungduc14/notification-service:latest
+    image: notification-service-local:latest
     environment:
       NODE_ENV: production
       PORT: 5001
@@ -245,7 +245,7 @@ services:
           - spread: node.id
 
   client:
-    image: trungduc14/client:latest
+    image: client-local:latest
     environment:
       NODE_ENV: production
     ports:
