@@ -59,7 +59,7 @@ const Auth = () => {
           onClick={handleGoogleLogin}
         >
           <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Google_%22G%22_Logo.svg/32px-Google_%22G%22_Logo.svg.png" alt="Google" className="h-5 w-5" />
-          <span>Đăng nhập với Google</span>
+          <span>Sign in with Google</span>
         </Button>
       </div>
     </div>

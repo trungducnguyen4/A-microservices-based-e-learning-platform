@@ -97,7 +97,7 @@ const AdminDashboardHome = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           {
-            title: "Tổng Người Dùng",
+            title: "Total Users",
             value: stats?.totalUsers || 0,
             change: "+12.5%",
             icon: Users,
@@ -105,7 +105,7 @@ const AdminDashboardHome = () => {
             bgColor: "bg-blue-500/20",
           },
           {
-            title: "Khóa Học Đang Hoạt",
+            title: "Active Courses",
             value: stats?.activeCourses || 0,
             change: "+3.2%",
             icon: BookOpen,
@@ -113,7 +113,7 @@ const AdminDashboardHome = () => {
             bgColor: "bg-green-500/20",
           },
           {
-            title: "Tỷ Lệ Hoàn Thành",
+            title: "Completion Rate",
             value: `${stats?.completionRate || 0}%`,
             change: "+2.4%",
             icon: TrendingUp,
@@ -121,7 +121,7 @@ const AdminDashboardHome = () => {
             bgColor: "bg-yellow-500/20",
           },
           {
-            title: "Doanh Thu Tháng",
+            title: "Monthly Revenue",
             value: `$${stats?.monthlyRevenue || 0}`,
             change: "+8.1%",
             icon: BarChart3,
@@ -154,8 +154,8 @@ const AdminDashboardHome = () => {
         {/* Course Trend */}
         <Card className="bg-slate-800 border-slate-700">
           <CardHeader>
-            <CardTitle className="text-white">Xu Hướng Khóa Học</CardTitle>
-            <CardDescription>Số lượng khóa học được tạo theo tháng</CardDescription>
+            <CardTitle className="text-white">Course Trends</CardTitle>
+            <CardDescription>Number of courses created per month</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -182,8 +182,8 @@ const AdminDashboardHome = () => {
         {/* User Growth */}
         <Card className="bg-slate-800 border-slate-700">
           <CardHeader>
-            <CardTitle className="text-white">Tăng Trưởng Người Dùng</CardTitle>
-            <CardDescription>Số lượng người dùng mới đăng ký</CardDescription>
+            <CardTitle className="text-white">User Growth</CardTitle>
+            <CardDescription>Number of new user registrations</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -204,8 +204,8 @@ const AdminDashboardHome = () => {
         {/* Course Distribution */}
         <Card className="bg-slate-800 border-slate-700">
           <CardHeader>
-            <CardTitle className="text-white">Phân Phối Khóa Học</CardTitle>
-            <CardDescription>Khóa học theo danh mục</CardDescription>
+            <CardTitle className="text-white">Course Distribution</CardTitle>
+            <CardDescription>Courses by category</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -236,13 +236,13 @@ const AdminDashboardHome = () => {
         {/* Key Metrics */}
         <Card className="bg-slate-800 border-slate-700">
           <CardHeader>
-            <CardTitle className="text-white">Chỉ Số Chính</CardTitle>
-            <CardDescription>Các thống kê quan trọng</CardDescription>
+            <CardTitle className="text-white">Key Metrics</CardTitle>
+            <CardDescription>Important statistics</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
               <div className="flex justify-between mb-2">
-                <span className="text-sm text-slate-300">Tỷ Lệ Kích Hoạt Người Dùng</span>
+                <span className="text-sm text-slate-300">User Activation Rate</span>
                 <span className="text-sm font-bold text-white">
                   {((stats?.activeUsers || 0) / (stats?.totalUsers || 1) * 100).toFixed(1)}%
                 </span>
@@ -252,7 +252,7 @@ const AdminDashboardHome = () => {
 
             <div>
               <div className="flex justify-between mb-2">
-                <span className="text-sm text-slate-300">Khóa Học Hoạt Động</span>
+                <span className="text-sm text-slate-300">Active Courses</span>
                 <span className="text-sm font-bold text-white">
                   {((stats?.activeCourses || 0) / (stats?.totalCourses || 1) * 100).toFixed(1)}%
                 </span>
@@ -262,15 +262,15 @@ const AdminDashboardHome = () => {
 
             <div>
               <div className="flex justify-between mb-2">
-                <span className="text-sm text-slate-300">Tỷ Lệ Hoàn Thành Khóa Học</span>
+                <span className="text-sm text-slate-300">Course Completion Rate</span>
                 <span className="text-sm font-bold text-white">{stats?.completionRate || 0}%</span>
               </div>
               <Progress value={stats?.completionRate || 0} className="h-2" />
             </div>
 
             <div className="pt-2 border-t border-slate-700">
-              <p className="text-xs text-slate-400">Tổng Doanh Thu: <span className="text-white font-bold">${stats?.totalRevenue || 0}</span></p>
-              <p className="text-xs text-slate-400">Tổng Ghi Danh: <span className="text-white font-bold">{stats?.totalEnrollments || 0}</span></p>
+              <p className="text-xs text-slate-400">Total Revenue: <span className="text-white font-bold">${stats?.totalRevenue || 0}</span></p>
+              <p className="text-xs text-slate-400">Total Enrollments: <span className="text-white font-bold">{stats?.totalEnrollments || 0}</span></p>
             </div>
           </CardContent>
         </Card>
@@ -283,9 +283,9 @@ const AdminDashboardHome = () => {
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
               <Trophy className="w-5 h-5 text-yellow-500" />
-              Giáo Viên Hàng Đầu
+              Top Instructors
             </CardTitle>
-            <CardDescription>Các giáo viên có hiệu suất tốt nhất</CardDescription>
+            <CardDescription>Instructors with best performance</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -293,7 +293,7 @@ const AdminDashboardHome = () => {
                 <div key={idx} className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg">
                   <div>
                     <p className="font-semibold text-white">{instructor.name}</p>
-                    <p className="text-xs text-slate-400">{instructor.courses} khóa • {instructor.students} học viên</p>
+                    <p className="text-xs text-slate-400">{instructor.courses} courses • {instructor.students} students</p>
                   </div>
                   <Badge variant="outline" className="bg-yellow-500/20 text-yellow-300 border-yellow-600">
                     ⭐ {instructor.rating}
@@ -309,9 +309,9 @@ const AdminDashboardHome = () => {
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
               <Activity className="w-5 h-5 text-blue-500" />
-              Hoạt Động Gần Đây
+              Recent Activity
             </CardTitle>
-            <CardDescription>Các sự kiện trong hệ thống</CardDescription>
+            <CardDescription>Events in the system</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">

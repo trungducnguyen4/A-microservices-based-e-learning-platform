@@ -245,13 +245,13 @@ export default function CourseDetail() {
       setCourse({
         id: courseData.id || courseId,
         title: courseData.title || courseData.name,
-        description: courseData.description || "Chưa có mô tả cho khóa học này",
-        category: courseData.category || "Chưa phân loại",
-        duration: courseData.duration || "Chưa xác định",
+        description: courseData.description || "No description available for this course",
+        category: courseData.category || "Uncategorized",
+        duration: courseData.duration || "Not specified",
         maxStudents: courseData.maxStudents || 0,
         enrolledStudents: courseData.enrolledStudents || 0,
         progress: courseData.progress || 0,
-        startDate: courseData.startDate || courseData.createdAt || "Chưa xác định",
+        startDate: courseData.startDate || courseData.createdAt || "Not specified",
         joinCode: courseData.joinCode || courseData.code || "",
         status: courseData.status || "active"
       });
@@ -358,7 +358,7 @@ export default function CourseDetail() {
       return;
     }
     // Determine role robustly (role may be a string or an array)
-    const roleField = user?.role || user?.roles || '';
+    const roleField = user?.role || user?.role || '';
     let isStudent = false;
     if (Array.isArray(roleField)) {
       isStudent = roleField.map(r => String(r).toLowerCase()).includes('student');
@@ -555,8 +555,8 @@ export default function CourseDetail() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
-                <h3 className="text-lg font-semibold mb-2">Đang tải khóa học...</h3>
-                <p className="text-sm text-muted-foreground">Vui lòng đợi</p>
+                <h3 className="text-lg font-semibold mb-2">Loading course...</h3>
+                <p className="text-sm text-muted-foreground">Please wait</p>
               </div>
             </CardContent>
           </Card>
@@ -576,13 +576,13 @@ export default function CourseDetail() {
                 <div className="w-16 h-16 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mx-auto mb-4">
                   <BookOpen className="w-8 h-8" />
                 </div>
-                <h3 className="text-lg font-semibold mb-2">Lỗi tải khóa học</h3>
-                <p className="text-sm text-muted-foreground mb-4">{error || "Không tìm thấy khóa học"}</p>
+                <h3 className="text-lg font-semibold mb-2">Error loading course</h3>
+                <p className="text-sm text-muted-foreground mb-4">{error || "Course not found"}</p>
                 <div className="flex gap-2 justify-center">
                   <Button variant="outline" onClick={() => navigate("/teacher")}>
-                    Quay lại
+                    Back
                   </Button>
-                  <Button onClick={loadCourseDetail}>Thử lại</Button>
+                  <Button onClick={loadCourseDetail}>Try again</Button>
                 </div>
               </div>
             </CardContent>
@@ -596,8 +596,8 @@ export default function CourseDetail() {
     <div className="container mx-auto p-6 max-w-6xl">
       {/* SEO meta for Course Detail */}
       {(() => {
-        const seoTitle = `${course.title || "Chi tiết khóa học"} | E-Learning Platform`;
-        const seoDesc = course.description || "Xem thông tin khóa học, lịch dạy và thông báo.";
+        const seoTitle = `${course.title || "Course Details"} | E-Learning Platform`;
+        const seoDesc = course.description || "View course information, schedule and announcements.";
         const canonical = typeof window !== "undefined" ? window.location.href : undefined;
         const courseLd = {
           "@context": "https://schema.org",
@@ -611,8 +611,8 @@ export default function CourseDetail() {
           "@context": "https://schema.org",
           "@type": "BreadcrumbList",
           itemListElement: [
-            { "@type": "ListItem", position: 1, name: "Trang chủ", item: ensureAbsoluteUrl("/") },
-            { "@type": "ListItem", position: 2, name: "Khóa học", item: ensureAbsoluteUrl("/teacher") },
+            { "@type": "ListItem", position: 1, name: "Home", item: ensureAbsoluteUrl("/") },
+            { "@type": "ListItem", position: 2, name: "Courses", item: ensureAbsoluteUrl("/teacher") },
             { "@type": "ListItem", position: 3, name: course.title, item: canonical },
           ],
         };
@@ -637,7 +637,7 @@ export default function CourseDetail() {
           <p className="text-muted-foreground mt-1">{course.description}</p>
           {course.joinCode && (
             <div className="mt-2 flex items-center gap-3">
-              <div className="text-sm text-muted-foreground">Mã tham gia:</div>
+              <div className="text-sm text-muted-foreground">Join code:</div>
               <div className="font-mono text-sm bg-muted/10 px-2 py-1 rounded">{course.joinCode}</div>
               <Button size="sm" variant="outline" onClick={async () => {
                 try {
@@ -651,13 +651,13 @@ export default function CourseDetail() {
                 }
               }}>
                 <Copy className="w-4 h-4 mr-2" />
-                Sao chép
+                Copy
               </Button>
             </div>
           )}
         </div>
         <Badge variant={course.status === "active" ? "default" : "secondary"}>
-          {course.status === "active" ? "Đang diễn ra" : "Nháp"}
+          {course.status === "active" ? "Active" : "Draft"}
         </Badge>
       </div>
 
@@ -669,7 +669,7 @@ export default function CourseDetail() {
                   <Users className="h-8 w-8 text-primary" />
                   <div>
                     <p className="text-2xl font-bold">{students.length}</p>
-                    <p className="text-sm text-muted-foreground">Học sinh</p>
+                    <p className="text-sm text-muted-foreground">Students</p>
                   </div>
                 </div>
           </CardContent>
@@ -681,7 +681,7 @@ export default function CourseDetail() {
               <BookOpen className="h-8 w-8 text-accent" />
               <div>
                 <p className="text-2xl font-bold">{assignments.length}</p>
-                <p className="text-sm text-muted-foreground">Bài tập</p>
+                <p className="text-sm text-muted-foreground">Assignments</p>
               </div>
             </div>
           </CardContent>
@@ -693,7 +693,7 @@ export default function CourseDetail() {
               <Clock className="h-8 w-8 text-secondary" />
               <div>
                 <p className="text-2xl font-bold">{course.duration}</p>
-                <p className="text-sm text-muted-foreground">Thời lượng</p>
+                <p className="text-sm text-muted-foreground">Duration</p>
               </div>
             </div>
           </CardContent>
@@ -705,7 +705,7 @@ export default function CourseDetail() {
               <Calendar className="h-8 w-8 text-primary" />
               <div>
                 <p className="text-2xl font-bold">{course.progress}%</p>
-                <p className="text-sm text-muted-foreground">Tiến độ</p>
+                <p className="text-sm text-muted-foreground">Progress</p>
               </div>
             </div>
           </CardContent>
@@ -716,7 +716,7 @@ export default function CourseDetail() {
       <div className="mb-6">
         <Card>
           <CardHeader className="flex items-center justify-between">
-            <CardTitle>Lịch dạy</CardTitle>
+            <CardTitle>Teaching Schedule</CardTitle>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -727,22 +727,22 @@ export default function CourseDetail() {
                 {syncing ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Đang đồng bộ {syncProgress.current}/{syncProgress.total}
+                    Syncing {syncProgress.current}/{syncProgress.total}
                   </>
                 ) : (
                   <>
                     <CalendarPlus className="h-4 w-4 mr-2" />
-                    Đồng bộ Google Calendar
+                    Sync to Google Calendar
                   </>
                 )}
               </Button>
-              <Button variant={scheduleView === 'list' ? 'default' : 'outline'} size="sm" onClick={() => setScheduleView('list')}>Danh sách</Button>
-              <Button variant={scheduleView === 'week' ? 'default' : 'outline'} size="sm" onClick={() => setScheduleView('week')}>Theo tuần</Button>
+              <Button variant={scheduleView === 'list' ? 'default' : 'outline'} size="sm" onClick={() => setScheduleView('list')}>List</Button>
+              <Button variant={scheduleView === 'week' ? 'default' : 'outline'} size="sm" onClick={() => setScheduleView('week')}>Weekly</Button>
             </div>
           </CardHeader>
           <CardContent>
             {schedule.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Chưa có lịch dạy nào cho khóa học này.</p>
+              <p className="text-sm text-muted-foreground">No teaching schedule for this course yet.</p>
             ) : (
               <>
                 {scheduleView === 'list' ? (
@@ -750,18 +750,18 @@ export default function CourseDetail() {
                     {schedule.slice(0, 8).map((s) => {
                       const end = new Date(s.dt);
                       end.setMinutes(end.getMinutes() + 90);
-                      const gcal = googleCalendarUrl(s.topic || 'Buổi học', new Date(s.dt), end, `Giảng viên: ${s.instructor || ''}`, s.room || '');
+                      const gcal = googleCalendarUrl(s.topic || 'Class', new Date(s.dt), end, `Instructor: ${s.instructor || ''}`, s.room || '');
                       return (
                         <div key={s.id} className="p-3 border rounded bg-gray-50 dark:bg-gray-900">
                           <div className="space-y-1">
-                            {s.date && (<p className="text-sm font-medium">📅 Ngày: {s.date}</p>)}
-                            {s.time && (<p className="text-sm">⏰ Giờ: {s.time}</p>)}
-                            {s.topic && (<p className="text-sm">📖 Nội dung: {s.topic}</p>)}
-                            {s.room && (<p className="text-sm">📍 Phòng học: {s.room}</p>)}
-                            {s.instructor && (<p className="text-sm">👨‍🏫 Giảng viên: {s.instructor}</p>)}
+                            {s.date && (<p className="text-sm font-medium">📅 Date: {s.date}</p>)}
+                            {s.time && (<p className="text-sm">⏰ Time: {s.time}</p>)}
+                            {s.topic && (<p className="text-sm">📖 Content: {s.topic}</p>)}
+                            {s.room && (<p className="text-sm">📍 Room: {s.room}</p>)}
+                            {s.instructor && (<p className="text-sm">👨‍🏫 Instructor: {s.instructor}</p>)}
                           </div>
                           <div className="pt-2">
-                            <a href={gcal} target="_blank" rel="noreferrer" className="text-sm text-primary underline">Thêm vào Google Calendar</a>
+                            <a href={gcal} target="_blank" rel="noreferrer" className="text-sm text-primary underline">Add to Google Calendar</a>
                           </div>
                         </div>
                       );
@@ -772,14 +772,14 @@ export default function CourseDetail() {
                     {/* Week navigation */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" onClick={() => { const p = new Date(weekCursor); p.setDate(p.getDate() - 7); setWeekCursor(p); }}>Tuần trước</Button>
-                        <Button variant="outline" size="sm" onClick={() => { const n = new Date(weekCursor); n.setDate(n.getDate() + 7); setWeekCursor(n); }}>Tuần sau</Button>
+                        <Button variant="outline" size="sm" onClick={() => { const p = new Date(weekCursor); p.setDate(p.getDate() - 7); setWeekCursor(p); }}>Previous</Button>
+                        <Button variant="outline" size="sm" onClick={() => { const n = new Date(weekCursor); n.setDate(n.getDate() + 7); setWeekCursor(n); }}>Next</Button>
                       </div>
                       <div className="text-sm text-muted-foreground">
                         {(() => {
                           const ws = startOfWeek(weekCursor);
                           const we = endOfWeek(weekCursor);
-                          return `Tuần ${ws.toLocaleDateString()} - ${we.toLocaleDateString()}`;
+                          return `Week ${ws.toLocaleDateString()} - ${we.toLocaleDateString()}`;
                         })()}
                       </div>
                     </div>
@@ -798,19 +798,19 @@ export default function CourseDetail() {
                           <div key={dayIdx} className="p-3 border rounded">
                             <div className="font-medium mb-2">{dayLabel}<span className="ml-2 text-xs text-muted-foreground">{dayDate.toLocaleDateString()}</span></div>
                             {daySessions.length === 0 ? (
-                              <p className="text-xs text-muted-foreground">Không có buổi học</p>
+                              <p className="text-xs text-muted-foreground">No classes</p>
                             ) : (
                               <div className="space-y-2">
                                 {daySessions.map((s) => {
                                   const end = new Date(s.dt);
                                   end.setMinutes(end.getMinutes() + 90);
-                                  const gcal = googleCalendarUrl(s.topic || 'Buổi học', new Date(s.dt), end, `Giảng viên: ${s.instructor || ''}`, s.room || '');
+                                  const gcal = googleCalendarUrl(s.topic || 'Class', new Date(s.dt), end, `Instructor: ${s.instructor || ''}`, s.room || '');
                                   return (
                                     <div key={s.id} className="text-sm">
                                       <div>⏰ {s.time} — {s.topic}</div>
                                       {s.room && (<div className="text-xs text-muted-foreground">📍 {s.room}</div>)}
                                       {s.instructor && (<div className="text-xs text-muted-foreground">👨‍🏫 {s.instructor}</div>)}
-                                      <a href={gcal} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Thêm vào Google Calendar</a>
+                                      <a href={gcal} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Add to Google Calendar</a>
                                     </div>
                                   );
                                 })}
@@ -832,11 +832,11 @@ export default function CourseDetail() {
       <div className="mb-6">
         <Card>
           <CardHeader>
-            <CardTitle>Thông báo khóa học</CardTitle>
+            <CardTitle>Course Announcements</CardTitle>
           </CardHeader>
           <CardContent>
             {courseAnnouncements.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Chưa có thông báo nào cho khóa học này.</p>
+              <p className="text-sm text-muted-foreground">No announcements for this course yet.</p>
             ) : (
               <>
                 <div className="space-y-4">
@@ -888,7 +888,7 @@ export default function CourseDetail() {
                       onClick={() => setAnnouncementPage(p => Math.max(1, p - 1))}
                       disabled={announcementPage === 1}
                     >
-                      Trước
+                      Previous
                     </Button>
                     <div className="flex gap-1 flex-wrap justify-center">
                       {Array.from({ length: Math.ceil(courseAnnouncements.length / ANNOUNCEMENTS_PER_PAGE) }, (_, i) => i + 1).map((page) => (
@@ -909,10 +909,10 @@ export default function CourseDetail() {
                       onClick={() => setAnnouncementPage(p => Math.min(Math.ceil(courseAnnouncements.length / ANNOUNCEMENTS_PER_PAGE), p + 1))}
                       disabled={announcementPage === Math.ceil(courseAnnouncements.length / ANNOUNCEMENTS_PER_PAGE)}
                     >
-                      Sau
+                      Next
                     </Button>
                     <span className="text-xs text-muted-foreground ml-2">
-                      Trang {announcementPage} / {Math.ceil(courseAnnouncements.length / ANNOUNCEMENTS_PER_PAGE)}
+                      Page {announcementPage} / {Math.ceil(courseAnnouncements.length / ANNOUNCEMENTS_PER_PAGE)}
                     </span>
                   </div>
                 )}
@@ -925,20 +925,20 @@ export default function CourseDetail() {
       {/* Main Content */}
       <Tabs defaultValue="students" className="space-y-6">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="students">Học Sinh</TabsTrigger>
-          <TabsTrigger value="assignments">Bài Tập</TabsTrigger>
-          <TabsTrigger value="lessons">Bài Học</TabsTrigger>
-          <TabsTrigger value="settings">Cài Đặt</TabsTrigger>
+          <TabsTrigger value="students">Students</TabsTrigger>
+          <TabsTrigger value="assignments">Assignments</TabsTrigger>
+          <TabsTrigger value="lessons">Lessons</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
         {/* Students Tab */}
         <TabsContent value="students">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Danh Sách Học Sinh ({students.length})</CardTitle>
+              <CardTitle>Student List ({students.length})</CardTitle>
               <Button onClick={() => navigate(`/course/${courseId}/add-students`)}>
                 <Plus className="h-4 w-4 mr-2" />
-                Thêm Học Sinh
+                Add Student
               </Button>
             </CardHeader>
             <CardContent>
@@ -952,7 +952,7 @@ export default function CourseDetail() {
                       <div>
                         <p className="font-medium">{student.name}</p>
                         <p className="text-sm text-muted-foreground">{student.email}</p>
-                        <p className="text-xs text-muted-foreground">Hoạt động cuối: {student.lastActive}</p>
+                        <p className="text-xs text-muted-foreground">Last active: {student.lastActive}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
@@ -975,11 +975,11 @@ export default function CourseDetail() {
         <TabsContent value="assignments">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Bài Tập và Đánh Giá</CardTitle>
+              <CardTitle>Assignments and Grading</CardTitle>
               {user?.role === 'teacher' && (
                 <Button onClick={() => navigate("/teacher/create-assignment")}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Tạo Bài Tập Mới
+                  Create New Assignment
                 </Button>
               )}
             </CardHeader>
@@ -989,14 +989,14 @@ export default function CourseDetail() {
                   <div key={assignment.id} className="flex items-center justify-between p-4 border rounded-lg cursor-pointer" onClick={() => handleViewAssignmentClick(assignment)}>
                     <div>
                       <h3 className="font-medium">{assignment.title}</h3>
-                      <p className="text-sm text-muted-foreground">Hạn nộp: {assignment.dueDate}</p>
+                      <p className="text-sm text-muted-foreground">Due date: {assignment.dueDate}</p>
                       <p className="text-sm">
-                        Đã nộp: {assignment.submitted}/{assignment.total} học sinh
+                        Submitted: {assignment.submitted}/{assignment.total} students
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant={assignment.status === "active" ? "default" : "secondary"}>
-                        {assignment.status === "active" ? "Đang diễn ra" : "Nháp"}
+                        {assignment.status === "active" ? "Active" : "Draft"}
                       </Badge>
                       {user && String(user.role).toLowerCase() === 'student' && (() => {
                         const isPublished = ['published', 'active'].includes(String(assignment.status || '').toLowerCase());
@@ -1008,7 +1008,7 @@ export default function CourseDetail() {
                             onClick={() => handleViewAssignmentClick(assignment)}
                             disabled={!isPublished}
                           >
-                            Nộp bài
+                            Submit
                           </Button>
                         );
                       })()}
@@ -1030,10 +1030,10 @@ export default function CourseDetail() {
         <TabsContent value="lessons">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Nội Dung Bài Học</CardTitle>
+              <CardTitle>Lesson Content</CardTitle>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
-                Thêm Bài Học
+                Add Lesson
               </Button>
             </CardHeader>
             <CardContent>
@@ -1046,12 +1046,12 @@ export default function CourseDetail() {
                       </div>
                       <div>
                         <h3 className="font-medium">{lesson.title}</h3>
-                        <p className="text-sm text-muted-foreground">Thời lượng: {lesson.duration}</p>
+                        <p className="text-sm text-muted-foreground">Duration: {lesson.duration}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant={lesson.completed ? "default" : "secondary"}>
-                        {lesson.completed ? "Hoàn thành" : "Chưa hoàn thành"}
+                        {lesson.completed ? "Completed" : "Not completed"}
                       </Badge>
                       <Button size="sm" variant="outline">
                         <Edit className="h-4 w-4" />
@@ -1068,40 +1068,40 @@ export default function CourseDetail() {
         <TabsContent value="settings">
           <Card>
             <CardHeader>
-              <CardTitle>Cài Đặt Khóa Học</CardTitle>
+              <CardTitle>Course Settings</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="font-medium">Danh mục</p>
+                  <p className="font-medium">Category</p>
                   <p className="text-muted-foreground">{course.category}</p>
                 </div>
                 <div>
-                  <p className="font-medium">Ngày bắt đầu</p>
+                  <p className="font-medium">Start Date</p>
                   <p className="text-muted-foreground">{course.startDate}</p>
                 </div>
                 <div>
-                  <p className="font-medium">Thời lượng</p>
+                  <p className="font-medium">Duration</p>
                   <p className="text-muted-foreground">{course.duration}</p>
                 </div>
                 <div>
-                  <p className="font-medium">Số học sinh tối đa</p>
+                  <p className="font-medium">Max Students</p>
                   <p className="text-muted-foreground">{course.maxStudents}</p>
                 </div>
                 <div>
-                  <p className="font-medium">Mã tham gia (joinCode)</p>
-                  <p className="text-muted-foreground">{course.joinCode || 'Chưa có'}</p>
+                  <p className="font-medium">Join Code</p>
+                  <p className="text-muted-foreground">{course.joinCode || 'Not available'}</p>
                 </div>
               </div>
               {user?.role === 'teacher' && (
                 <div className="flex gap-4 pt-4">
                   <Button variant="outline">
                     <Edit className="h-4 w-4 mr-2" />
-                    Chỉnh Sửa
+                    Edit
                   </Button>
                   <Button variant="destructive">
                     <Trash2 className="h-4 w-4 mr-2" />
-                    Xóa Khóa Học
+                    Delete Course
                   </Button>
                 </div>
               )}
