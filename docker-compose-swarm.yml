@@ -34,24 +34,12 @@ services:
       placement:
         preferences:
           - spread: node.id
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
 
   api-gateway:
     image: trungduc14/api-gateway:latest
     environment:
       <<: *spring_env
       SERVER_PORT: 8888
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8888/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 120s
     ports:
       - "8888:8888"
     networks:
@@ -77,12 +65,6 @@ services:
       SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "5"
       SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: "2"
       SERVER_PORT: 8080
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 120s
     networks:
       - e-learning-network
     deploy:
@@ -192,12 +174,6 @@ services:
       LIVEKIT_URL: "wss://elearning-microservice-98bdertb.livekit.cloud"
       LIVEKIT_API_KEY: "APIw58QnxLKZhHz"
       LIVEKIT_API_SECRET: "efMRFX9tmBWDrGUkvO9WKp3jh2pVJ6UlVWXp3gJZ3rB"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:4000/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 120s
     networks:
       - e-learning-network
     deploy:
@@ -224,12 +200,6 @@ services:
       MAX_FILE_SIZE: "10485760"
     volumes:
       - file_uploads:/app/uploads
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:5000/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 120s
     networks:
       - e-learning-network
     deploy:
@@ -265,12 +235,6 @@ services:
       HOMEWORK_SERVICE_URL: "http://homework-service:8081"
       HOMEWORK_REMINDER_HOURS: "24"
       CLASS_REMINDER_MINUTES: "10"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:5001/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 120s
     networks:
       - e-learning-network
     deploy:
