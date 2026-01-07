@@ -35,9 +35,10 @@ spring:
       on-profile: development
 
   datasource:
-    url: jdbc:mysql://localhost:3306/user_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-    username: root
-    password:
+    # Use environment variables to allow connecting to RDS in dev (default kept similar to previous local XAMPP)
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://your-rds-endpoint:3306/user_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
@@ -51,8 +52,8 @@ spring:
 
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}
       timeout: 2000ms
 
 

@@ -10,9 +10,11 @@ spring:
     activate:
       on-profile: development
   datasource:
-    url: jdbc:mysql://localhost:3306/announcement_db
-    username: root
-    password:
+    # Use environment variable SPRING_DATASOURCE_URL to point to RDS (preferred).
+    # Example: set SPRING_DATASOURCE_URL=jdbc:mysql://my-rds-endpoint.rds.amazonaws.com:3306/announcement_db
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://your-rds-endpoint:3306/announcement_db}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -35,7 +37,8 @@ spring:
     activate:
       on-profile: docker
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://host.docker.internal:3306/announcement_db}
+    # When running in Docker you can still provide the RDS URL via SPRING_DATASOURCE_URL.
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://your-rds-endpoint:3306/announcement_db}
     username: ${SPRING_DATASOURCE_USERNAME:root}
     password: ${SPRING_DATASOURCE_PASSWORD:}
   jpa:

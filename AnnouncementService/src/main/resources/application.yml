@@ -10,9 +10,10 @@ spring:
     activate:
       on-profile: development
   datasource:
-    url: jdbc:mysql://localhost:3306/announcement_db
-    username: root
-    password:
+    # Use environment variables to point to RDS
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://your-rds-endpoint:3306/announcement_db}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
