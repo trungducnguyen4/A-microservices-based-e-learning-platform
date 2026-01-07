@@ -67,11 +67,11 @@ services:
       SERVER_PORT: 8080
     networks:
       - e-learning-network
-      healthcheck:
-        test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
-        interval: 30s
-        timeout: 10s
-        retries: 5
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
     deploy:
       <<: *restart_policy
       replicas: 1
@@ -93,11 +93,11 @@ services:
       FILE_SERVICE_URL: "http://file-service:5000"
     networks:
       - e-learning-network
-      healthcheck:
-        test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
-        interval: 30s
-        timeout: 10s
-        retries: 5
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
     deploy:
       <<: *restart_policy
       replicas: 2
@@ -118,11 +118,11 @@ services:
       USER_SERVICE_URL: "http://user-service:8080"
     networks:
       - e-learning-network
-      healthcheck:
-        test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
-        interval: 30s
-        timeout: 10s
-        retries: 5
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
     deploy:
       <<: *restart_policy
       replicas: 2
@@ -145,11 +145,11 @@ services:
       SCHEDULE_SERVICE_URL: "http://schedule-service:8082"
     networks:
       - e-learning-network
-      healthcheck:
-        test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
-        interval: 30s
-        timeout: 10s
-        retries: 5
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
     deploy:
       <<: *restart_policy
       replicas: 2
@@ -170,11 +170,11 @@ services:
       USER_SERVICE_URL: "http://user-service:8080"
     networks:
       - e-learning-network
-      healthcheck:
-        test: ["CMD", "curl", "-f", "http://localhost:8090/actuator/health"]
-        interval: 30s
-        timeout: 10s
-        retries: 5
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
     deploy:
       <<: *restart_policy
       replicas: 2
