@@ -1,3 +1,16 @@
+    /**
+     * Get all homeworks for a student (active và không active)
+     */
+    @GetMapping("/student/{studentId}")
+    public ApiResponse<List<HomeworkResponse>> getHomeworksForStudent(@PathVariable String studentId) {
+        log.info("GET /api/homework/student/{} - Getting all homeworks for student", studentId);
+        List<HomeworkResponse> homeworks = homeworkService.getHomeworksForStudent(studentId);
+        return ApiResponse.<List<HomeworkResponse>>builder()
+            .code(HttpStatus.OK.value())
+            .message("All homeworks retrieved successfully")
+            .result(homeworks)
+            .build();
+    }
 package org.tduc.homeworkservice.controller;
 
 import jakarta.validation.Valid;

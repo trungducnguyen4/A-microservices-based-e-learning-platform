@@ -15,6 +15,9 @@ import java.util.Optional;
 
 @Repository
 public interface HomeworkRepository extends JpaRepository<Homework, String> {
+        // Find all homeworks assigned to student (không filter active)
+        @Query("SELECT h FROM Homework h WHERE (h.assignedTo IS NULL OR h.assignedTo LIKE CONCAT('%', :studentId, '%')) ORDER BY h.dueDate ASC")
+        List<Homework> findAllHomeworksForStudent(@Param("studentId") String studentId);
     
     // Find homework by course
     List<Homework> findByCourseIdOrderByCreatedAtDesc(String courseId);

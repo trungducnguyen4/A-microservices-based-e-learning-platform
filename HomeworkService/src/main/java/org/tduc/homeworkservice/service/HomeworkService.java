@@ -1,3 +1,14 @@
+    /**
+     * Get all homeworks for a student (không filter active)
+     */
+    @Transactional(readOnly = true)
+    public List<HomeworkResponse> getHomeworksForStudent(String studentId) {
+        log.info("Getting all homeworks for student: {}", studentId);
+        List<Homework> homeworks = homeworkRepository.findAllHomeworksForStudent(studentId);
+        return homeworks.stream()
+            .map(homeworkMapper::toHomeworkResponse)
+            .collect(Collectors.toList());
+    }
 package org.tduc.homeworkservice.service;
 
 import lombok.RequiredArgsConstructor;

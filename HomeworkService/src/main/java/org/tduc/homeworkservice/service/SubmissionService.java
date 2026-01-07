@@ -170,10 +170,12 @@ public class SubmissionService {
     @Transactional(readOnly = true)
     public Page<SubmissionResponse> getSubmissionsByHomework(String homeworkId, int page, int size) {
         log.info("Getting submissions for homework: {}, page: {}, size: {}", homeworkId, page, size);
-        
         Pageable pageable = PageRequest.of(page, size, Sort.by("submittedAt").descending());
         Page<Submission> submissions = submissionRepository.findByHomeworkIdOrderBySubmittedAtDesc(homeworkId, pageable);
-        
+        // Nếu không có submission nào thì trả về trang rỗng, không throw exception
+        if (submissions == null || submissions.isEmpty()) {
+            return Page.empty(pageable);
+        }
         return submissions.map(submissionMapper::toSubmissionResponse);
     }
 
