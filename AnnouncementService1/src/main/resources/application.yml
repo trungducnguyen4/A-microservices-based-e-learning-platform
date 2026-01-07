@@ -12,7 +12,7 @@ spring:
   datasource:
     # Use environment variable SPRING_DATASOURCE_URL to point to RDS (preferred).
     # Example: set SPRING_DATASOURCE_URL=jdbc:mysql://my-rds-endpoint.rds.amazonaws.com:3306/announcement_db
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://your-rds-endpoint:3306/announcement_db}
+    url: jdbc:mysql://elearningplatform.cj6aaa462kbk.ap-southeast-2.rds.amazonaws.com:3306/announcement_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
     username: ${SPRING_DATASOURCE_USERNAME:root}
     password: ${SPRING_DATASOURCE_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver

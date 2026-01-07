@@ -45,7 +45,6 @@ logging:
   level:
     com.elearning: DEBUG
 
-management:
   endpoints:
     web:
       exposure:
@@ -53,7 +52,7 @@ management:
       base-path: /actuator
   endpoint:
     health:
-      show-details: always
+    url: jdbc:mysql://elearningplatform.cj6aaa462kbk.ap-southeast-2.rds.amazonaws.com:3306/homework_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
 
 ---
 # Docker Profile
