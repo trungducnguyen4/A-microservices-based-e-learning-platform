@@ -54,6 +54,16 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(requestLogger);
 
+// Load test endpoint (NO auth, NO DB, NO external services)
+app.get('/load-test', (req, res) => {
+  res.status(200).json({
+    service: 'classroom-service',
+    hostname: process.env.HOSTNAME,
+    pid: process.pid,
+    timestamp: Date.now()
+  });
+});
+
 // Health check endpoint
 app.get('/health', async (req, res) => {
   try {
