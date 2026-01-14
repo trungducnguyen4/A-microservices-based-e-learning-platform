@@ -48,6 +48,8 @@
     root: INFO
     org.tduc.adminservice: DEBUG
 
+
+---
 management:
   endpoints:
     web:
