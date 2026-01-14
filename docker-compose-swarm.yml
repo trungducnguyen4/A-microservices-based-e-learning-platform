@@ -65,6 +65,9 @@ services:
       SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "5"
       SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: "2"
       SERVER_PORT: 8080
+      GOOGLE_CLIENT_ID: "560938395171-9o65cgu27oe1gkbhkm54kmegc73hu4h1.apps.googleusercontent.com"
+      GOOGLE_CLIENT_SECRET: "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"
+      GOOGLE_REDIRECT_URI: "http://3.106.208.141/auth/google/callback"
     networks:
       - e-learning-network
     healthcheck:
