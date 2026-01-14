@@ -175,13 +175,13 @@ spring:
         # - /api/meeting/**, /api/transcript/** (prefixed with /api)
         # - /getToken, /health, /rooms/** (NOT prefixed with /api)
         - id: classroom-service-direct
-          uri: ${CLASSROOM_SERVICE_URL:http://e-learning-classroom-service:3000}
+          uri: ${CLASSROOM_SERVICE_URL:http://e-learning-classroom-service:4000}
           predicates:
             - Path=/api/classrooms/getToken,/api/classrooms/health,/api/classrooms/rooms/**
           filters:
             - RewritePath=/api/classrooms/(?<segment>.*), /$\{segment}
         - id: classroom-service-api
-          uri: ${CLASSROOM_SERVICE_URL:http://e-learning-classroom-service:3000}
+          uri: ${CLASSROOM_SERVICE_URL:http://e-learning-classroom-service:4000}
           predicates:
             - Path=/api/classrooms/meeting/**,/api/classrooms/transcript/**
           filters:
