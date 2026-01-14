@@ -1,10 +1,9 @@
 spring:
   application:
     name: ScheduleService
-  profiles:
-    active: development
+      # profiles:
+      #   active: development
 
----
 # Development Profile
 spring:
   config:
@@ -50,7 +49,6 @@ management:
     health:
       show-details: always
 
----
 # Docker Profile
 spring:
   config:
