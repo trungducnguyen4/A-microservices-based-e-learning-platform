@@ -13,8 +13,10 @@ export default function CreateCourse() {
 
   const [title, setTitle] = useState("");
   const [collaborators, setCollaborators] = useState("");
-  const [startDate, setStartDate] = useState(""); // datetime-local
-  const [endDate, setEndDate] = useState(""); // datetime-local
+  const [startDate, setStartDate] = useState(""); // date only
+  const [startTime, setStartTime] = useState("09:00"); // time only
+  const [endDate, setEndDate] = useState(""); // date only
+  const [endTime, setEndTime] = useState("11:00"); // time only
   const [recurrenceRule, setRecurrenceRule] = useState("");
   const [recurrenceType, setRecurrenceType] = useState<"none"|"daily"|"weekly"|"monthly"|"custom">("none");
   const [interval, setInterval] = useState<number>(1);
@@ -42,8 +44,12 @@ export default function CreateCourse() {
     if (!title.trim()) return setError("Course title is required");
     setLoading(true);
     try {
-      // Convert datetime-local (which is local time) to ISO string
-      const toIso = (v: string) => v ? new Date(v).toISOString() : undefined;
+      // Combine date and time into ISO string
+      const toIso = (dateVal: string, timeVal: string) => {
+        if (!dateVal) return undefined;
+        const dt = new Date(`${dateVal}T${timeVal || '00:00'}`);
+        return dt.toISOString();
+      };
       // build final recurrenceRule
       const builtRRule = recurrenceType === 'none' ? undefined : (recurrenceType === 'custom' ? (customRule || undefined) : buildRRulePreview(recurrenceType, interval, weeklyDays));
       setRecurrenceRule(builtRRule || "");
@@ -59,8 +65,8 @@ export default function CreateCourse() {
         collaborators: collaborators
           ? collaborators.split(',').map(s => s.trim()).filter(Boolean)
           : null,
-        startTime: toIso(startDate),
-        endTime: toIso(endDate),
+        startTime: toIso(startDate, startTime),
+        endTime: toIso(endDate, endTime),
         recurrenceRule: builtRRule || undefined,
         roomCode: roomCode  // Add room code to schedule
       };
@@ -123,63 +129,144 @@ export default function CreateCourse() {
             </div>
 
             <div>
-              <Label className="text-sm sm:text-base">Recurrence</Label>
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-2">
-                <select value={recurrenceType} onChange={(e) => setRecurrenceType(e.target.value as any)} className="border rounded px-2 sm:px-3 py-1.5 sm:py-2 text-sm sm:text-base h-9 sm:h-10">
-                  <option value="none">No repeat</option>
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="custom">Custom (RRULE)</option>
-                </select>
-                {recurrenceType !== 'custom' && (
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs sm:text-sm">Every</Label>
-                    <Input type="number" value={interval} onChange={(e) => setInterval(Number(e.target.value || 1))} className="w-16 sm:w-20 h-9 sm:h-10 text-sm sm:text-base" />
-                    <span className="text-xs sm:text-sm">{recurrenceType === 'daily' ? 'day(s)' : recurrenceType === 'weekly' ? 'week(s)' : 'month(s)'}</span>
+              <Label className="text-sm sm:text-base font-semibold">Recurrence Pattern</Label>
+              <div className="mt-3 space-y-4">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                  <select 
+                    value={recurrenceType} 
+                    onChange={(e) => setRecurrenceType(e.target.value as any)} 
+                    className="border rounded-md px-3 py-2 text-sm sm:text-base h-10 bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="none">No repeat</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="custom">Custom (RRULE)</option>
+                  </select>
+                  {recurrenceType !== 'none' && recurrenceType !== 'custom' && (
+                    <div className="flex items-center gap-2 bg-muted/30 px-3 py-2 rounded-md">
+                      <Label className="text-xs sm:text-sm whitespace-nowrap">Repeat every</Label>
+                      <Input 
+                        type="number" 
+                        min="1"
+                        value={interval} 
+                        onChange={(e) => setInterval(Number(e.target.value || 1))} 
+                        className="w-16 sm:w-20 h-8 text-sm sm:text-base text-center" 
+                      />
+                      <span className="text-xs sm:text-sm whitespace-nowrap">
+                        {recurrenceType === 'daily' ? 'day(s)' : recurrenceType === 'weekly' ? 'week(s)' : 'month(s)'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {recurrenceType === 'weekly' && (
+                  <div className="bg-muted/20 p-4 rounded-lg border">
+                    <Label className="text-sm font-medium mb-3 block">Repeat on</Label>
+                    <div className="grid grid-cols-7 gap-2">
+                      {[
+                        ['MO','M'], ['TU','T'], ['WE','W'], ['TH','T'], ['FR','F'], ['SA','S'], ['SU','S']
+                      ].map(([code,label]) => (
+                        <button
+                          key={code}
+                          type="button"
+                          onClick={() => setWeeklyDays(prev => ({ ...prev, [code as string]: !prev[code as string] }))}
+                          className={`flex items-center justify-center h-10 w-full text-sm font-medium border-2 rounded-full transition-all ${
+                            weeklyDays[code as string] 
+                              ? 'bg-primary text-primary-foreground border-primary shadow-sm' 
+                              : 'bg-background border-muted-foreground/20 hover:border-primary/50'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}  
+
+                {recurrenceType === 'custom' && (
+                  <div className="bg-muted/20 p-4 rounded-lg border">
+                    <Label className="text-sm font-medium mb-2 block">Custom RRULE</Label>
+                    <Textarea 
+                      className="text-sm font-mono min-h-[80px]" 
+                      value={customRule} 
+                      onChange={(e) => setCustomRule(e.target.value)} 
+                      placeholder="FREQ=WEEKLY;BYDAY=MO,WE,FR;INTERVAL=1" 
+                    />
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Enter a valid iCalendar RRULE string
+                    </p>
                   </div>
                 )}
-              </div>
 
-              {recurrenceType === 'weekly' && (
-                <div className="mt-3 grid grid-cols-7 gap-1 sm:gap-2">
-                  {[
-                    ['MO','Mon'], ['TU','Tue'], ['WE','Wed'], ['TH','Thu'], ['FR','Fri'], ['SA','Sat'], ['SU','Sun']
-                  ].map(([code,label]) => (
-                    <label key={code} className={`flex flex-col items-center text-xs sm:text-sm border rounded p-1 sm:p-2 cursor-pointer transition-colors ${weeklyDays[code as string] ? 'bg-primary/10 border-primary' : ''}`}>
-                      <input type="checkbox" checked={weeklyDays[code as string]} onChange={(e) => {
-                        setWeeklyDays(prev => ({ ...prev, [code as string]: e.target.checked }));
-                      }} className="mb-1" />
-                      <span className="mt-0.5 sm:mt-1">{label}</span>
-                    </label>
-                  ))}
-                </div>
-              )}  
-
-              {recurrenceType === 'custom' && (
-                <div className="mt-3">
-                  <Textarea className="text-xs sm:text-sm" value={customRule} onChange={(e) => setCustomRule(e.target.value)} placeholder="e.g: FREQ=WEEKLY;BYDAY=MO,WE,FR;INTERVAL=1" />
-                </div>
-              )}
-
-              <div className="mt-3 text-xs sm:text-sm text-muted-foreground">
-                <div className="font-medium">Preview RRULE:</div>
-                <div className="mt-1.5 font-mono text-xs bg-muted/20 p-2 sm:p-3 rounded break-all">
-                  {recurrenceType === 'none' ? '' : recurrenceType === 'custom' ? (customRule || '') : buildRRulePreview(recurrenceType, interval, weeklyDays)}
-                </div>
+                {recurrenceType !== 'none' && (
+                  <div className="bg-blue-50 dark:bg-blue-950/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="flex items-start gap-2">
+                      <div className="text-blue-600 dark:text-blue-400 mt-0.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-blue-900 dark:text-blue-100 mb-1">RRULE Preview</div>
+                        <div className="text-xs font-mono text-blue-800 dark:text-blue-200 bg-white/50 dark:bg-black/20 p-2 rounded break-all">
+                          {recurrenceType === 'custom' ? (customRule || 'Enter RRULE above') : buildRRulePreview(recurrenceType, interval, weeklyDays)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
               {/* Keep recurrenceRule state in sync with builder */}
               <input type="hidden" value={recurrenceRule} />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              <div>
-                <Label className="text-sm sm:text-base">Start Date</Label>
-                <Input className="h-9 sm:h-10 text-sm sm:text-base mt-1.5" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm sm:text-base font-semibold">Start Date & Time</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">Date</Label>
+                    <Input 
+                      className="h-10 text-sm" 
+                      type="date" 
+                      value={startDate} 
+                      onChange={(e) => setStartDate(e.target.value)} 
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">Time</Label>
+                    <Input 
+                      className="h-10 text-sm" 
+                      type="time" 
+                      value={startTime} 
+                      onChange={(e) => setStartTime(e.target.value)} 
+                    />
+                  </div>
+                </div>
               </div>
-              <div>
-                <Label className="text-sm sm:text-base">End Date</Label>
-                <Input className="h-9 sm:h-10 text-sm sm:text-base mt-1.5" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+              <div className="space-y-2">
+                <Label className="text-sm sm:text-base font-semibold">End Date & Time</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">Date</Label>
+                    <Input 
+                      className="h-10 text-sm" 
+                      type="date" 
+                      value={endDate} 
+                      onChange={(e) => setEndDate(e.target.value)} 
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">Time</Label>
+                    <Input 
+                      className="h-10 text-sm" 
+                      type="time" 
+                      value={endTime} 
+                      onChange={(e) => setEndTime(e.target.value)} 
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
