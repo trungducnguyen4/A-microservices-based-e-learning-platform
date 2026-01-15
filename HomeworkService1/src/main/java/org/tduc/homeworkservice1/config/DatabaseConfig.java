@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 @Configuration
-@EnableJpaRepositories(basePackages = "org.tduc.homeworkservice.repository")
+@EnableJpaRepositories(basePackages = "org.tduc.homeworkservice1.repository")
 @EnableJpaAuditing
 @EnableTransactionManagement
 public class DatabaseConfig {

@@ -26,7 +26,7 @@ spring:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
   redis:
-    host: ${SPRING_REDIS_HOST:redis}
+    host: ${SPRING_REDIS_HOST:elearning_redis}
     port: ${SPRING_REDIS_PORT:6379}
     timeout: 2000ms
 
@@ -60,6 +60,10 @@ management:
     health:
       show-details: always
 
+  health:
+    redis:
+      enabled: false
+
 ---
 # Docker profile
 spring:
@@ -79,7 +83,7 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
   redis:
-    host: ${SPRING_REDIS_HOST:redis}
+    host: ${SPRING_REDIS_HOST:elearning_redis}
     port: ${SPRING_REDIS_PORT:6379}
     timeout: 2000ms
 
@@ -110,3 +114,7 @@ management:
   endpoint:
     health:
       show-details: always
+
+  health:
+    redis:
+      enabled: false
