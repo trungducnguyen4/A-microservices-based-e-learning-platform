@@ -1,4 +1,4 @@
-package org.tduc.homeworkservice.dto.response;
+package org.tduc.homeworkservice1.dto.response;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;

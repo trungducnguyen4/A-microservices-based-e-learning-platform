@@ -1,4 +1,4 @@
-package org.tduc.homeworkservice.config;
+package org.tduc.homeworkservice1.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;

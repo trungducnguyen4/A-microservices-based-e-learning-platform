@@ -45,5 +45,5 @@ public class SubmissionResponse {
     
     // Files and comments
     List<SubmissionFileResponse> files;
-    List<org.tduc.homeworkservice.dto.response.SubmissionCommentResponse> comments;
+    List<SubmissionCommentResponse> comments;
 }

@@ -1,4 +1,4 @@
-package org.tduc.homeworkservice.config;
+package org.tduc.homeworkservice1.config;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
