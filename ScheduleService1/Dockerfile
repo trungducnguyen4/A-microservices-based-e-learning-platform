@@ -23,9 +23,10 @@ WORKDIR /app
 
 COPY --from=builder /app/target/*.jar app.jar
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD curl -f http://localhost:8090/actuator/health || exit 1
 
-EXPOSE 8090
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:8082/actuator/health || exit 1
+
+EXPOSE 8082
 
 ENTRYPOINT ["java", "-jar", "app.jar"]
