@@ -83,22 +83,19 @@
             <version>1.5.5.Final</version> <!-- Check for the latest version -->
             <scope>provided</scope>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
-        </dependency>
+        <!-- Removed spring-boot-starter-webflux: not needed for blocking JPA/REST stack -->
 
         <!-- Spring Security -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
-        
         <!-- OAuth2 Client -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-oauth2-client</artifactId>
         </dependency>
+        <!-- H2 removed from production dependencies. Use only for dev/test profile if needed. -->
         
         <!-- JWT -->
         <dependency>

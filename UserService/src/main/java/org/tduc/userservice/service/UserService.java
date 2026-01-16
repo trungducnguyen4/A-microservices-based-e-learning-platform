@@ -11,7 +11,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
 import org.tduc.userservice.dto.request.AuthRequest;
 import org.tduc.userservice.dto.request.IntrospectRequest;
 import org.tduc.userservice.dto.request.UserCreationRequest;
