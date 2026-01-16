@@ -1,5 +1,6 @@
-# Expose actuator health/info endpoints for Docker/production
 management:
+  server:
+    port: 8889
   endpoints:
     web:
       exposure:
