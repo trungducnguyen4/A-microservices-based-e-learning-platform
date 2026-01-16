@@ -1,53 +1,31 @@
 # Build stage
-FROM eclipse-temurin:21-jdk-alpine AS builder
+
+# ================= BUILD STAGE =================
+FROM maven:3.9.9-eclipse-temurin-21 AS builder
 
 WORKDIR /app
 
-# Copy Maven wrapper files
+COPY pom.xml .
 COPY .mvn .mvn
-COPY mvnw* ./
-COPY pom.xml ./
+COPY mvnw .
+RUN chmod +x mvnw
 
-# Make Maven wrapper executable
-RUN chmod +x ./mvnw
+COPY src src
 
-# Copy source code
-COPY src ./src
-
-# Build the application
 RUN ./mvnw clean package -DskipTests
 
-# Production stage
-FROM eclipse-temurin:21-jre-alpine
+# ================= RUNTIME STAGE =================
+FROM eclipse-temurin:21-jre
 
-# Basic tools for health checks
-RUN apk add --no-cache curl
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-# Add non-root user
-RUN addgroup -g 1001 -S appgroup && \
-    adduser -u 1001 -S appuser -G appgroup
-
-# Set working directory
 WORKDIR /app
 
-# Copy JAR from build stage
 COPY --from=builder /app/target/*.jar app.jar
 
-# Change ownership to non-root user
-RUN chown -R appuser:appgroup /app
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:8090/actuator/health || exit 1
 
-# Switch to non-root user
-USER appuser
+EXPOSE 8090
 
-# Add health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD curl -f http://localhost:8080/actuator/health || exit 1
-
-# Expose port
-EXPOSE 8080
-
-# Set JVM options
-ENV JAVA_OPTS="-Xms256m -Xmx512m -XX:+UseG1GC -XX:+UseStringDeduplication"
-
-# Start the application
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
