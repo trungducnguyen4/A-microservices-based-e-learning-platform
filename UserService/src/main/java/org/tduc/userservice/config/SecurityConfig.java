@@ -85,24 +85,26 @@ public class SecurityConfig {
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		http
 				.csrf(csrf -> csrf.disable())
-				.authorizeHttpRequests(authorize -> authorize
-						// ✅ Cho phép public các endpoint phục vụ đăng nhập / đăng ký
-						.requestMatchers(
-								"/api/users/auth/login",
-							"/api/users/auth/admin-login",
-								"/api/users/auth/register",
-								"/api/users/register",
-								"/api/users/choose-role",
-                                "/oauth2/**",
-								"/actuator/**"
-						).permitAll()
+				       .authorizeHttpRequests(authorize -> authorize
+					       // Allow actuator endpoints for health checks
+					       .requestMatchers("/actuator/**").permitAll()
 
-						// ✅ Cho phép preflight requests (CORS OPTIONS)
-						.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+					       // Public endpoints for login/register
+					       .requestMatchers(
+						       "/api/users/auth/login",
+						       "/api/users/auth/admin-login",
+						       "/api/users/auth/register",
+						       "/api/users/register",
+						       "/api/users/choose-role",
+						       "/oauth2/**"
+					       ).permitAll()
 
-						// ✅ Mọi request khác đều cần authenticated
-						.anyRequest().authenticated()
-				)
+					       // Allow preflight requests (CORS OPTIONS)
+					       .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+					       // All other requests require authentication
+					       .anyRequest().authenticated()
+				       )
 				.httpBasic(httpBasic -> httpBasic.disable())
 				.formLogin(form -> form.disable())
 		.oauth2Login(oauth -> oauth
