@@ -112,11 +112,6 @@
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
-        <!-- Actuator for healthcheck endpoint -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
-        </dependency>
                             <version>${lombok.version}</version>
                         </path>
                         <path>
@@ -130,6 +125,11 @@
                             <version>0.2.0</version>
                         </path>
                     </annotationProcessorPaths>
+                        <!-- Actuator for healthcheck endpoint -->
+                        <dependency>
+                            <groupId>org.springframework.boot</groupId>
+                            <artifactId>spring-boot-starter-actuator</artifactId>
+                        </dependency>
                 </configuration>
             </plugin>
             <plugin>
