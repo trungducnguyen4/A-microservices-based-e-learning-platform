@@ -66,6 +66,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(authorize -> authorize
                 // Allow unauthenticated GET requests for schedule read endpoints (list/details/participants)
                 .requestMatchers(HttpMethod.GET, "/api/schedules/**").permitAll()
+                // Allow unauthenticated access to actuator endpoints for healthcheck
+                .requestMatchers("/actuator/**").permitAll()
                 // All other requests require authentication
                 .anyRequest().authenticated()
             )
