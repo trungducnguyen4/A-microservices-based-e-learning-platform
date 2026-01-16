@@ -63,6 +63,8 @@ public class SecurityConfig {
         http
             .csrf().disable()
             .authorizeHttpRequests(authorize -> authorize
+                // Allow unauthenticated access to actuator endpoints for healthcheck
+                .requestMatchers("/actuator/**").permitAll()
                 .anyRequest().authenticated()
             )
             .httpBasic().disable()
