@@ -30,11 +30,26 @@ public class ScheduleService {
     private static final SecureRandom random = new SecureRandom();
 
     public static String generateJoinCode() {
-        StringBuilder sb = new StringBuilder(CODE_LENGTH);
-        for (int i = 0; i < CODE_LENGTH; i++) {
-            int index = random.nextInt(CHARACTERS.length());
-            sb.append(CHARACTERS.charAt(index));
+        // Generate LiveKit-style room code: XXX-YYYY-ZZZ
+        StringBuilder sb = new StringBuilder();
+        
+        // First segment: 3 characters
+        for (int i = 0; i < 3; i++) {
+            sb.append(CHARACTERS.charAt(random.nextInt(CHARACTERS.length())));
         }
+        sb.append("-");
+        
+        // Second segment: 4 characters
+        for (int i = 0; i < 4; i++) {
+            sb.append(CHARACTERS.charAt(random.nextInt(CHARACTERS.length())));
+        }
+        sb.append("-");
+        
+        // Third segment: 3 characters
+        for (int i = 0; i < 3; i++) {
+            sb.append(CHARACTERS.charAt(random.nextInt(CHARACTERS.length())));
+        }
+        
         return sb.toString();
     }
     public Schedule createSchedule(@Valid ScheduleCreationRequest request) {

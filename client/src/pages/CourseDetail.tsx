@@ -749,7 +749,7 @@ export default function CourseDetail() {
                 ) : (
                   <RefreshCw className="w-4 h-4 mr-2" />
                 )}
-                Tạo mã mới
+                Regenerate Code
               </Button>
               <Button 
                 size="sm" 
