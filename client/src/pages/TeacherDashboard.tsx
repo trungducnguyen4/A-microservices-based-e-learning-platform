@@ -692,7 +692,16 @@ const TeacherDashboard = () => {
                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleCourseClick(course.id)}>
                                   <Eye className="w-3 h-3 sm:w-4 sm:h-4" />
                                 </Button>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => navigate(`/teacher/edit-schedule/${course.id}`)}>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => {
+                                    // Try to find scheduleId for this course
+                                    const scheduleId = course.scheduleId || course.id;
+                                    navigate(`/teacher/edit-schedule/${scheduleId}`);
+                                  }}
+                                >
                                   <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
                                 </Button>
                               </div>

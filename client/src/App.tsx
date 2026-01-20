@@ -41,6 +41,7 @@ import MeetingHome from "./pages/MeetingHome";
 import PreJoinScreen from "./pages/PreJoinScreen";
 import ClassroomLayoutDemo from "./pages/ClassroomLayoutDemo";
 import EditSchedulePage from "./pages/EditSchedulePage";
+import AddStudents from "./pages/AddStudents";
 const queryClient = new QueryClient();
 
 // Component to conditionally render Navigation
@@ -187,6 +188,11 @@ const AppContent = () => {
                 <ProtectedRoute requiredRole={['teacher', 'student']}>
                   <CourseDetail />
                 </ProtectedRoute>
+              } />
+              <Route path="/course/:courseId/add-students" element={
+                <TeacherRoute>
+                  <AddStudents />
+                </TeacherRoute>
               } />
 
               {/* 404 page */}
