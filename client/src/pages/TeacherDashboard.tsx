@@ -369,7 +369,7 @@ const TeacherDashboard = () => {
         </div>
 
         {/* Quick Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-8">
           <Card>
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
@@ -593,7 +593,6 @@ const TeacherDashboard = () => {
                                       )}
                                     </div>
                                   ))}
-
                                 </div>
                               )}
                               <div className="text-xs text-muted-foreground mt-2">{a.createdAt ? new Date(a.createdAt).toLocaleString() : ''}</div>
@@ -605,8 +604,8 @@ const TeacherDashboard = () => {
                                 setAnnTitle(a.title || '');
                                 setAnnBody(a.body || a.content || '');
                                 setAnnPinned(Boolean(a.pinned));
-                                  setAttachments(a.attachments?.map((u: string) => ({ url: u, name: u.split('/').pop() })) || []);
-                                  setAnnDialogOpen(true);
+                                setAttachments(a.attachments?.map((u: string) => ({ url: u, name: u.split('/').pop() })) || []);
+                                setAnnDialogOpen(true);
                               }}>
                                 <Edit className="w-4 h-4" />
                               </Button>
@@ -627,7 +626,7 @@ const TeacherDashboard = () => {
                         </CardContent>
                       </Card>
                     ))
-                  }
+                  )}
                 </div>
               </TabsContent>
 
