@@ -5,8 +5,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.tduc.scheduleservice1.dto.request.ApiResponse;
+import org.tduc.scheduleservice1.dto.request.JoinClassroomRequest;
 import org.tduc.scheduleservice1.dto.request.ScheduleCreationRequest;
 import org.tduc.scheduleservice1.dto.request.ScheduleEditRequest;
+import org.tduc.scheduleservice1.dto.response.JoinClassroomResponse;
 import org.tduc.scheduleservice1.dto.response.ScheduleCreationResponse;
 import org.tduc.scheduleservice1.mapper.ScheduleMapper;
 import org.tduc.scheduleservice1.util.AuthContextUtil;
@@ -95,5 +97,35 @@ public class ScheduleController {
         return response;
     }
 
+    /**
+     * Regenerate join code for a schedule (teacher only)
+     */
+    @PostMapping("/{scheduleId}/regenerate-code")
+    public ApiResponse<Schedule> regenerateJoinCode(@PathVariable String scheduleId) {
+        ApiResponse<Schedule> response = new ApiResponse<>();
+        response.setCode(HttpStatus.OK.value());
+        response.setResult(scheduleService.regenerateJoinCode(scheduleId));
+        return response;
+    }
+
+    /**
+     * Join classroom with join code
+     * Teacher can always join, students must wait for teacher
+     */
+    @PostMapping("/join-classroom")
+    public ApiResponse<JoinClassroomResponse> joinClassroom(@RequestBody @Valid JoinClassroomRequest request) {
+        ApiResponse<JoinClassroomResponse> response = new ApiResponse<>();
+        
+        // Get current user ID
+        String rawUserId = authContextUtil.getCurrentUserIdRaw();
+        if (rawUserId == null || rawUserId.isBlank()) {
+            Long numeric = authContextUtil.getCurrentUserId();
+            rawUserId = String.valueOf(numeric);
+        }
+        
+        response.setCode(HttpStatus.OK.value());
+        response.setResult(scheduleService.joinClassroom(request.getJoinCode(), rawUserId));
+        return response;
+    }
 
 }

@@ -34,7 +34,7 @@ public class Schedule {
     @Column(nullable = false)
     ZonedDateTime startTime;
     @Column(nullable = false)
-    String joinCode;
+    String joinCode; // Join code = Room code for LiveKit classroom
     @Column(nullable = false)
     ZonedDateTime endTime;
     // Quy tắc lặp (RRULE, iCal format)

@@ -10,7 +10,9 @@ import {
   MicOff, 
   Volume2,
   ArrowLeft,
-  Settings
+  Settings,
+  Loader2,
+  Clock
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMediaDevices } from "@/hooks/useMediaDevices";
@@ -18,6 +20,8 @@ import { useMediaPermissions } from "@/hooks/useMediaPermissions";
 import { useAudioLevel } from "@/hooks/useAudioLevel";
 import { useMediaPreview } from "@/hooks/useMediaPreview";
 import { hasJoinedRoom, saveRoomSession } from "@/utils/roomPersistence";
+import { api } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 import {
   Collapsible,
   CollapsibleContent,
@@ -28,8 +32,13 @@ const PreJoinScreen = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
+  const { toast } = useToast();
   
   const [roomCode, setRoomCode] = useState("");
+  const [checkingTeacher, setCheckingTeacher] = useState(true);
+  const [isTeacher, setIsTeacher] = useState(false);
+  const [teacherJoined, setTeacherJoined] = useState(false);
+  const [scheduleData, setScheduleData] = useState<any>(null);
   
   // Load initial state from localStorage (persisted from previous session)
   const [isCameraOn, setIsCameraOn] = useState(() => {
@@ -84,8 +93,18 @@ const PreJoinScreen = () => {
   // Get room code from URL and check if user already joined
   useEffect(() => {
     const room = searchParams.get('room');
+    const scheduleId = searchParams.get('scheduleId');
+    
     if (room) {
       setRoomCode(room);
+      
+      // Check if coming from schedule (has scheduleId or can check by joinCode)
+      if (scheduleId) {
+        checkTeacherStatus(scheduleId);
+      } else {
+        // Try to check by joinCode (room code)
+        checkTeacherStatusByJoinCode(room);
+      }
       
       // ✅ CRITICAL: Check if user has already joined this room (skip PreJoin on refresh)
       if (hasJoinedRoom(room)) {
@@ -116,6 +135,88 @@ const PreJoinScreen = () => {
     }
   }, [searchParams, navigate, cleanup, stopMonitoring]);
 
+  // Check teacher status for schedule-based joins
+  const checkTeacherStatus = async (scheduleId: string) => {
+    try {
+      setCheckingTeacher(true);
+      const response = await api.get(`/schedules/${scheduleId}`);
+      const schedule = response.data?.result;
+      
+      if (schedule) {
+        setScheduleData(schedule);
+        
+        // Check if current user is the teacher
+        const currentUserId = user?.id || user?.userId;
+        const teacherId = schedule.userId;
+        const isTeacherUser = String(currentUserId) === String(teacherId);
+        setIsTeacher(isTeacherUser);
+        
+        // Check if teacher has joined (check participants)
+        try {
+          const partsResp = await api.get(`/schedules/${scheduleId}/participants`);
+          const participants = partsResp.data?.result || partsResp.data || [];
+          const teacherInRoom = participants.some((p: any) => 
+            String(p.userId) === String(teacherId)
+          );
+          setTeacherJoined(teacherInRoom);
+        } catch (err) {
+          console.warn('Failed to check participants', err);
+          setTeacherJoined(false);
+        }
+      }
+    } catch (error: any) {
+      console.error('Failed to check teacher status:', error);
+      toast({
+        title: 'Lỗi',
+        description: 'Không thể kiểm tra trạng thái lớp học',
+        variant: 'destructive',
+      });
+    } finally {
+      setCheckingTeacher(false);
+    }
+  };
+
+  // Check teacher status by join code (when scheduleId not available)
+  const checkTeacherStatusByJoinCode = async (joinCode: string) => {
+    try {
+      setCheckingTeacher(true);
+      const response = await api.post('/schedules/join-classroom', { joinCode });
+      const result = response.data?.result;
+      
+      if (result) {
+        setScheduleData(result);
+        setIsTeacher(result.isTeacher || false);
+        setTeacherJoined(result.teacherJoined || false);
+      }
+    } catch (error: any) {
+      console.warn('Failed to check by join code, assuming open room:', error);
+      // If API fails, assume it's an open room (no teacher check needed)
+      setIsTeacher(false);
+      setTeacherJoined(true); // Allow join for open rooms
+    } finally {
+      setCheckingTeacher(false);
+    }
+  };
+
+  // Poll teacher status for students waiting
+  useEffect(() => {
+    const scheduleId = searchParams.get('scheduleId');
+    
+    // Only poll if: is not teacher, and teacher hasn't joined yet
+    if (!isTeacher && !teacherJoined && !checkingTeacher) {
+      const interval = setInterval(() => {
+        console.log('[PreJoinScreen] 🔄 Polling teacher status...');
+        if (scheduleId) {
+          checkTeacherStatus(scheduleId);
+        } else if (roomCode) {
+          checkTeacherStatusByJoinCode(roomCode);
+        }
+      }, 5000); // Poll every 5 seconds
+      
+      return () => clearInterval(interval);
+    }
+  }, [searchParams, roomCode, isTeacher, teacherJoined, checkingTeacher]);
+
   // Load devices and start preview on mount
   useEffect(() => {
     startPreview();
@@ -143,6 +244,16 @@ const PreJoinScreen = () => {
   };
 
   const handleJoinMeeting = () => {
+    // Check if student and teacher hasn't joined yet
+    if (!isTeacher && !teacherJoined) {
+      toast({
+        title: 'Không thể tham gia',
+        description: 'Phòng học chưa bắt đầu. Vui lòng chờ giáo viên vào phòng',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     setIsJoining(true);
     
     // Save preferences - quan trọng: lưu state hiện tại
@@ -323,21 +434,64 @@ const PreJoinScreen = () => {
             <Card className="rounded-xl sm:rounded-2xl p-4 sm:p-6 space-y-2 sm:space-y-3 shadow-lg">
               <p className="text-muted-foreground text-sm sm:text-base">Meeting code:</p>
               <p className="font-mono font-bold text-xl sm:text-2xl text-primary tracking-wider">{roomCode}</p>
+              {scheduleData && (
+                <div className="pt-2 border-t">
+                  <p className="text-sm font-semibold text-foreground">{scheduleData.title}</p>
+                </div>
+              )}
               <div className="pt-2 sm:pt-3 border-t">
                 <p className="text-xs sm:text-sm text-muted-foreground">
                   {user ? `Joining as ${user.name || user.email}` : 'Joining as guest'}
                 </p>
               </div>
             </Card>
+
+            {/* Teacher waiting status for students */}
+            {scheduleData && !isTeacher && (
+              <Card className={`rounded-xl p-4 ${teacherJoined ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
+                <div className="flex items-center gap-3">
+                  {checkingTeacher ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin text-gray-500" />
+                      <p className="text-sm text-gray-700">Đang kiểm tra...</p>
+                    </>
+                  ) : teacherJoined ? (
+                    <>
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                      <p className="text-sm text-green-700 font-medium">Giáo viên đã vào phòng</p>
+                    </>
+                  ) : (
+                    <>
+                      <Clock className="w-5 h-5 text-yellow-600" />
+                      <div className="text-left flex-1">
+                        <p className="text-sm text-yellow-700 font-medium">Phòng học chưa bắt đầu</p>
+                        <p className="text-xs text-yellow-600 mt-1">Vui lòng chờ giáo viên vào phòng</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </Card>
+            )}
           </div>
 
           <Button 
             size="lg" 
             className="w-full sm:w-auto px-8 sm:px-12 py-5 sm:py-6 text-base sm:text-lg font-semibold shadow-lg hover:shadow-xl transition-all"
             onClick={handleJoinMeeting}
-            disabled={isJoining}
+            disabled={isJoining || checkingTeacher || (scheduleData && !isTeacher && !teacherJoined)}
           >
-            {isJoining ? "Joining..." : "Join Meeting"}
+            {isJoining ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Joining...
+              </>
+            ) : checkingTeacher ? (
+              "Checking..."
+            ) : scheduleData && !isTeacher && !teacherJoined ? (
+              "Waiting for teacher..."
+            ) : (
+              "Join Meeting"
+            )}
           </Button>
 
           {/* Quick tips - Hidden on very small screens */}
