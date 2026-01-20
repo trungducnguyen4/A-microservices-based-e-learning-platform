@@ -357,8 +357,6 @@ const TeacherDashboard = () => {
                 <TabsTrigger value="analytics" className="text-xs sm:text-sm">Analytics</TabsTrigger>
               </TabsList>
 
-              
-
               <TabsContent value="announcements" className="space-y-4">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                   <h3 className="text-base sm:text-lg font-semibold text-foreground">Announcements</h3>
@@ -633,7 +631,7 @@ const TeacherDashboard = () => {
                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleCourseClick(course.id)}>
                                   <Eye className="w-3 h-3 sm:w-4 sm:h-4" />
                                 </Button>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => navigate(`/teacher/edit-schedule/${course.id}`)}>
                                   <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
                                 </Button>
                               </div>
