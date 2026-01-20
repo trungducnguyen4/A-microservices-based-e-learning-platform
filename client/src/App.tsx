@@ -40,6 +40,7 @@ import Profile from "./pages/Profile";
 import MeetingHome from "./pages/MeetingHome";
 import PreJoinScreen from "./pages/PreJoinScreen";
 import ClassroomLayoutDemo from "./pages/ClassroomLayoutDemo";
+import EditSchedulePage from "./pages/EditSchedulePage";
 const queryClient = new QueryClient();
 
 // Component to conditionally render Navigation
@@ -151,6 +152,11 @@ const AppContent = () => {
               <Route path="/teacher/grading" element={
                 <TeacherRoute>
                   <TeacherGrading />
+                </TeacherRoute>
+              } />
+              <Route path="/teacher/edit-schedule/:scheduleId" element={
+                <TeacherRoute>
+                  <EditSchedulePage />
                 </TeacherRoute>
               } />
 

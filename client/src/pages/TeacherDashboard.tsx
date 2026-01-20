@@ -54,6 +54,11 @@ const TeacherDashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [teacherId, setTeacherId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [addStudentOpen, setAddStudentOpen] = useState(false);
+  const [addStudentId, setAddStudentId] = useState("");
+  const [addStudentIds, setAddStudentIds] = useState("");
+  const [addStudentError, setAddStudentError] = useState<string | null>(null);
+  const [addStudentLoading, setAddStudentLoading] = useState(false);
 
   // Decode JWT để lấy teacher ID
   const decodeJWT = (token: string) => {
@@ -286,6 +291,61 @@ const TeacherDashboard = () => {
     }
   };
 
+  // Add student handler
+  const handleAddStudent = async () => {
+    setAddStudentError(null);
+    setAddStudentLoading(true);
+    try {
+      // Find joinCode of selected course
+      const course = courses.find(c => c.id === selectedCourse);
+      const joinCode = course?.joinCode || course?.code || course?.join_code || course?.joincode;
+      if (!addStudentId || !joinCode) {
+        setAddStudentError("Missing student ID or join code");
+        setAddStudentLoading(false);
+        return;
+      }
+      await api.post("/schedules/join", { userId: addStudentId, joinCode });
+      setAddStudentOpen(false);
+      setAddStudentId("");
+      // Reload students
+      await loadCourseParticipants(selectedCourse);
+    } catch (err: any) {
+      setAddStudentError(err?.response?.data?.message || "Failed to add student");
+    } finally {
+      setAddStudentLoading(false);
+    }
+  };
+
+  // Add multiple students handler
+  const handleAddStudents = async () => {
+    setAddStudentError(null);
+    setAddStudentLoading(true);
+    try {
+      const course = courses.find(c => c.id === selectedCourse);
+      const joinCode = course?.joinCode || course?.code || course?.join_code || course?.joincode;
+      if (!addStudentIds || !joinCode) {
+        setAddStudentError("Missing student IDs or join code");
+        setAddStudentLoading(false);
+        return;
+      }
+      // Split by semicolon, comma, or newline
+      const ids = addStudentIds.split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
+      if (ids.length === 0) {
+        setAddStudentError("No valid student IDs");
+        setAddStudentLoading(false);
+        return;
+      }
+      await Promise.all(ids.map(userId => api.post("/schedules/join", { userId, joinCode })));
+      setAddStudentOpen(false);
+      setAddStudentIds("");
+      await loadCourseParticipants(selectedCourse);
+    } catch (err: any) {
+      setAddStudentError(err?.response?.data?.message || "Failed to add students");
+    } finally {
+      setAddStudentLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
@@ -356,8 +416,6 @@ const TeacherDashboard = () => {
                 <TabsTrigger value="courses" className="text-xs sm:text-sm">Courses</TabsTrigger>
                 <TabsTrigger value="analytics" className="text-xs sm:text-sm">Analytics</TabsTrigger>
               </TabsList>
-
-              
 
               <TabsContent value="announcements" className="space-y-4">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -454,6 +512,7 @@ const TeacherDashboard = () => {
                                   </div>
                                 </div>
                               ))}
+
                             </div>
                           </div>
                             <div className="flex justify-end gap-2">
@@ -534,6 +593,7 @@ const TeacherDashboard = () => {
                                       )}
                                     </div>
                                   ))}
+
                                 </div>
                               )}
                               <div className="text-xs text-muted-foreground mt-2">{a.createdAt ? new Date(a.createdAt).toLocaleString() : ''}</div>
@@ -567,7 +627,7 @@ const TeacherDashboard = () => {
                         </CardContent>
                       </Card>
                     ))
-                  )}
+                  }
                 </div>
               </TabsContent>
 
@@ -633,7 +693,7 @@ const TeacherDashboard = () => {
                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleCourseClick(course.id)}>
                                   <Eye className="w-3 h-3 sm:w-4 sm:h-4" />
                                 </Button>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => navigate(`/teacher/edit-schedule/${course.id}`)}>
                                   <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
                                 </Button>
                               </div>
