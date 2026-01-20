@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Users, BookOpen, Clock, Calendar, Plus, Eye, Edit, Trash2, Loader2, Copy, CalendarPlus } from "lucide-react";
+import { ArrowLeft, Users, BookOpen, Clock, Calendar, Plus, Eye, Edit, Trash2, Loader2, Copy, CalendarPlus, RefreshCw, Video } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import Seo from "@/components/Seo";
 import { syncScheduleToGoogleCalendar } from "@/lib/googleCalendar";
@@ -35,6 +35,8 @@ export default function CourseDetail() {
   const [announcementPage, setAnnouncementPage] = useState(1);
   const ANNOUNCEMENTS_PER_PAGE = 5;
   const { toast } = useToast();
+  const [regeneratingCode, setRegeneratingCode] = useState(false);
+  const [joiningClassroom, setJoiningClassroom] = useState(false);
 
   // Helper: try to normalize an API response into an array of items
   const normalizeList = (resp: any): any[] => {
@@ -386,6 +388,84 @@ export default function CourseDetail() {
     navigate(`/teacher/create-assignment?id=${encodeURIComponent(id)}`);
   };
 
+  // Regenerate join code (teacher only)
+  const handleRegenerateCode = async () => {
+    if (!courseId || !course) return;
+    
+    setRegeneratingCode(true);
+    try {
+      const response = await api.post(`/schedules/${courseId}/regenerate-code`);
+      const newCode = response.data?.result?.joinCode || response.data?.joinCode;
+      
+      if (newCode) {
+        setCourse({ ...course, joinCode: newCode });
+        toast({
+          title: 'Mã mới đã được tạo',
+          description: `Mã tham gia mới: ${newCode}`,
+        });
+      }
+    } catch (error: any) {
+      console.error('Failed to regenerate code:', error);
+      toast({
+        title: 'Lỗi',
+        description: error.response?.data?.message || 'Không thể tạo mã mới',
+        variant: 'destructive',
+      });
+    } finally {
+      setRegeneratingCode(false);
+    }
+  };
+
+  // Join classroom
+  const handleJoinClassroom = async () => {
+    if (!course?.joinCode) {
+      toast({
+        title: 'Lỗi',
+        description: 'Không tìm thấy mã tham gia',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setJoiningClassroom(true);
+    try {
+      const response = await api.post('/schedules/join-classroom', {
+        joinCode: course.joinCode
+      });
+
+      const result = response.data?.result;
+      
+      if (!result.canJoin) {
+        toast({
+          title: 'Không thể tham gia',
+          description: result.message || 'Phòng học chưa bắt đầu',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // If can join, navigate to prejoin page with joinCode (which is also roomCode)
+      if (result.joinCode) {
+        navigate(`/prejoin?room=${result.joinCode}&scheduleId=${result.scheduleId}`);
+      } else {
+        toast({
+          title: 'Lỗi',
+          description: 'Không tìm thấy mã phòng học',
+          variant: 'destructive',
+        });
+      }
+    } catch (error: any) {
+      console.error('Failed to join classroom:', error);
+      toast({
+        title: 'Lỗi',
+        description: error.response?.data?.message || 'Không thể tham gia lớp học',
+        variant: 'destructive',
+      });
+    } finally {
+      setJoiningClassroom(false);
+    }
+  };
+
   useEffect(() => {
     if (courseId) {
       loadCourseDetail();
@@ -636,22 +716,53 @@ export default function CourseDetail() {
           <h1 className="text-3xl font-bold text-primary">{course.title}</h1>
           <p className="text-muted-foreground mt-1">{course.description}</p>
           {course.joinCode && (
-            <div className="mt-2 flex items-center gap-3">
+            <div className="mt-2 flex items-center gap-3 flex-wrap">
               <div className="text-sm text-muted-foreground">Join code:</div>
               <div className="font-mono text-sm bg-muted/10 px-2 py-1 rounded">{course.joinCode}</div>
               <Button size="sm" variant="outline" onClick={async () => {
                 try {
                   await navigator.clipboard.writeText(course.joinCode);
-                  // small UX feedback
-                  // eslint-disable-next-line no-alert
-                  alert('Join code copied to clipboard');
+                  toast({
+                    title: 'Đã sao chép',
+                    description: 'Mã tham gia đã được sao chép vào clipboard',
+                  });
                 } catch (e) {
-                  // eslint-disable-next-line no-console
                   console.error('Copy failed', e);
+                  toast({
+                    title: 'Lỗi',
+                    description: 'Không thể sao chép mã',
+                    variant: 'destructive',
+                  });
                 }
               }}>
                 <Copy className="w-4 h-4 mr-2" />
                 Copy
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={handleRegenerateCode}
+                disabled={regeneratingCode}
+              >
+                {regeneratingCode ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                )}
+                Tạo mã mới
+              </Button>
+              <Button 
+                size="sm" 
+                variant="default"
+                onClick={handleJoinClassroom}
+                disabled={joiningClassroom}
+              >
+                {joiningClassroom ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Video className="w-4 h-4 mr-2" />
+                )}
+                Join Classroom
               </Button>
             </div>
           )}
