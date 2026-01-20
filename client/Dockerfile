@@ -14,6 +14,9 @@ RUN npm cache clean --force && \
 # Copy all source files
 COPY . .
 
+ARG VITE_GROQ_API_KEY
+ENV VITE_GROQ_API_KEY=${VITE_GROQ_API_KEY}
+
 # Debug: Verify index.html type before build
 RUN ls -la index.html && \
     if [ -f index.html ]; then echo "✓ index.html is a FILE"; else echo "✗ index.html is NOT a file"; exit 1; fi
@@ -32,7 +35,7 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Add health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost/ || exit 1
+    CMD curl -f http://localhost/ || exit 1
 
 # Expose port
 EXPOSE 80
