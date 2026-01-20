@@ -3,15 +3,10 @@ spring:
     name: ScheduleService1
   profiles:
     active: development
-
----
-# Development Profile
-spring:
   config:
     activate:
       on-profile: development
   datasource:
-    # Use environment variables to allow connecting to RDS in dev
     url: jdbc:mysql://elearningplatform.cj6aaa462kbk.ap-southeast-2.rds.amazonaws.com:3306/schedule_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
     username: ${SPRING_DATASOURCE_USERNAME:root}
     password: ${SPRING_DATASOURCE_PASSWORD:}
