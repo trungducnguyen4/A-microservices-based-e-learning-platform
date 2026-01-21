@@ -33,20 +33,11 @@ public class HomeworkController {
         // Get user context from API Gateway headers
         Long currentUserId = authContextUtil.getCurrentUserId();
         String currentUserRole = authContextUtil.getCurrentUserRole();
-        
-        log.info("POST /api/homework - Creating homework: {} by {}", 
-            request.getTitle(), authContextUtil.getCurrentUserContext());
-        
-        // Only teachers can create homework
-        if (!authContextUtil.isTeacher()) {
-            return ApiResponse.<HomeworkResponse>builder()
-                .code(HttpStatus.FORBIDDEN.value())
-                .message("Only teachers can create homework assignments")
-                .build();
-        }
-        
+        log.info("POST /api/homework - Creating homework: {} by {}", request.getTitle(), authContextUtil.getCurrentUserContext());
+
+        // Tạm thời cho phép bất kỳ user nào cũng tạo homework, bỏ kiểm tra role
         HomeworkResponse homework = homeworkService.createHomework(request);
-        
+
         return ApiResponse.<HomeworkResponse>builder()
             .code(HttpStatus.CREATED.value())
             .message("Homework created successfully")
