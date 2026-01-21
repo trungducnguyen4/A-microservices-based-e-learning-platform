@@ -174,7 +174,7 @@ spring:
           predicates:
             - Path=/api/homework/**
         - id: homework-submission-service
-          uri: ${HOMEWORK_SERVICE_URL:https://homework-service:8081}
+          uri: ${HOMEWORK_SERVICE_URL:http://e-learning-homework-service:8081}
           predicates:
             - Path=/api/submission/**
         - id: announcement-service
