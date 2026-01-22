@@ -17,7 +17,7 @@ export const options = {
 
 // 👉 GỌI TRỰC TIẾP CLASSROOM SERVICE (SWARM)
 // Nếu chạy k6 trong container cùng network:
-const API_URL = 'http://3.25.204.17:4001/api/classrooms/meeting/token';
+const API_URL = 'http://52.64.43.236:4001/api/classrooms/meeting/token';
 
 // Nếu chạy k6 trên EC2 và đã publish port:
 // const API_URL = 'http://localhost:4001/api/classrooms/meeting/token';
