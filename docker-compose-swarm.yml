@@ -67,7 +67,7 @@ services:
       SERVER_PORT: 8080
       GOOGLE_CLIENT_ID: "560938395171-9o65cgu27oe1gkbhkm54kmegc73hu4h1.apps.googleusercontent.com"
       GOOGLE_CLIENT_SECRET: "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"
-      GOOGLE_REDIRECT_URI: "http://3.25.204.17/auth/google/callback"
+      GOOGLE_REDIRECT_URI: "http://3.26.190.126/auth/google/callback"
     networks:
       - e-learning-network
     healthcheck:
@@ -262,7 +262,7 @@ services:
       GOOGLE_CALENDAR_ENABLED: "true"
       GOOGLE_CLIENT_ID: "560938395171-9o65cgu27oe1gkbhkm54kmegc73hu4h1.apps.googleusercontent.com"
       GOOGLE_CLIENT_SECRET: "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"
-      GOOGLE_REDIRECT_URI: "http://3.25.204.17/auth/google/callback"
+      GOOGLE_REDIRECT_URI: "http://3.26.190.126/auth/google/callback"
       USER_SERVICE_URL: "http://user-service:8080"
       SCHEDULE_SERVICE_URL: "http://schedule-service:8082"
       HOMEWORK_SERVICE_URL: "http://homework-service:8081"
