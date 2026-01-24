@@ -138,7 +138,24 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
 
     const currentHostUserId = hostUserIdRef.current;
     
-    room.remoteParticipants.forEach(participant => {
+    // ✅ Sort participants: video on first, then no video
+    const participantsArray = Array.from(room.remoteParticipants.values());
+    const sortedParticipants = participantsArray.sort((a, b) => {
+      // Check if participant has active video
+      const aHasVideo = Array.from(a.videoTrackPublications.values()).some(pub => 
+        pub.source === 'camera' && pub.track && pub.isSubscribed && !pub.isMuted && pub.track.mediaStreamTrack?.enabled
+      );
+      const bHasVideo = Array.from(b.videoTrackPublications.values()).some(pub => 
+        pub.source === 'camera' && pub.track && pub.isSubscribed && !pub.isMuted && pub.track.mediaStreamTrack?.enabled
+      );
+      
+      // Video participants come first
+      if (aHasVideo && !bHasVideo) return -1;
+      if (!aHasVideo && bHasVideo) return 1;
+      return 0; // Keep original order for same category
+    });
+    
+    sortedParticipants.forEach(participant => {
       console.log(`[renderRemoteParticipants] 🎭 Rendering ${participant.identity}`);
       
       // ✅ ATTACH AUDIO TRACKS - Critical for hearing remote participants!

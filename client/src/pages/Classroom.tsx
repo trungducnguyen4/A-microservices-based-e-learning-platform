@@ -132,6 +132,9 @@ const Classroom = () => {
   const [summarizeChoice, setSummarizeChoice] = useState<boolean | null>(null);
   const [generatedSummary, setGeneratedSummary] = useState<any>(null);
   
+  // Hand raise notification
+  const [handRaiseNotifications, setHandRaiseNotifications] = useState<Array<{id: string, name: string}>>([]);
+  
   // Get room code from URL and auto-join
   useEffect(() => {
     const roomFromUrl = searchParams.get('room');
@@ -437,6 +440,37 @@ const Classroom = () => {
       setChatOpen(showChat);
     }
   }, [showChat, setChatOpen]);
+
+  // ✅ Monitor hand raises and show notifications
+  const prevRaisedHandsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    // Find newly raised hands
+    const newRaisedHands = Array.from(raisedHands).filter(identity => !prevRaisedHandsRef.current.has(identity));
+    
+    if (newRaisedHands.length > 0) {
+      // Add notifications for new raised hands
+      const newNotifications = newRaisedHands
+        .filter(identity => identity !== localParticipant?.identity) // Don't notify for own hand raise
+        .map(identity => ({
+          id: `${identity}-${Date.now()}`,
+          name: identity
+        }));
+      
+      if (newNotifications.length > 0) {
+        setHandRaiseNotifications(prev => [...prev, ...newNotifications]);
+        
+        // Auto-dismiss after 5 seconds
+        newNotifications.forEach(notification => {
+          setTimeout(() => {
+            setHandRaiseNotifications(prev => prev.filter(n => n.id !== notification.id));
+          }, 5000);
+        });
+      }
+    }
+    
+    // Update previous state
+    prevRaisedHandsRef.current = new Set(raisedHands);
+  }, [raisedHands, localParticipant]);
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -974,6 +1008,40 @@ const Classroom = () => {
             </div>
           </div>
         )}
+
+        {/* ✅ Hand Raise Notifications - stacked notifications */}
+        {handRaiseNotifications.map((notification, index) => (
+          <div
+            key={notification.id}
+            className="fixed right-4 sm:right-6 bg-yellow-500/95 text-white border-2 border-yellow-400 shadow-2xl rounded-xl p-4 max-w-xs sm:max-w-sm animate-in slide-in-from-right-5 duration-300 z-50"
+            style={{ bottom: `${20 + index * 100}px` }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-yellow-600 rounded-full flex items-center justify-center flex-shrink-0 animate-bounce">
+                <Hand className="w-6 h-6 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="font-semibold text-sm truncate pr-2">{notification.name}</p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 hover:bg-yellow-600/50 flex-shrink-0"
+                    onClick={() => {
+                      setHandRaiseNotifications(prev => prev.filter(n => n.id !== notification.id));
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </Button>
+                </div>
+                <p className="text-sm font-medium">Raised their hand</p>
+              </div>
+            </div>
+          </div>
+        ))}
 
         {/* Chat Sidebar - Full screen on mobile, sidebar on desktop */}
         {showChat && (
