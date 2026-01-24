@@ -297,7 +297,7 @@ services:
       context: ./client
       dockerfile: Dockerfile
       args:
-        VITE_GROQ_API_KEY: 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
+        VITE_GROQ_API_KEY: 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
     container_name: e-learning-client
     restart: unless-stopped
     environment:
