@@ -573,7 +573,12 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
       p => p.identity === actualIdentity
     );
     
-    if (!participant) return;
+    // ✅ Auto-unpin if participant not found (disconnected)
+    if (!participant) {
+      console.log('[renderPinnedParticipant] ⚠️ Participant not found, unpinning');
+      setPinnedParticipantIdentity(null);
+      return;
+    }
     
     let trackToRender: any = null;
     let isPinningScreen = false;
@@ -581,22 +586,25 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
     // Find the appropriate track based on what user pinned
     participant.videoTrackPublications.forEach((publication) => {
       if (isScreenShare && publication.source === 'screen_share') {
-        trackToRender = publication.track;
-        isPinningScreen = true;
+        // Only use track if it's subscribed, not muted, and enabled
+        if (publication.track && publication.isSubscribed && !publication.isMuted) {
+          trackToRender = publication.track;
+          isPinningScreen = true;
+        }
       } else if ((isCameraView || !isScreenShare) && publication.source === 'camera') {
-        trackToRender = publication.track;
-        isPinningScreen = false;
+        // Only use track if it's subscribed, not muted, and enabled
+        if (publication.track && publication.isSubscribed && !publication.isMuted && publication.track.mediaStreamTrack?.enabled) {
+          trackToRender = publication.track;
+          isPinningScreen = false;
+        }
       }
     });
     
-    // Fallback: if specific type not found, use any video track
+    // ✅ Auto-unpin if the specific track we pinned is no longer available
     if (!trackToRender) {
-      participant.videoTrackPublications.forEach((publication) => {
-        if (publication.track && !trackToRender) {
-          trackToRender = publication.track;
-          isPinningScreen = publication.source === 'screen_share';
-        }
-      });
+      console.log('[renderPinnedParticipant] ⚠️ Pinned track not available, unpinning');
+      setPinnedParticipantIdentity(null);
+      return;
     }
     
     if (trackToRender) {
@@ -983,6 +991,10 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
             if (participant.isLocal) return;
             console.log("📤 Track published:", publication.kind, publication.source, "from", participant.identity);
             renderRemoteParticipants(r);
+            // ✅ Re-render pinned if this is the pinned participant
+            if (pinnedParticipantIdentity && pinnedParticipantIdentity.startsWith(participant.identity)) {
+              renderPinnedParticipant(r, pinnedParticipantIdentity);
+            }
           } catch (err) {
             console.error('[TrackPublished] Error:', err);
           }
@@ -992,10 +1004,16 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
           try {
             if (participant.isLocal) return;
             console.log("📤 Track unpublished:", publication.kind, publication.source, "from", participant.identity);
-            // If unpinned track is screen share, unpin it
+            
+            // ✅ Auto-unpin if the unpublished track is the one we pinned
             if (publication.source === 'screen_share' && pinnedParticipantIdentity === `${participant.identity}-screen`) {
+              console.log('[TrackUnpublished] 📌 Auto-unpinning screen share');
+              setPinnedParticipantIdentity(null);
+            } else if (publication.source === 'camera' && pinnedParticipantIdentity === `${participant.identity}-camera`) {
+              console.log('[TrackUnpublished] 📌 Auto-unpinning camera');
               setPinnedParticipantIdentity(null);
             }
+            
             renderRemoteParticipants(r);
           } catch (err) {
             console.error('[TrackUnpublished] Error:', err);
@@ -1007,6 +1025,10 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
             if (participant.isLocal) return;
             console.log("📹 Track subscribed:", track.kind, "from", participant.identity);
             renderRemoteParticipants(r);
+            // ✅ Re-render pinned if this is the pinned participant
+            if (pinnedParticipantIdentity && pinnedParticipantIdentity.startsWith(participant.identity)) {
+              renderPinnedParticipant(r, pinnedParticipantIdentity);
+            }
           } catch (err) {
             console.error('[TrackSubscribed] Error:', err);
           }
@@ -1017,6 +1039,10 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
             if (participant.isLocal) return;
             console.log("📹 Track unsubscribed:", track.kind, "from", participant.identity);
             renderRemoteParticipants(r);
+            // ✅ Re-render pinned if this is the pinned participant
+            if (pinnedParticipantIdentity && pinnedParticipantIdentity.startsWith(participant.identity)) {
+              renderPinnedParticipant(r, pinnedParticipantIdentity);
+            }
           } catch (err) {
             console.error('[TrackUnsubscribed] Error:', err);
           }
@@ -1027,6 +1053,10 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
             if (participant.isLocal) return;
             console.log("🔇 Track muted:", publication.kind, "from", participant.identity);
             renderRemoteParticipants(r);
+            // ✅ Re-render pinned if this is the pinned participant's video track
+            if (publication.kind === 'video' && pinnedParticipantIdentity && pinnedParticipantIdentity.startsWith(participant.identity)) {
+              renderPinnedParticipant(r, pinnedParticipantIdentity);
+            }
           } catch (err) {
             console.error('[TrackMuted] Error:', err);
           }
@@ -1036,6 +1066,11 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
           try {
             if (participant.isLocal) return;
             console.log("🔊 Track unmuted:", publication.kind, "from", participant.identity);
+            renderRemoteParticipants(r);
+            // ✅ Re-render pinned if this is the pinned participant's video track
+            if (publication.kind === 'video' && pinnedParticipantIdentity && pinnedParticipantIdentity.startsWith(participant.identity)) {
+              renderPinnedParticipant(r, pinnedParticipantIdentity);
+            }
             renderRemoteParticipants(r);
           } catch (err) {
             console.error('[TrackUnmuted] Error:', err);
@@ -1147,10 +1182,10 @@ export const useClassroom = (params: UseClassroomParams): UseClassroomReturn => 
    */
   useEffect(() => {
     if (room) {
-      console.log('[useClassroom] Re-rendering participants');
+      console.log('[useClassroom] Re-rendering participants - count:', participants.length);
       renderRemoteParticipants(room);
     }
-  }, [hostUserId, room, raisedHands]);
+  }, [hostUserId, room, raisedHands, participants]);
 
   /**
    * Re-render pinned participant khi pinnedParticipantIdentity thay đổi
