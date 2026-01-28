@@ -25,7 +25,7 @@ spring:
               - "https://localhost:8083"
               - "https://localhost:5173"
               - "https://localhost:8080"
-              - "https://3.24.182.172"
+              - "https://3.26.190.126"
               - "https://academihub.site"
               - "https://academihub.site"
             allowedMethods:
@@ -45,6 +45,7 @@ spring:
 server:
   port: 8888
 
+---
 # Development Profile
 spring:
   config:
@@ -137,6 +138,7 @@ logging:
     org.tduc.apigateway: DEBUG
     org.springframework.cloud.gateway: DEBUG
 
+---
 # Docker Profile
 spring:
   config:
