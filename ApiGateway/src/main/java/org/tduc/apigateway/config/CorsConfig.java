@@ -21,8 +21,8 @@ public class CorsConfig {
             // Development - localhost
             "http://localhost:*", 
             "http://127.0.0.1:*",
-            "http://3.24.182.172",
-            "http://3.24.182.172:*",
+            "http://16.176.140.89",
+            "http://16.176.140.89:*",
             "https://localhost:*",
             "https://127.0.0.1:*",
             

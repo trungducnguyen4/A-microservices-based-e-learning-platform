@@ -53,7 +53,7 @@ spring:
               - "https://localhost:8083"
               - "https://localhost:5173"
               - "https://localhost:8080"
-              - "https://3.26.190.126"
+              - "https://16.176.140.89"
               - "https://academihub.site"
             allowedMethods:
               - GET
